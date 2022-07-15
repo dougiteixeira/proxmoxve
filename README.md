@@ -3,6 +3,8 @@
 
 [Proxmox VE](https://www.proxmox.com/en/) is an open-source server virtualization environment. This integration allows you to poll various data and controls from your instance.
 
+![image](https://user-images.githubusercontent.com/31328123/179136512-39085532-d1b8-4445-99fa-68b799fceb16.png)
+
 ## Installation
 
 ### If you use [HACS](https://hacs.xyz/):
