@@ -1,10 +1,10 @@
 {
   "domain": "proxmoxve",
   "name": "Proxmox VE",
-  "documentation": "https://www.home-assistant.io/integrations/proxmoxve",
-  "codeowners": ["@jhollowe", "@Corbeno"],
+  "documentation": "https://github.com/dougiteixeira/proxmoxve",
+  "codeowners": ["@dougiteixeira"],
   "requirements": ["proxmoxer==1.3.1"],
-  "version":"1001",
+  "version":"0.0.1",
   "iot_class": "local_polling",
   "loggers": ["proxmoxer"]
 }
