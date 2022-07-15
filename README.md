@@ -3,6 +3,29 @@
 
 [Proxmox VE](https://www.proxmox.com/en/) is an open-source server virtualization environment. This integration allows you to poll various data and controls from your instance.
 
+## Installation
+
+### If you use [HACS](https://hacs.xyz/):
+
+1. Click on HACS in the Home Assistant menu
+2. Click on the 3 dots in the top right corner.
+3. Select "Custom repositories"
+4. Add the URL to the repository.
+5. Select the Integration category.
+6. Click the "ADD" button.
+
+7. Click on HACS in the Home Assistant menu
+8. Click on `Integrations`
+9. Click the `EXPLORE & DOWNLOAD REPOSITORIES` button
+10. Search for `Proxmox VE`
+11. Click the `DOWNLOAD` button
+12. Restart Home Assistant
+
+### Manually:
+
+1. Copy `proxmoxve` folder from [latest release](https://github.com/dougiteixeira/proxmoxve/releases/latest) to [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations). in your config folder.
+2. Restart Home Assistant
+
 ## Configuration
 
 <div class='note'>
