@@ -1,2 +1,1 @@
-# proxmoxve
-Proxmox VE Custom Integration Home Assistant
+# Proxmox VE Custom Integration Home Assistant
