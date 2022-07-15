@@ -43,7 +43,9 @@ proxmoxve:
 
 ## Proxmox Permissions
 
-To be able to retrieve the status of VMs and containers, the user used to connect must minimally have the VM.Audit privilege. Below is a guide to how to configure a new user with the minimum required permissions.
+To be able to retrieve the status of VMs and containers, the user used to connect must minimally have the VM.Audit privilege.
+To be able to controls the VMs and containers, the user used to connect must have the VM.Admin privilege.
+Below is a guide to how to configure a new user with the minimum required permissions.
 
 ### CREATE HOME ASSISTANT GROUP
 
@@ -54,9 +56,10 @@ Open Permissions and click Groups
 * Click the Create button above all the existing groups
 Name the new group (e.g., HomeAssistant)
 * Click Create
-ADD GROUP PERMISSIONS TO ALL ASSETS
 
-For the group to access the VMs we need to grant it the auditor role
+#### ADD GROUP PERMISSIONS TO ALL ASSETS
+
+##### For the group to access the VMs we need to grant it the auditor role
 
 * Click Datacenter
 * Click Permissions
@@ -64,6 +67,16 @@ For the group to access the VMs we need to grant it the auditor role
 * Select “/” for the path
 * Select your Home Assistant group (HomeAssistant)
 * Select the Auditor role (PVEAuditor)
+* Make sure Propagate is checked
+
+##### For the group to control the VMs, we need to grant the admin role.
+
+* Click Datacenter
+* Click Permissions
+* Open Add and click Group Permission
+* Select “/” for the path
+* Select your Home Assistant group (HomeAssistant)
+* Select the Admin role (PVEAdmin)
 * Make sure Propagate is checked
 
 ### CREATE HOME ASSISTANT USER
