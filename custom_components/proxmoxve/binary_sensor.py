@@ -1,12 +1,9 @@
-"""Sensor to read Proxmox VE data."""
-from __future__ import annotations
+"""Binary sensor to read Proxmox VE data."""
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.const import CONF_HOST
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-
-import logging
 
 from . import ProxmoxEntity, compile_device_info
 from .const import (
@@ -16,17 +13,14 @@ from .const import (
     CONF_VMS,
     COORDINATORS,
     DOMAIN,
+    PROXMOX_BINARYSENSOR_TYPES,
     PROXMOX_CLIENTS,
-    PROXMOX_SENSOR_TYPES_ALL,
-    PROXMOX_NODE_SENSOR,
-    Node_Type,
 )
-from .model import ProxmoxSensorDescription
+from .model import ProxmoxBinarySensorDescription
 
-_LOGGER = logging.getLogger(__name__)
 
 async def async_setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up sensors."""
+    """Set up binary sensors."""
     if discovery_info is None:
         return
 
@@ -42,45 +36,18 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
         for node_config in host_config[CONF_NODES]:
             node_name = node_config[CONF_NODE]
 
-            # coordinator = host_name_coordinators[node_name]["node_info"]
-
-            # _LOGGER.debug(
-            #   "Coordinator NODE %s: %s", node_name, coordinator.data
-            # )
-
-            # if not (coordinator_data := coordinator.data) is None:
-
-            #     device_info = compile_device_info(host_name, node_name, None, None)
-
-            #     for description in PROXMOX_NODE_SENSOR:
-            #         sensors.append(
-            #             create_sensor(
-            #                 coordinator=coordinator,
-            #                 device_info=device_info,
-            #                 description=description,
-            #                 node_name=node_name,
-            #                 mid=None,
-            #                 name=None,
-            #             )
-            #         )
-
             for vm_id in node_config[CONF_VMS]:
                 coordinator = host_name_coordinators[node_name][vm_id]
-                
+
                 # unfound vm case
                 if (coordinator_data := coordinator.data) is None:
                     continue
 
-                _LOGGER.debug(
-                  "Coordinator NODE %s / VM %s: %s", node_name, vm_id, coordinator_data
-                )
-                
                 vm_name = coordinator_data["name"]
                 device_info = compile_device_info(host_name, node_name, vm_id, vm_name)
-
-                for description in PROXMOX_SENSOR_TYPES_ALL:
+                for description in PROXMOX_BINARYSENSOR_TYPES:
                     sensors.append(
-                        create_sensor(
+                        create_binary_sensor(
                             coordinator=coordinator,
                             device_info=device_info,
                             description=description,
@@ -92,20 +59,16 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
 
             for ct_id in node_config[CONF_CONTAINERS]:
                 coordinator = host_name_coordinators[node_name][ct_id]
-                
+
                 # unfound container case
                 if (coordinator_data := coordinator.data) is None:
                     continue
 
-                _LOGGER.debug(
-                  "Coordinator NODE %s / CT %s: %s", node_name, ct_id, coordinator_data
-                )
-
                 ct_name = coordinator_data["name"]
                 device_info = compile_device_info(host_name, node_name, ct_id, ct_name)
-                for description in PROXMOX_SENSOR_TYPES_ALL:
+                for description in PROXMOX_BINARYSENSOR_TYPES:
                     sensors.append(
-                        create_sensor(
+                        create_binary_sensor(
                             coordinator=coordinator,
                             device_info=device_info,
                             description=description,
@@ -118,36 +81,36 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(sensors)
 
 
-def create_sensor(
+def create_binary_sensor(
     coordinator: DataUpdateCoordinator,
     device_info: DeviceInfo,
-    description: ProxmoxSensorDescription,
+    description: ProxmoxBinarySensorDescription,
     node_name: str,
     mid: str,
     name: str,
 ):
-    """Create a sensor based on the given data."""
-    return ProxmoxSensor(
+    """Create a binary sensor based on the given data."""
+    return ProxmoxBinarySensor(
         coordinator=coordinator,
         device_info=device_info,
         description=description,
-        unique_id=f"proxmox_{node_name}{mid}{description.key}",
-        name=f"{node_name} {name} {description.key}",
+        unique_id=f"proxmox_{node_name}_{mid}_running",  # Legacy uid kept for non-breaking change
+        name=f"{node_name} {name} Status",
     )
 
 
-class ProxmoxSensor(ProxmoxEntity, SensorEntity):
-    """A sensor for reading Proxmox VE data."""
+class ProxmoxBinarySensor(ProxmoxEntity, BinarySensorEntity):
+    """A binary sensor for reading Proxmox VE data."""
 
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         device_info: DeviceInfo,
-        description: ProxmoxSensorDescription,
+        description: ProxmoxBinarySensorDescription,
         name: str,
         unique_id: str,
     ):
-        """Create the sensor for vms or containers."""
+        """Create the binary sensor for vms or containers."""
         super().__init__(
             coordinator=coordinator,
             device_info=device_info,
@@ -157,20 +120,12 @@ class ProxmoxSensor(ProxmoxEntity, SensorEntity):
         self.entity_description = description
 
     @property
-    def native_value(self):
-        """Return the units of the sensor."""
+    def is_on(self):
+        """Return the state of the binary sensor."""
         if (data := self.coordinator.data) is None:
             return None
 
-        if self.entity_description.key not in data:
-            return None
-
-        native_value = data[self.entity_description.key]
-
-        if self.entity_description.conversion is not None:
-            return self.entity_description.conversion(native_value)
-
-        return native_value
+        return data["status"] == "running"
 
     @property
     def available(self):
