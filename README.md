@@ -3,7 +3,7 @@
 
 [Proxmox VE](https://www.proxmox.com/en/) is an open-source server virtualization environment. This integration allows you to poll various data and controls from your instance.
 
-![image](https://user-images.githubusercontent.com/31328123/179136512-39085532-d1b8-4445-99fa-68b799fceb16.png)
+![image](https://user-images.githubusercontent.com/31328123/189549962-1b195b2c-a5b8-40eb-947e-74052543d804.png)
 
 ## Installation
 
@@ -30,41 +30,19 @@
 
 ## Configuration
 
-<div class='note'>
-You should have at least one VM or container entry configured, else this integration won't do anything.
-</div>
+Adding Proxmox VE to your Home Assistant instance can be done via the user interface, by using this My button:
 
-To use the `proxmoxve` component, add the following configuration to your `configuration.yaml` file:
+[![image](https://user-images.githubusercontent.com/31328123/189550000-6095719b-ca38-4860-b817-926b19de1b32.png)](https://my.home-assistant.io/redirect/config_flow_start?domain=proxmoxve)
 
-```yaml
-# Example configuration.yaml entry
-proxmoxve:
-  - host: IP_ADDRESS
-    username: USERNAME
-    password: PASSWORD
-    nodes:
-      - node: NODE_NAME
-        vms:
-          - VM_ID
-        containers:
-          - CONTAINER_ID
-```
+### Manual configuration steps
+If the above My button doesn’t work, you can also perform the following steps manually:
 
-Example with multiple VMs, no containers, self-signed certificate and pve realm for the user setup described below:
-
-```yaml
-proxmoxve:
-  - host: IP_ADDRESS
-    username: USERNAME
-    password: PASSWORD
-    verify_ssl: false
-    realm: pve
-    nodes:
-      - node: NODE_NAME
-        vms:
-          - VM_ID_1
-          - VM_ID_2
-```
+* Browse to your Home Assistant instance.
+* In the sidebar click on  Settings.
+* From the configuration menu select: Devices & Services.
+* In the bottom right, click on the  Add Integration button.
+* From the list, search and select “Proxmox VE”.
+* Follow the instruction on screen to complete the set up.
 
 ## Proxmox Permissions
 
