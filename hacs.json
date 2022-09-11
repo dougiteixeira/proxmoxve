@@ -1,6 +1,5 @@
 {
   "name": "Proxmox VE",
-  "content_in_root": true,
   "domains": [
     "binary_sensor",
     "button",
