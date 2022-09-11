@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final
+from typing import Any, Final
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -22,14 +22,26 @@ from .const import CONF_LXC, CONF_NODE, CONF_QEMU, ProxmoxType
 class ProxmoxBinarySensorDescription(BinarySensorEntityDescription):
     """Class describing Proxmox binarysensor entities."""
 
-    unit_metric: str | None = None
-    unit_imperial: str | None = None
+    on_value: Any | None = None
 
+
+PROXMOX_BINARYSENSOR_NODES: Final[tuple[ProxmoxBinarySensorDescription, ...]] = (
+    ProxmoxBinarySensorDescription(
+        key="status",
+        name="Status",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        icon="mdi:server",
+        on_value="online",
+    ),
+)
 
 PROXMOX_BINARYSENSOR_TYPES: Final[tuple[ProxmoxBinarySensorDescription, ...]] = (
     ProxmoxBinarySensorDescription(
         key="status",
+        name="Status",
+        device_class=BinarySensorDeviceClass.RUNNING,
         icon="mdi:server",
+        on_value="running",
     ),
 )
 
@@ -44,6 +56,25 @@ async def async_setup_entry(
     sensors = []
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
+    coordinator = coordinators[ProxmoxType.Node]
+    # unfound node case
+    if coordinator.data is not None:
+        for description in PROXMOX_BINARYSENSOR_NODES:
+            sensors.append(
+                create_binary_sensor(
+                    coordinator=coordinator,
+                    config_entry=config_entry,
+                    info_device=device_info(
+                        hass=hass,
+                        config_entry=config_entry,
+                        api_category=ProxmoxType.Node,
+                        vm_id=None,
+                    ),
+                    description=description,
+                    vm_id=None,
+                )
+            )
+
     for vm_id in config_entry.data[CONF_QEMU]:
         coordinator = coordinators[vm_id]
 
@@ -51,20 +82,21 @@ async def async_setup_entry(
         if coordinator.data is None:
             continue
 
-        vm_sensor = create_binary_sensor(
-            coordinator=coordinator,
-            vm_id=vm_id,
-            key="status",
-            name="Status",
-            config_entry=config_entry,
-            info_device=device_info(
-                hass=hass,
-                config_entry=config_entry,
-                api_category=ProxmoxType.QEMU,
-                vm_id=vm_id,
-            ),
-        )
-        sensors.append(vm_sensor)
+        for description in PROXMOX_BINARYSENSOR_TYPES:
+            sensors.append(
+                create_binary_sensor(
+                    coordinator=coordinator,
+                    config_entry=config_entry,
+                    info_device=device_info(
+                        hass=hass,
+                        config_entry=config_entry,
+                        api_category=ProxmoxType.QEMU,
+                        vm_id=vm_id,
+                    ),
+                    description=description,
+                    vm_id=vm_id,
+                )
+            )
 
     for container_id in config_entry.data[CONF_LXC]:
         coordinator = coordinators[container_id]
@@ -73,20 +105,21 @@ async def async_setup_entry(
         if coordinator.data is None:
             continue
 
-        container_sensor = create_binary_sensor(
-            coordinator=coordinator,
-            vm_id=container_id,
-            key="status",
-            name="Status",
-            config_entry=config_entry,
-            info_device=device_info(
-                hass=hass,
-                config_entry=config_entry,
-                api_category=ProxmoxType.LXC,
-                vm_id=container_id,
-            ),
-        )
-        sensors.append(container_sensor)
+        for description in PROXMOX_BINARYSENSOR_TYPES:
+            sensors.append(
+                create_binary_sensor(
+                    coordinator=coordinator,
+                    config_entry=config_entry,
+                    info_device=device_info(
+                        hass=hass,
+                        config_entry=config_entry,
+                        api_category=ProxmoxType.LXC,
+                        vm_id=container_id,
+                    ),
+                    description=description,
+                    vm_id=container_id,
+                )
+            )
 
     async_add_entities(sensors)
 
@@ -94,19 +127,15 @@ async def async_setup_entry(
 def create_binary_sensor(
     coordinator,
     vm_id,
-    key,
-    name,
     config_entry,
     info_device,
+    description,
 ):
     """Create a binary sensor based on the given data."""
     return ProxmoxBinarySensor(
         coordinator=coordinator,
-        unique_id=f"proxmox_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data[CONF_NODE]}_{vm_id}_{key}",
-        name=name,
-        icon="",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        vm_id=vm_id,
+        unique_id=f"proxmox_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data[CONF_NODE]}_{vm_id}_{description.key}",
+        description=description,
         info_device=info_device,
     )
 
@@ -114,22 +143,20 @@ def create_binary_sensor(
 class ProxmoxBinarySensor(ProxmoxEntity, BinarySensorEntity):
     """A binary sensor for reading Proxmox VE data."""
 
-    _attr_has_entity_name = True
+    entity_description: ProxmoxBinarySensorDescription
 
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         unique_id,
-        name,
-        icon,
-        device_class,
-        vm_id,
         info_device,
+        description: ProxmoxBinarySensorDescription,
     ):
         """Create the binary sensor for vms or containers."""
-        super().__init__(coordinator, unique_id, name, icon, vm_id)
+        super().__init__(coordinator, unique_id, description.name, description.icon)
 
-        self._attr_device_class = device_class
+        self.entity_description = description
+        self._attr_device_class = self.entity_description.device_class
         self._attr_device_info = info_device
 
     @property
@@ -138,7 +165,7 @@ class ProxmoxBinarySensor(ProxmoxEntity, BinarySensorEntity):
         if (data := self.coordinator.data) is None:
             return None
 
-        return data["status"] == "running"
+        return data["status"] == self.entity_description.on_value
 
     @property
     def available(self):
