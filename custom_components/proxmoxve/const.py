@@ -36,20 +36,13 @@ class ProxmoxType(StrEnum):
     LXC = "lxc"
 
 
-COMMAND_REBOOT = "reboot"
-COMMAND_RESUME = "resume"
-COMMAND_SHUTDOWN = "shutdown"
-COMMAND_START = "start"
-COMMAND_STOP = "stop"
-COMMAND_SUSPEND = "suspend"  # API notes 'This is experimental.'  https://pve.proxmox.com/pve-docs/api-viewer/#/nodes/{node}/lxc/{vmid}/status/suspend
-COMMAND_RESET = "reset"
+class ProxmoxCommand(StrEnum):
+    """Proxmox type of information."""
 
-VM_COMMANDS = (
-    COMMAND_REBOOT,
-    COMMAND_RESUME,
-    COMMAND_SHUTDOWN,
-    COMMAND_START,
-    COMMAND_STOP,
-    COMMAND_SUSPEND,
-    COMMAND_RESET,
-)
+    REBOOT = "reboot"
+    RESUME = "resume"
+    SHUTDOWN = "shutdown"
+    START = "start"
+    STOP = "stop"
+    SUSPEND = "suspend"  # API notes 'This is experimental.'  https://pve.proxmox.com/pve-docs/api-viewer/#/nodes/{node}/lxc/{vmid}/status/suspend
+    RESET = "reset"

@@ -51,7 +51,7 @@ from .const import (
     INTEGRATION_NAME,
     LOGGER,
     PROXMOX_CLIENT,
-    VM_COMMANDS,
+    ProxmoxCommand,
     ProxmoxType,
 )
 
@@ -59,14 +59,13 @@ PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
     Platform.SENSOR,
-    Platform.SWITCH,
 ]
 
 COORDINATOR_UPDATE_INTERVAL_MAP = {
     ProxmoxType.Proxmox: timedelta(minutes=60),
-    ProxmoxType.Node: timedelta(minutes=30),
-    ProxmoxType.QEMU: timedelta(seconds=60),
-    ProxmoxType.LXC: timedelta(seconds=60),
+    ProxmoxType.Node: timedelta(seconds=30),
+    ProxmoxType.QEMU: timedelta(seconds=30),
+    ProxmoxType.LXC: timedelta(seconds=30),
 }
 
 CONFIG_SCHEMA = vol.Schema(
@@ -466,14 +465,14 @@ def device_info(
 class ProxmoxEntity(CoordinatorEntity):
     """Represents any entity created for the Proxmox VE platform."""
 
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         unique_id,
         name,
         icon,
-        node_name,
-        vm_id=None,
     ):
         """Initialize the Proxmox entity."""
         super().__init__(coordinator)
@@ -483,8 +482,6 @@ class ProxmoxEntity(CoordinatorEntity):
         self._name = name
         self._icon = icon
         self._available = True
-        self._node_name = node_name
-        self._vm_id = vm_id
 
         self._state = None
 
@@ -546,21 +543,32 @@ class ProxmoxClient:
         return self._proxmox
 
 
-def call_api_post_status(proxmox, node_name, vm_id, machine_type, command):
+def call_api_post_status(
+    proxmox,
+    api_category: ProxmoxType,
+    command: str,
+    node: str,
+    vm_id: int | None = None,
+):
     """Make proper api post status calls to set state."""
     result = None
-    if command not in VM_COMMANDS:
-        LOGGER.warning("Invalid Command")
-        return None
+    if command not in ProxmoxCommand:
+        raise ValueError("Invalid Command")
 
     try:
-        if machine_type is ProxmoxType.QEMU:
-            result = proxmox.nodes(node_name).qemu(vm_id).status.post(command)
-        elif machine_type is ProxmoxType.LXC:
-            result = proxmox.nodes(node_name).lxc(vm_id).status.post(command)
-    except (ResourceException, request.exceptions.ConnectionError) as err:
+        if api_category is ProxmoxType.QEMU:
+            result = proxmox.nodes(node).qemu(vm_id).status.post(command)
+        elif api_category is ProxmoxType.LXC:
+            result = proxmox.nodes(node).lxc(vm_id).status.post(command)
+        elif api_category is ProxmoxType.Node:
+            result = proxmox.nodes(node).status.post(f"command={command}")
+    except (ResourceException, ConnectTimeout) as err:
         LOGGER.warning(
-            f"Proxmox {command} Post Error: proxmox_{node_name}_{vm_id}: {err.args[0]}"
+            "Proxmox %s Post Error: proxmox_%s_%s: %s",
+            command,
+            node,
+            vm_id,
+            err.args[0],
         )
         return None
 
