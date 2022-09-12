@@ -1,8 +1,9 @@
 """Button to set Proxmox VE data."""
 from __future__ import annotations
-from dataclasses import dataclass
 
+from dataclasses import dataclass
 from typing import Final
+
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
@@ -18,68 +19,77 @@ from .const import (
     CONF_QEMU,
     COORDINATORS,
     DOMAIN,
-    PROXMOX_CLIENT,
-    ProxmoxType,
-    ProxmoxCommand,
     LOGGER,
+    PROXMOX_CLIENT,
+    ProxmoxCommand,
+    ProxmoxType,
 )
 
 
 @dataclass
-class ProxmoxButtonDescription(ButtonEntityDescription):
-    """Class describing Proxmox switch entities."""
+class ProxmoxButtonEntityDescription(ButtonEntityDescription):
+    """Class describing Proxmox buttons entities."""
 
-    unit_metric: str | None = None
-    unit_imperial: str | None = None
-    button_command: str | None = None
+    api_category: ProxmoxType | None = None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
 
 
-PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonDescription, ...]] = (
-    ProxmoxButtonDescription(
-        key=ProxmoxCommand.REBOOT,
-        icon="mdi:restart",
-        name="Reboot",
+PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
+    ProxmoxButtonEntityDescription(
+        key=ProxmoxCommand.START_ALL,
+        icon="mdi:play",
+        name="Start All",
+        entity_registry_enabled_default=False,
+    ),
+    ProxmoxButtonEntityDescription(
+        key=ProxmoxCommand.STOP_ALL,
+        icon="mdi:stop",
+        name="Stop All",
+        entity_registry_enabled_default=False,
     ),
 )
 
-PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonDescription, ...]] = (
-    ProxmoxButtonDescription(
+PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
+    ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.REBOOT,
         icon="mdi:restart",
         name="Reboot",
+        entity_registry_enabled_default=False,
     ),
-    ProxmoxButtonDescription(
+    ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.START,
         icon="mdi:server",
         name="Start",
+        entity_registry_enabled_default=False,
     ),
-    ProxmoxButtonDescription(
+    ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
         icon="mdi:server-off",
         name="Shutdown",
+        entity_registry_enabled_default=False,
     ),
-    ProxmoxButtonDescription(
+    ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.STOP,
         icon="mdi:stop",
         name="Stop",
+        entity_registry_enabled_default=False,
     ),
-    ProxmoxButtonDescription(
+    ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESUME,
         icon="mdi:play",
         name="Resume",
-        entity_registry_enabled_default=True,
+        entity_registry_enabled_default=False,
     ),
-    ProxmoxButtonDescription(
+    ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SUSPEND,
         icon="mdi:pause",
         name="Suspend",
-        entity_registry_enabled_default=True,
+        entity_registry_enabled_default=False,
     ),
-    ProxmoxButtonDescription(
+    ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESET,
         icon="mdi:restart-alert",
         name="Reset",
-        entity_registry_enabled_default=True,
+        entity_registry_enabled_default=False,
     ),
 )
 
@@ -119,53 +129,51 @@ async def async_setup_entry(
 
     for vm_id in config_entry.data[CONF_QEMU]:
         coordinator = coordinators[vm_id]
-
         # unfound vm case
         if coordinator.data is None:
             continue
-
         for description in PROXMOX_BUTTON_VM:
-            buttons.append(
-                create_button(
-                    coordinator=coordinator,
-                    info_device=device_info(
-                        hass=hass,
-                        config_entry=config_entry,
-                        api_category=ProxmoxType.QEMU,
+            if description.api_category in (None, ProxmoxType.QEMU):
+                buttons.append(
+                    create_button(
+                        coordinator=coordinator,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.QEMU,
+                            vm_id=vm_id,
+                        ),
+                        description=description,
                         vm_id=vm_id,
-                    ),
-                    description=description,
-                    vm_id=vm_id,
-                    proxmox_client=proxmox_client,
-                    api_category=ProxmoxType.QEMU,
-                    config_entry=config_entry,
+                        proxmox_client=proxmox_client,
+                        api_category=ProxmoxType.QEMU,
+                        config_entry=config_entry,
+                    )
                 )
-            )
 
     for ct_id in config_entry.data[CONF_LXC]:
         coordinator = coordinators[ct_id]
-
         # unfound container case
         if coordinator.data is None:
             continue
-
         for description in PROXMOX_BUTTON_VM:
-            buttons.append(
-                create_button(
-                    coordinator=coordinator,
-                    info_device=device_info(
-                        hass=hass,
-                        config_entry=config_entry,
-                        api_category=ProxmoxType.LXC,
+            if description.api_category in (None, ProxmoxType.LXC):
+                buttons.append(
+                    create_button(
+                        coordinator=coordinator,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.LXC,
+                            vm_id=ct_id,
+                        ),
+                        description=description,
                         vm_id=ct_id,
-                    ),
-                    description=description,
-                    vm_id=ct_id,
-                    proxmox_client=proxmox_client,
-                    api_category=ProxmoxType.LXC,
-                    config_entry=config_entry,
+                        proxmox_client=proxmox_client,
+                        api_category=ProxmoxType.LXC,
+                        config_entry=config_entry,
+                    )
                 )
-            )
 
     async_add_entities(buttons)
 
@@ -173,14 +181,14 @@ async def async_setup_entry(
 def create_button(
     coordinator: DataUpdateCoordinator,
     info_device: DeviceInfo,
-    description: ProxmoxButtonDescription,
-    vm_id: str,
+    description: ProxmoxButtonEntityDescription,
     proxmox_client: ProxmoxClient,
     api_category: ProxmoxType,
-    config_entry,
+    config_entry: ConfigEntry,
+    vm_id: str | None = None,
 ):
     """Create a button based on the given data."""
-    return ProxmoxButton(
+    return ProxmoxButtonEntity(
         description=description,
         proxmox_client=proxmox_client,
         api_category=api_category,
@@ -192,16 +200,17 @@ def create_button(
     )
 
 
-class ProxmoxButton(ProxmoxEntity, ButtonEntity):
+class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
     """A button for reading/writing Proxmox VE status."""
 
+    entity_description: ProxmoxButtonEntityDescription
     _attr_has_entity_name = True
 
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         info_device: DeviceInfo,
-        description: ProxmoxButtonDescription,
+        description: ProxmoxButtonEntityDescription,
         unique_id: str,
         proxmox_client: ProxmoxClient,
         api_category: ProxmoxType,
@@ -235,7 +244,7 @@ class ProxmoxButton(ProxmoxEntity, ButtonEntity):
         self._button_press_funct = _button_press
 
     @property
-    def available(self):
+    def available(self) -> bool:
         """Return sensor availability."""
         return super().available and self.coordinator.data is not None
 
