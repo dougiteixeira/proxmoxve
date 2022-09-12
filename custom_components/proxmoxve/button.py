@@ -6,7 +6,6 @@ from typing import Final
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -193,7 +192,7 @@ def create_button(
         proxmox_client=proxmox_client,
         api_category=api_category,
         coordinator=coordinator,
-        unique_id=f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data[CONF_NODE]}_{vm_id}_{description.key}",
+        unique_id=f"{config_entry.entry_id}_{vm_id}_{description.key}",
         vm_id=vm_id,
         info_device=info_device,
         config_entry=config_entry,

@@ -13,13 +13,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    CONF_HOST,
-    CONF_PORT,
-    DATA_GIGABYTES,
-    DATA_MEGABYTES,
-    PERCENTAGE,
-)
+from homeassistant.const import DATA_GIGABYTES, DATA_MEGABYTES, PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -30,7 +24,6 @@ import homeassistant.util.dt as dt_util
 from . import ProxmoxEntity, device_info
 from .const import (
     CONF_LXC,
-    CONF_NODE,
     CONF_QEMU,
     COORDINATORS,
     DOMAIN,
@@ -350,7 +343,7 @@ def create_sensor(
     return ProxmoxSensorEntity(
         coordinator=coordinator,
         description=description,
-        unique_id=f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data[CONF_NODE]}_{vm_id}_{description.key}",
+        unique_id=f"{config_entry.entry_id}_{vm_id}_{description.key}",
         info_device=info_device,
     )
 
