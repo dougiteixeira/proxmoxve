@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import logging
-from homeassistant.backports.enum import StrEnum
 
+from homeassistant.backports.enum import StrEnum
 
 DOMAIN = "proxmoxve"
 INTEGRATION_NAME = "Proxmox VE"
@@ -37,7 +37,7 @@ class ProxmoxType(StrEnum):
 
 
 class ProxmoxCommand(StrEnum):
-    """Proxmox type of information."""
+    """Proxmox commands Nodes/VM/CT."""
 
     REBOOT = "reboot"
     RESUME = "resume"
@@ -46,3 +46,26 @@ class ProxmoxCommand(StrEnum):
     STOP = "stop"
     SUSPEND = "suspend"  # API notes 'This is experimental.'  https://pve.proxmox.com/pve-docs/api-viewer/#/nodes/{node}/lxc/{vmid}/status/suspend
     RESET = "reset"
+    START_ALL = "startall"
+    STOP_ALL = "stopall"
+
+
+class ProxmoxKeyAPIParse(StrEnum):
+    """Proxmox key of data API parse."""
+
+    VERSION = "version"
+    STATUS = "status"
+    UPTIME = "uptime"
+    MODEL = "model"
+    CPU = "cpu"
+    MEMORY_USED = "memory_used"
+    MEMORY_TOTAL = "memory_total"
+    MEMORY_FREE = "memory_free"
+    SWAP_TOTAL = "swap_total"
+    SWAP_FREE = "swap_free"
+    DISK_USED = "disk_used"
+    DISK_TOTAL = "disk_total"
+    HEALTH = "health"
+    NAME = "name"
+    NETWORK_IN = "network_in"
+    NETWORK_OUT = "network_out"

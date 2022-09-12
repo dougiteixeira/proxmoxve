@@ -5,7 +5,6 @@ import asyncio
 from datetime import timedelta
 from functools import partial
 from typing import Any
-from urllib import request
 
 from proxmoxer import ProxmoxAPI
 from proxmoxer.backends.https import AuthenticationError
@@ -63,9 +62,9 @@ PLATFORMS = [
 
 COORDINATOR_UPDATE_INTERVAL_MAP = {
     ProxmoxType.Proxmox: timedelta(minutes=60),
-    ProxmoxType.Node: timedelta(seconds=30),
-    ProxmoxType.QEMU: timedelta(seconds=30),
-    ProxmoxType.LXC: timedelta(seconds=30),
+    ProxmoxType.Node: timedelta(seconds=60),
+    ProxmoxType.QEMU: timedelta(seconds=60),
+    ProxmoxType.LXC: timedelta(seconds=60),
 }
 
 CONFIG_SCHEMA = vol.Schema(
@@ -334,6 +333,8 @@ def get_data_node(proxmox, node):
             if node_api["node"] == node:
                 api_status["status"] = node_api["status"]
                 api_status["cpu_node"] = node_api["cpu"]
+                api_status["maxdisk"] = node_api["maxdisk"]
+                api_status["disk"] = node_api["disk"]
                 break
     return api_status
 
@@ -365,6 +366,8 @@ def parse_api_proxmox(status, api_category):
             "memory_free": status["memory"]["free"],
             "swap_total": status["swap"]["total"],
             "swap_free": status["swap"]["free"],
+            "disk_used": status["disk"],
+            "disk_total": status["maxdisk"],
         }
 
     if api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
@@ -373,8 +376,13 @@ def parse_api_proxmox(status, api_category):
         else:
             memory_free = status["maxmem"] - status["mem"]
 
+        health = None
+        if "qmpstatus" in status:
+            health = status["qmpstatus"]
+
         return {
             "status": status["status"],
+            "health": health,
             "uptime": status["uptime"],
             "name": status["name"],
             "cpu": status["cpu"],
@@ -561,15 +569,10 @@ def call_api_post_status(
         elif api_category is ProxmoxType.LXC:
             result = proxmox.nodes(node).lxc(vm_id).status.post(command)
         elif api_category is ProxmoxType.Node:
-            result = proxmox.nodes(node).status.post(f"command={command}")
+            result = proxmox.nodes(node).post(command)
     except (ResourceException, ConnectTimeout) as err:
-        LOGGER.warning(
-            "Proxmox %s Post Error: proxmox_%s_%s: %s",
-            command,
-            node,
-            vm_id,
-            err.args[0],
-        )
-        return None
+        raise ValueError(
+            f"Proxmox {api_category} {command} error - {err}",
+        ) from err
 
     return result
