@@ -33,7 +33,6 @@ PROXMOX_BINARYSENSOR_NODES: Final[tuple[ProxmoxBinarySensorEntityDescription, ..
         key=ProxmoxKeyAPIParse.STATUS,
         name="Status",
         device_class=BinarySensorDeviceClass.RUNNING,
-        icon="mdi:server",
         on_value="online",
     ),
 )
@@ -43,14 +42,12 @@ PROXMOX_BINARYSENSOR_TYPES: Final[tuple[ProxmoxBinarySensorEntityDescription, ..
         key=ProxmoxKeyAPIParse.STATUS,
         name="Status",
         device_class=BinarySensorDeviceClass.RUNNING,
-        icon="mdi:server",
         on_value="running",
     ),
     ProxmoxBinarySensorEntityDescription(
         key=ProxmoxKeyAPIParse.HEALTH,
         name="Health",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        icon="mdi:server",
         on_value="running",
         inverted=True,
         api_category=ProxmoxType.QEMU,
@@ -144,7 +141,7 @@ def create_binary_sensor(
     """Create a binary sensor based on the given data."""
     return ProxmoxBinarySensorEntity(
         coordinator=coordinator,
-        unique_id=f"proxmox_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data[CONF_NODE]}_{vm_id}_{description.key}",
+        unique_id=f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data[CONF_NODE]}_{vm_id}_{description.key}",
         description=description,
         info_device=info_device,
     )

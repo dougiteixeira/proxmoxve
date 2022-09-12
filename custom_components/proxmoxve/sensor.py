@@ -125,8 +125,8 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: round(x * 100, 1),
-        value_fn=lambda x: 1
-        - x[ProxmoxKeyAPIParse.SWAP_FREE] / x[ProxmoxKeyAPIParse.SWAP_TOTAL],
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.SWAP_FREE]
+        / x[ProxmoxKeyAPIParse.SWAP_TOTAL],
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ProxmoxSensorEntityDescription(
@@ -350,7 +350,7 @@ def create_sensor(
     return ProxmoxSensorEntity(
         coordinator=coordinator,
         description=description,
-        unique_id=f"proxmox_{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data[CONF_NODE]}_{vm_id}_{description.key}",
+        unique_id=f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data[CONF_NODE]}_{vm_id}_{description.key}",
         info_device=info_device,
     )
 
