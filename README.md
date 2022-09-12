@@ -3,6 +3,12 @@
 
 [Proxmox VE](https://www.proxmox.com/en/) is an open-source server virtualization environment. This integration allows you to poll various data and controls from your instance.
 
+After configuring this integration, the following information is available:
+
+ - Binary sensor entities with the status of node and selected virtual machines/containers.
+ - Sensor entities of the selected node and virtual machines/containers. Some sensors are created disabled by default, you can enable them by accessing the entity's configuration.
+ - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled.
+
 ![image](https://user-images.githubusercontent.com/31328123/189549962-1b195b2c-a5b8-40eb-947e-74052543d804.png)
 
 ## Installation
@@ -46,54 +52,51 @@ If the above My button doesn’t work, you can also perform the following steps 
 
 ## Proxmox Permissions
 
-To be able to retrieve the status of VMs and containers, the user used to connect must minimally have the VM.Audit privilege.
-To be able to controls the VMs and containers, the user used to connect must have the PVEVMAdmin role.
-Below is a guide to how to configure a new user with the minimum required permissions.
+To be able to retrieve the status of VMs and containers, the user used to connect must minimally have the `VM.Audit` privilege. To be able to controls the VMs and containers, the user used to connect must have the `PVEVMAdmin` role. Below is a guide to how to configure a new user with the minimum required permissions.
 
-### CREATE HOME ASSISTANT GROUP
+### Create Home Assistant Group
 
-Before creating the user, we need to create a group for the user. Privileges can be either applied to Groups or Roles.
+Before creating the user, we need to create a group for the user.
+Privileges can be either applied to Groups or Roles.
 
-* Click Datacenter
-Open Permissions and click Groups
-* Click the Create button above all the existing groups
-Name the new group (e.g., HomeAssistant)
-* Click Create
+1. Click `Datacenter`
+2. Open `Permissions` and click `Groups`
+3. Click the `Create` button above all the existing groups
+4. Name the new group (e.g., `HomeAssistant`)
+5. Click `Create`
 
-#### ADD GROUP PERMISSIONS TO ALL ASSETS
+### Add Group Permissions to all Assets
 
-##### For the group to access the VMs we need to grant it the auditor role
+#### For the group to access the VMs we need to grant it the auditor role
+1. Click `Datacenter`
+2. Click `Permissions`
+3. Open `Add` and click `Group Permission`
+4. Select "/" for the path
+5. Select your Home Assistant group (`HomeAssistant`)
+6. Select the Auditor role (`PVEAuditor`)
+7. Make sure `Propagate` is checked
 
-* Click Datacenter
-* Click Permissions
-* Open Add and click Group Permission
-* Select “/” for the path
-* Select your Home Assistant group (HomeAssistant)
-* Select the Auditor role (PVEAuditor)
-* Make sure Propagate is checked
+#### For the group to control the VMs, we need to grant the admin role.
+1. Click `Datacenter`
+2. Click `Permissions`
+3. Open `Add` and click `Group Permission`
+4. Select "/" for the path
+5. Select your Home Assistant group (`HomeAssistant`)
+6. Select the VM Admin role (`PVEVMAdmin`)
+7. Make sure `Propagate` is checked
 
-##### For the group to control the VMs, we need to grant the admin role.
+### Create Home Assistant User
 
-* Click Datacenter
-* Click Permissions
-* Open Add and click Group Permission
-* Select “/” for the path
-* Select your Home Assistant group (HomeAssistant)
-* Select the VM Admin role (PVEVMAdmin)
-* Make sure Propagate is checked
+Creating a dedicated user for Home Assistant, limited to only to the access just created is the most secure method. These instructions use the `pve` realm for the user. This allows a connection, but ensures that the user is not authenticated for SSH connections.
 
-### CREATE HOME ASSISTANT USER
+1. Click `Datacenter`
+2. Open `Permissions` and click `Users`
+3. Click `Add`
+4. Enter a username (e.g.,` homeassistant`)
+5. Set the realm to "Proxmox VE authentication server"
+6. Enter a secure password (it can be complex as you will only need to copy/paste it into your Home Assistant configuration)
+7. Select the group just created earlier (`HomeAssistant`) to grant access to Proxmox
+8. Ensure `Enabled` is checked and `Expire` is set to "never"
+9. Click `Add`
 
-Creating a dedicated user for Home Assistant, limited to only to the access just created is the most secure method. These instructions use the pve realm for the user. This allows a connection, but ensures that the user is not authenticated for SSH connections. If you use the pve realm, just be sure to add realm: pve to your configuration.
-
-* Click Datacenter
-* Open Permissions and click Users
-* Click Add
-* Enter a username (e.g., homeassistant)
-* Set the realm to “Proxmox VE authentication server”
-* Enter a secure password (it can be complex as you will only need to copy/paste it into your Home Assistant configuration)
-* Select the group just created earlier (HomeAssistant) to grant access to Proxmox
-* Ensure Enabled is checked and Expire is set to “never”
-* Click Add
-
-In your Home Assistant configuration, use homeassistant@pve for the username and your chosen password for the password.
+In your Home Assistant configuration, use `homeassistant@pve` for the username and your chosen password for the password.
