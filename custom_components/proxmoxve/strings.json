@@ -109,6 +109,16 @@
           "qemu": "Virtual Machines (QEMU)",
           "lxc": "Linux Containers (LXC)"
         }
+      },
+      "interval_update": {
+        "title": "Information update interval setting:",
+        "description": "Change the time (in seconds) for the information and sensors to update for each Proxmox resource:",
+        "data": {
+          "interval_update_host": "Host (segundos)",
+          "interval_update_node": "Node (segundos)",
+          "interval_update_qemu": "Virtual Machines (QEMU) (segundos)",
+          "interval_update_lxc": "Linux Containers (LXC) (segundos)"
+        }
       }
     },
     "error": {
