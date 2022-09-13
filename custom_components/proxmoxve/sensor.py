@@ -21,7 +21,7 @@ from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 import homeassistant.util.dt as dt_util
 
-from . import ProxmoxEntity, device_info
+from . import ProxmoxEntity, ProxmoxEntityDescription, device_info
 from .const import (
     CONF_LXC,
     CONF_QEMU,
@@ -33,7 +33,7 @@ from .const import (
 
 
 @dataclass
-class ProxmoxSensorEntityDescription(SensorEntityDescription):
+class ProxmoxSensorEntityDescription(ProxmoxEntityDescription, SensorEntityDescription):
     """Class describing Proxmox sensor entities."""
 
     conversion_fn: Callable | None = None  # conversion factor to be applied to units
@@ -352,7 +352,6 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
     """A sensor for reading Proxmox VE data."""
 
     entity_description: ProxmoxSensorEntityDescription
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -362,7 +361,7 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
         unique_id: str,
     ) -> None:
         """Create the button for vms or containers."""
-        super().__init__(coordinator, unique_id, description.name, description.icon)
+        super().__init__(coordinator, unique_id, description)
 
         self._attr_device_info = info_device
         self.entity_description = description
