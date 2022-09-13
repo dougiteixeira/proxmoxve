@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from datetime import timedelta
 from functools import partial
 from typing import Any
@@ -25,7 +26,7 @@ from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, EntityDescription
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import (
@@ -471,6 +472,11 @@ def device_info(
     )
 
 
+@dataclass
+class ProxmoxEntityDescription(EntityDescription):
+    """Describe a Proxmox entity."""
+
+
 class ProxmoxEntity(CoordinatorEntity):
     """Represents any entity created for the Proxmox VE platform."""
 
@@ -480,39 +486,19 @@ class ProxmoxEntity(CoordinatorEntity):
         self,
         coordinator: DataUpdateCoordinator,
         unique_id,
-        name,
-        icon,
+        description: ProxmoxEntityDescription,
     ):
         """Initialize the Proxmox entity."""
         super().__init__(coordinator)
 
         self.coordinator = coordinator
-        self._unique_id = unique_id
-        self._name = name
-        self._icon = icon
-        self._available = True
-
-        self._state = None
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique ID for this sensor."""
-        return self._unique_id
-
-    @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return self._name
-
-    @property
-    def icon(self) -> str:
-        """Return the mdi icon of the entity."""
-        return self._icon
+        self.entity_description = description
+        self._attr_unique_id = unique_id
 
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return self.coordinator.last_update_success and self._available
+        return self.coordinator.last_update_success
 
 
 class ProxmoxClient:

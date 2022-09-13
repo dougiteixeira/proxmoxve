@@ -11,7 +11,13 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from . import ProxmoxClient, ProxmoxEntity, call_api_post_status, device_info
+from . import (
+    ProxmoxClient,
+    ProxmoxEntity,
+    ProxmoxEntityDescription,
+    call_api_post_status,
+    device_info,
+)
 from .const import (
     CONF_LXC,
     CONF_NODE,
@@ -26,7 +32,7 @@ from .const import (
 
 
 @dataclass
-class ProxmoxButtonEntityDescription(ButtonEntityDescription):
+class ProxmoxButtonEntityDescription(ProxmoxEntityDescription, ButtonEntityDescription):
     """Class describing Proxmox buttons entities."""
 
     api_category: ProxmoxType | None = None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
@@ -203,7 +209,6 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
     """A button for reading/writing Proxmox VE status."""
 
     entity_description: ProxmoxButtonEntityDescription
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -217,10 +222,9 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
         vm_id: str | None = None,
     ) -> None:
         """Create the button for vms or containers."""
-        super().__init__(coordinator, unique_id, description.name, description.icon)
+        super().__init__(coordinator, unique_id, description)
 
         self._attr_device_info = info_device
-        self.entity_description = description
 
         def _button_press():
             """Post start command & tell HA state is on."""

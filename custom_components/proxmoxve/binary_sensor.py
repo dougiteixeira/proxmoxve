@@ -14,12 +14,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from . import COORDINATORS, DOMAIN, ProxmoxEntity, device_info
+from . import COORDINATORS, DOMAIN, ProxmoxEntity, ProxmoxEntityDescription, device_info
 from .const import CONF_LXC, CONF_QEMU, ProxmoxKeyAPIParse, ProxmoxType
 
 
 @dataclass
-class ProxmoxBinarySensorEntityDescription(BinarySensorEntityDescription):
+class ProxmoxBinarySensorEntityDescription(
+    ProxmoxEntityDescription, BinarySensorEntityDescription
+):
     """Class describing Proxmox binarysensor entities."""
 
     on_value: Any | None = None
@@ -36,7 +38,7 @@ PROXMOX_BINARYSENSOR_NODES: Final[tuple[ProxmoxBinarySensorEntityDescription, ..
     ),
 )
 
-PROXMOX_BINARYSENSOR_TYPES: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
+PROXMOX_BINARYSENSOR_VM: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
     ProxmoxBinarySensorEntityDescription(
         key=ProxmoxKeyAPIParse.STATUS,
         name="Status",
@@ -88,7 +90,7 @@ async def async_setup_entry(
         # unfound vm case
         if coordinator.data is None:
             continue
-        for description in PROXMOX_BINARYSENSOR_TYPES:
+        for description in PROXMOX_BINARYSENSOR_VM:
             if description.api_category in (None, ProxmoxType.QEMU):
                 sensors.append(
                     create_binary_sensor(
@@ -110,7 +112,7 @@ async def async_setup_entry(
         # unfound container case
         if coordinator.data is None:
             continue
-        for description in PROXMOX_BINARYSENSOR_TYPES:
+        for description in PROXMOX_BINARYSENSOR_VM:
             if description.api_category in (None, ProxmoxType.LXC):
                 sensors.append(
                     create_binary_sensor(
@@ -159,10 +161,8 @@ class ProxmoxBinarySensorEntity(ProxmoxEntity, BinarySensorEntity):
         description: ProxmoxBinarySensorEntityDescription,
     ):
         """Create the binary sensor for vms or containers."""
-        super().__init__(coordinator, unique_id, description.name, description.icon)
+        super().__init__(coordinator, unique_id, description)
 
-        self.entity_description = description
-        self._attr_device_class = self.entity_description.device_class
         self._attr_device_info = info_device
 
     @property
