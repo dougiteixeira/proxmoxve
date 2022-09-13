@@ -44,7 +44,7 @@ class ProxmoxCommand(StrEnum):
     SHUTDOWN = "shutdown"
     START = "start"
     STOP = "stop"
-    SUSPEND = "suspend"  # API notes 'This is experimental.'  https://pve.proxmox.com/pve-docs/api-viewer/#/nodes/{node}/lxc/{vmid}/status/suspend
+    SUSPEND = "suspend"
     RESET = "reset"
     START_ALL = "startall"
     STOP_ALL = "stopall"

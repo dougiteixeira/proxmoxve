@@ -11,6 +11,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -138,7 +139,7 @@ def create_binary_sensor(
     config_entry,
     info_device,
     description,
-):
+) -> ProxmoxBinarySensorEntity:
     """Create a binary sensor based on the given data."""
     return ProxmoxBinarySensorEntity(
         coordinator=coordinator,
@@ -156,10 +157,10 @@ class ProxmoxBinarySensorEntity(ProxmoxEntity, BinarySensorEntity):
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
-        unique_id,
-        info_device,
+        unique_id: str,
+        info_device: DeviceInfo,
         description: ProxmoxBinarySensorEntityDescription,
-    ):
+    ) -> None:
         """Create the binary sensor for vms or containers."""
         super().__init__(coordinator, unique_id, description)
 
