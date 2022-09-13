@@ -338,7 +338,7 @@ def create_sensor(
     description: ProxmoxSensorEntityDescription,
     config_entry: ConfigEntry,
     vm_id: str | None = None,
-):
+) -> ProxmoxSensorEntity:
     """Create a sensor based on the given data."""
     return ProxmoxSensorEntity(
         coordinator=coordinator,

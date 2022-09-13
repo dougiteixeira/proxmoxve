@@ -44,7 +44,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize ProxmoxVE options flow."""
-        self.config_entry = config_entry
+        self.config_entry: config_entries.ConfigEntry = config_entry
         self._proxmox_client: ProxmoxClient
         self._nodes: dict[str, Any] = {}
         self._config: dict[str, Any] = {}
@@ -59,21 +59,14 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         errors = {}
 
         if user_input is not None:
-            host = self.config_entry.data[CONF_HOST]
-            port = self.config_entry.data[CONF_PORT]
-            user = user_input.get(CONF_USERNAME)
-            realm = user_input.get(CONF_REALM)
-            password = user_input.get(CONF_PASSWORD)
-            verify_ssl = user_input.get(CONF_VERIFY_SSL)
-
             try:
                 self._proxmox_client = ProxmoxClient(
-                    host,
-                    port=port,
-                    user=user,
-                    realm=realm,
-                    password=password,
-                    verify_ssl=verify_ssl,
+                    host=str(self.config_entry.data[CONF_HOST]),
+                    port=int(self.config_entry.data[CONF_PORT]),
+                    user=str(user_input.get(CONF_USERNAME)),
+                    realm=str(user_input.get(CONF_REALM)),
+                    password=str(user_input.get(CONF_PASSWORD)),
+                    verify_ssl=bool(user_input.get(CONF_VERIFY_SSL)),
                 )
 
                 await self.hass.async_add_executor_job(
@@ -328,12 +321,12 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="import_failed")
 
         proxmox_client = ProxmoxClient(
-            host=import_config.get(CONF_HOST),
-            port=import_config.get(CONF_PORT),
-            user=import_config.get(CONF_USERNAME),
-            realm=import_config.get(CONF_REALM),
-            password=import_config.get(CONF_PASSWORD),
-            verify_ssl=import_config.get(CONF_VERIFY_SSL),
+            host=str(import_config.get(CONF_HOST)),
+            port=int(import_config.get(CONF_PORT, DEFAULT_PORT)),
+            user=str(import_config.get(CONF_USERNAME)),
+            realm=str(import_config.get(CONF_REALM)),
+            password=str(import_config.get(CONF_PASSWORD)),
+            verify_ssl=bool(import_config.get(CONF_VERIFY_SSL)),
         )
 
         try:
@@ -478,21 +471,14 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         assert self._reauth_entry
         if user_input is not None:
-            host = self._reauth_entry.data[CONF_HOST]
-            port = self._reauth_entry.data[CONF_PORT]
-            verify_ssl = self._reauth_entry.data[CONF_VERIFY_SSL]
-            user = user_input.get(CONF_USERNAME)
-            realm = user_input.get(CONF_REALM)
-            password = user_input.get(CONF_PASSWORD)
-
             try:
                 self._proxmox_client = ProxmoxClient(
-                    host,
-                    port=port,
-                    user=user,
-                    realm=realm,
-                    password=password,
-                    verify_ssl=verify_ssl,
+                    host=str(self._reauth_entry.data[CONF_HOST]),
+                    port=int(self._reauth_entry.data[CONF_PORT]),
+                    user=str(user_input.get(CONF_USERNAME)),
+                    realm=str(user_input.get(CONF_REALM)),
+                    password=str(user_input.get(CONF_PASSWORD)),
+                    verify_ssl=bool(self._reauth_entry.data[CONF_VERIFY_SSL]),
                 )
 
                 await self.hass.async_add_executor_job(
@@ -580,7 +566,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 try:
                     self._proxmox_client = ProxmoxClient(
-                        host,
+                        host=host,
                         port=port,
                         user=username,
                         realm=realm,

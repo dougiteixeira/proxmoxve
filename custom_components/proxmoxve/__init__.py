@@ -210,7 +210,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
 
     async def async_update(
-        api_category: str,
+        api_category: ProxmoxType,
         node: str | None = None,
         vm_id: int | None = None,
     ) -> dict:
@@ -327,7 +327,10 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-def get_data_node(proxmox, node):
+def get_data_node(
+    proxmox: ProxmoxAPI,
+    node: str,
+) -> dict[str, Any]:
     """Get the node data in two API endpoints."""
     api_status = proxmox.nodes(node).status.get()
     if nodes_api := proxmox.nodes.get():
@@ -341,7 +344,10 @@ def get_data_node(proxmox, node):
     return api_status
 
 
-def parse_api_proxmox(status, api_category):
+def parse_api_proxmox(
+    status: dict[str, Any],
+    api_category: ProxmoxType,
+) -> dict[str, Any]:
     """Get the container or vm api data and return it formatted in a dictionary.
 
     It is implemented in this way to allow for more data to be added for sensors
@@ -396,6 +402,7 @@ def parse_api_proxmox(status, api_category):
             ProxmoxKeyAPIParse.DISK_TOTAL: status["maxdisk"],
             ProxmoxKeyAPIParse.DISK_USED: status["disk"],
         }
+    return {}
 
 
 def device_info(
@@ -404,7 +411,7 @@ def device_info(
     api_category: ProxmoxType,
     vm_id: int | None = None,
     create: bool | None = False,
-):
+) -> DeviceInfo:
     """Return the Device Info."""
 
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
@@ -447,7 +454,7 @@ def device_info(
 
     if create:
         device_registry = dr.async_get(hass)
-        return device_registry.async_get_or_create(
+        device_registry.async_get_or_create(
             config_entry_id=config_entry.entry_id,
             entry_type=dr.DeviceEntryType.SERVICE,
             configuration_url=url,
@@ -485,9 +492,9 @@ class ProxmoxEntity(CoordinatorEntity):
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
-        unique_id,
+        unique_id: str,
         description: ProxmoxEntityDescription,
-    ):
+    ) -> None:
         """Initialize the Proxmox entity."""
         super().__init__(coordinator)
 
@@ -504,7 +511,15 @@ class ProxmoxEntity(CoordinatorEntity):
 class ProxmoxClient:
     """A wrapper for the proxmoxer ProxmoxAPI client."""
 
-    def __init__(self, host, port, user, realm, password, verify_ssl):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        user: str,
+        realm: str,
+        password: str,
+        verify_ssl: bool,
+    ) -> None:
         """Initialize the ProxmoxClient."""
 
         self._host = host
@@ -517,7 +532,7 @@ class ProxmoxClient:
         self._proxmox = None
         self._connection_start_time = None
 
-    def build_client(self):
+    def build_client(self) -> None:
         """Construct the ProxmoxAPI client. Allows inserting the realm within the `user` value."""
 
         if "@" in self._user:
@@ -526,25 +541,25 @@ class ProxmoxClient:
             user_id = f"{self._user}@{self._realm}"
 
         self._proxmox = ProxmoxAPI(
-            self._host,
+            host=self._host,
             port=self._port,
             user=user_id,
             password=self._password,
             verify_ssl=self._verify_ssl,
         )
 
-    def get_api_client(self):
+    def get_api_client(self) -> ProxmoxAPI:
         """Return the ProxmoxAPI client."""
         return self._proxmox
 
 
 def call_api_post_status(
-    proxmox,
+    proxmox: ProxmoxAPI,
     api_category: ProxmoxType,
     command: str,
     node: str,
     vm_id: int | None = None,
-):
+) -> Any:
     """Make proper api post status calls to set state."""
     result = None
     if command not in ProxmoxCommand:

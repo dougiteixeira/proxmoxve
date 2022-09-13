@@ -191,7 +191,7 @@ def create_button(
     api_category: ProxmoxType,
     config_entry: ConfigEntry,
     vm_id: str | None = None,
-):
+) -> ProxmoxButtonEntity:
     """Create a button based on the given data."""
     return ProxmoxButtonEntity(
         description=description,
@@ -218,7 +218,7 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
         unique_id: str,
         proxmox_client: ProxmoxClient,
         api_category: ProxmoxType,
-        config_entry,
+        config_entry: ConfigEntry,
         vm_id: str | None = None,
     ) -> None:
         """Create the button for vms or containers."""
