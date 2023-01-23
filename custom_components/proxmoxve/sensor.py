@@ -118,8 +118,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: round(x * 100, 1),
-        value_fn=lambda x: x[ProxmoxKeyAPIParse.SWAP_FREE]
-        / x[ProxmoxKeyAPIParse.SWAP_TOTAL],
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.SWAP_FREE] / x[ProxmoxKeyAPIParse.SWAP_TOTAL] if x[ProxmoxKeyAPIParse.SWAP_TOTAL] > 0 else 0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ProxmoxSensorEntityDescription(
