@@ -90,7 +90,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: round(x * 100, 1),
-        value_fn=lambda x: x[ProxmoxKeyAPIParse.MEMORY_FREE] / x[ProxmoxKeyAPIParse.MEMORY_TOTAL],
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.MEMORY_FREE] / x[ProxmoxKeyAPIParse.MEMORY_TOTAL] if x[ProxmoxKeyAPIParse.MEMORY_TOTAL] > 0 else 0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ProxmoxSensorEntityDescription(
@@ -144,8 +144,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: round(x * 100, 1),
-        value_fn=lambda x: 1
-        - x[ProxmoxKeyAPIParse.DISK_USED] / x[ProxmoxKeyAPIParse.DISK_TOTAL],
+        value_fn=lambda x: 1 - x[ProxmoxKeyAPIParse.DISK_USED] / x[ProxmoxKeyAPIParse.DISK_TOTAL] if x[ProxmoxKeyAPIParse.DISK_TOTAL] > 0 else 0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
 )
@@ -185,8 +184,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: round(x * 100, 1),
-        value_fn=lambda x: 1
-        - x[ProxmoxKeyAPIParse.DISK_USED] / x[ProxmoxKeyAPIParse.DISK_TOTAL],
+        value_fn=lambda x: 1 - x[ProxmoxKeyAPIParse.DISK_USED] / x[ProxmoxKeyAPIParse.DISK_TOTAL] if x[ProxmoxKeyAPIParse.DISK_TOTAL] > 0 else 0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ProxmoxSensorEntityDescription(
@@ -229,7 +227,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: round(x * 100, 1),
         value_fn=lambda x: 1
-        - x[ProxmoxKeyAPIParse.MEMORY_FREE] / x[ProxmoxKeyAPIParse.MEMORY_TOTAL],
+        - x[ProxmoxKeyAPIParse.MEMORY_FREE] / x[ProxmoxKeyAPIParse.MEMORY_TOTAL] if x[ProxmoxKeyAPIParse.MEMORY_TOTAL] > 0 else 0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ProxmoxSensorEntityDescription(
