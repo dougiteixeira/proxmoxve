@@ -7,8 +7,7 @@ from datetime import timedelta
 from functools import partial
 from typing import Any
 
-from proxmoxer import ProxmoxAPI
-from proxmoxer.backends.https import AuthenticationError
+from proxmoxer import ProxmoxAPI, AuthenticationError
 from proxmoxer.core import ResourceException
 from requests.exceptions import ConnectTimeout, SSLError
 import voluptuous as vol
