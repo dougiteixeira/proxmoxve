@@ -78,7 +78,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     self._proxmox_client.build_client
                 )
 
-            except proxmoxer.backends.https.AuthenticationError:
+            except proxmoxer.AuthenticationError:
                 errors[CONF_USERNAME] = "auth_error"
             except SSLError:
                 errors[CONF_VERIFY_SSL] = "ssl_rejection"
@@ -385,7 +385,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             await self.hass.async_add_executor_job(proxmox_client.build_client)
-        except proxmoxer.backends.https.AuthenticationError:
+        except proxmoxer.AuthenticationError:
             errors[CONF_USERNAME] = "auth_error"
             async_create_issue(
                 async_get_hass(),
@@ -546,7 +546,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._proxmox_client.build_client
                 )
 
-            except proxmoxer.backends.https.AuthenticationError:
+            except proxmoxer.AuthenticationError:
                 errors[CONF_USERNAME] = "auth_error"
             except SSLError:
                 errors[CONF_BASE] = "ssl_rejection"
@@ -639,7 +639,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self._proxmox_client.build_client
                     )
 
-                except proxmoxer.backends.https.AuthenticationError:
+                except proxmoxer.AuthenticationError:
                     errors[CONF_USERNAME] = "auth_error"
                 except SSLError:
                     errors[CONF_VERIFY_SSL] = "ssl_rejection"
