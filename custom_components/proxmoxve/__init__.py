@@ -610,7 +610,7 @@ def call_api_post_status(
         elif api_category is ProxmoxType.Node:
             result = proxmox(['nodes', node, 'status']).post(command=command)
         else:
-            result = proxmox(['nodes', node, api_category, vm_id, 'status']).post(command=command)
+            result = proxmox(['nodes', node, api_category, vm_id, 'status', command]).post()
 
     except (ResourceException, ConnectTimeout) as err:
         raise ValueError(
