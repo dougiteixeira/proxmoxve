@@ -269,7 +269,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     for api_category, update_interval in coordinator_interval_update_map.items():
         if api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
             for vm_id in config_entry.data[api_category]:
-                if vm_id in [*{str(qemu[ID]) for qemu in await hass.async_add_executor_job(proxmox.nodes(config_entry.data[CONF_NODE]).qemu.get)},*{str(lxc[ID]) for lxc in await hass.async_add_executor_job(proxmox.nodes(config_entry.data[CONF_NODE]).lxc.get)}]:
+                if vm_id in [
+                    *{str(qemu[ID]) for qemu in await hass.async_add_executor_job(proxmox.nodes(config_entry.data[CONF_NODE]).qemu.get)},
+                    *{str(lxc[ID]) for lxc in await hass.async_add_executor_job(proxmox.nodes(config_entry.data[CONF_NODE]).lxc.get)}
+                ]:
                     async_delete_issue(
                         async_get_hass(),
                         DOMAIN,
@@ -601,12 +604,14 @@ def call_api_post_status(
         raise ValueError("Invalid Command")
 
     try:
-        if api_category is ProxmoxType.QEMU:
-            result = proxmox.nodes(node).qemu(vm_id).status.post(command)
-        elif api_category is ProxmoxType.LXC:
-            result = proxmox.nodes(node).lxc(vm_id).status.post(command)
-        elif api_category is ProxmoxType.Node:
+        # Only the START_ALL and STOP_ALL are not part of status API
+        if api_category is ProxmoxType.Node and command in [ProxmoxCommand.START_ALL, ProxmoxCommand.STOP_ALL]:
             result = proxmox.nodes(node).post(command)
+        elif api_category is ProxmoxType.Node:
+            result = proxmox(['nodes', node, 'status']).post(command=command)
+        else:
+            result = proxmox(['nodes', node, api_category, vm_id, 'status', command]).post()
+
     except (ResourceException, ConnectTimeout) as err:
         raise ValueError(
             f"Proxmox {api_category} {command} error - {err}",

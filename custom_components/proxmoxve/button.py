@@ -51,6 +51,18 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Stop All",
         entity_registry_enabled_default=False,
     ),
+    ProxmoxButtonEntityDescription(
+        key=ProxmoxCommand.SHUTDOWN,
+        icon="mdi:server-off",
+        name="Shutdown",
+        entity_registry_enabled_default=False,
+    ),
+    ProxmoxButtonEntityDescription(
+        key=ProxmoxCommand.REBOOT,
+        icon="mdi:restart",
+        name="Reboot",
+        entity_registry_enabled_default=False,
+    ),
 )
 
 PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
