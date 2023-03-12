@@ -5,7 +5,8 @@
   "config_flow": true,
   "documentation": "https://github.com/dougiteixeira/proxmoxve",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/dougiteixeira/proxmoxve/issues",
   "loggers": ["proxmoxer"],
   "requirements": ["proxmoxer==2.0.1"],
-  "version":"1.7.1"
+  "version":"1.7.2"
 }
