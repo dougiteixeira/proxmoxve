@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "Proxmox VE"
 authors = ["Douglas Teixeira @dougiteixeira"]
 maintainers = ["Douglas Teixeira @dougiteixeira"]
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/dougiteixeira/proxmoxve"
 repository = "https://github.com/dougiteixeira/proxmoxvek"
