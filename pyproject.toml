@@ -1,0 +1,68 @@
+[tool.poetry]
+name = "proxmoxve"
+version = "0.0.0"
+description = "Proxmox VE"
+authors = ["Douglas Teixeira @dougiteixeira"]
+maintainers = ["Douglas Teixeira @dougiteixeira"]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+homepage = "https://github.com/dougiteixeira/proxmoxve"
+repository = "https://github.com/dougiteixeira/proxmoxvek"
+documentation = "https://github.com/dougiteixeira/proxmoxve"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+]
+packages = []
+
+[tool.poetry.dependencies]
+python = "^3.10"
+homeassistant = "^2022.9"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.1.0"
+pre-commit = "^3.0.3"
+pre-commit-hooks = "^4.4.0"
+ruff = "^0.0.253"
+pylint = "^2.16.2"
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/dougiteixeira/proxmoxve/issues"
+Changelog = "https://github.com/dougiteixeira/proxmoxve/releases"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+src = ["custom_components/proxmoxve"]
+select = ["ALL"]
+ignore = [
+  "ANN101", # Self... explanatory
+  "ANN401", # Opiniated warning on disallowing dynamically typed expressions
+  "D203", # Conflicts with other rules
+  "D213", # Conflicts with other rules
+  "TID252", # Relative imports
+]
+
+[tool.ruff.flake8-import-conventions.extend-aliases]
+voluptuous = "vol"
+"homeassistant.helpers.area_registry" = "ar"
+"homeassistant.helpers.config_validation" = "cv"
+"homeassistant.helpers.device_registry" = "dr"
+"homeassistant.helpers.entity_registry" = "er"
+"homeassistant.helpers.issue_registry" = "ir"
+
+[tool.pylint."MESSAGES CONTROL"]
+# Reasons disabled:
+# format - handled by black
+# duplicate-code - unavoidable
+# used-before-assignment - false positives with TYPE_CHECKING structures
+disable = [
+    "format",
+    "duplicate-code",
+    "used-before-assignment",
+]
