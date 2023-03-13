@@ -20,7 +20,7 @@ packages = []
 
 [tool.poetry.dependencies]
 python = "^3.10"
-homeassistant = "^2022.9"
+homeassistant = "^2022.9.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
