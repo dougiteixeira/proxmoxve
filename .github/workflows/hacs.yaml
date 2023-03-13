@@ -1,0 +1,21 @@
+name: HACS Validation
+
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  hacs:
+    name: HACS Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v3
+
+      - name: 🚀 Run HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
