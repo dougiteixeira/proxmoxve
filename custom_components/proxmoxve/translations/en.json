@@ -119,10 +119,10 @@
             },
             "interval_update": {
                 "data": {
-                    "interval_update_host": "Host (segundos)",
-                    "interval_update_lxc": "Linux Containers (LXC) (segundos)",
-                    "interval_update_node": "Node (segundos)",
-                    "interval_update_qemu": "Virtual Machines (QEMU) (segundos)"
+                    "interval_update_host": "Host (seconds)",
+                    "interval_update_lxc": "Linux Containers (LXC) (seconds)",
+                    "interval_update_node": "Node (seconds)",
+                    "interval_update_qemu": "Virtual Machines (QEMU) (seconds)"
                 },
                 "description": "Change the time (in seconds) for the information and sensors to update for each Proxmox resource:",
                 "title": "Information update interval setting:"
@@ -137,5 +137,96 @@
                 "title": "Selection of Virtual Machines (QEMU) and Containers (LXC):"
             }
         }
+    },
+    "entity": {
+      "binary_sensor":{
+        "status": {
+          "name": "Status"
+        },
+        "health": {
+          "name": "Health"
+        }
+      },
+      "button": {
+        "start_all": {
+          "name": "Start all"
+        },
+        "stop_all": {
+          "name": "Stop all"
+        },
+        "shutdown": {
+          "name": "Shutdown"
+        },
+        "reboot": {
+          "name": "Reboot"
+        },
+        "start": {
+          "name": "Start"
+        },
+        "stop": {
+          "name": "Stop"
+        },
+        "resume": {
+          "name": "Resume"
+        },
+        "suspend": {
+          "name": "Suspend"
+        },
+        "reset": {
+          "name": "Reset"
+        }
+      },
+      "sensor": {
+        "uptime": {
+          "name": "Uptime"
+        },
+        "cpu_used": {
+          "name": "CPU used"
+        },
+        "memory_used": {
+          "name": "Memory used"
+        },
+        "memory_free": {
+          "name": "Memory free"
+        },
+        "memory_total": {
+          "name": "Memory total"
+        },
+        "memory_free_perc": {
+          "name": "Memory free percentage"
+        },
+        "swap_total": {
+          "name": "Swap total"
+        },
+        "swap_free": {
+          "name": "Swap free"
+        },
+        "swap_free_perc": {
+          "name": "Swap free percentage"
+        },
+        "disk_total": {
+          "name": "Disk total"
+        },
+        "disk_used": {
+          "name": "Disk used"
+        },
+        "disk_free_perc": {
+          "name": "Disk free percentage"
+        },
+        "network_in": {
+          "name": "Network in"
+        },
+        "network_out": {
+          "name": "Network out"
+        }
+      },
+      "switch": {
+        "start": {
+          "name": "Start"
+        },
+        "stop": {
+          "name": "Stop"
+        }
+      }
     }
 }

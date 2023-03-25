@@ -145,10 +145,10 @@
     },
     "button": {
       "start_all": {
-        "name": "Start All"
+        "name": "Start all"
       },
       "stop_all": {
-        "name": "Stop All"
+        "name": "Stop all"
       },
       "shutdown": {
         "name": "Shutdown"
@@ -224,4 +224,5 @@
         "name": "Stop"
       }
     }
+  }
 }

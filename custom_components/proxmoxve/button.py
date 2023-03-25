@@ -42,14 +42,14 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.START_ALL,
         icon="mdi:play",
-        name="Start All",
+        name="Start all",
         translation_key="start_all",
         entity_registry_enabled_default=False,
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.STOP_ALL,
         icon="mdi:stop",
-        name="Stop All",
+        name="Stop all",
         translation_key="stop_all",
         entity_registry_enabled_default=False,
     ),
