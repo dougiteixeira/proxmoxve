@@ -13,7 +13,10 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import DATA_GIGABYTES, DATA_MEGABYTES, PERCENTAGE
+from homeassistant.const import (
+    UnitOfInformation,
+    PERCENTAGE,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -64,7 +67,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.MEMORY_USED,
         name="Memory used",
         icon="mdi:memory",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -73,7 +76,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.MEMORY_FREE,
         name="Memory free",
         icon="mdi:memory",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -82,7 +85,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.MEMORY_TOTAL,
         name="Memory total",
         icon="mdi:memory",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -94,7 +97,10 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: x[ProxmoxKeyAPIParse.MEMORY_FREE] / x[ProxmoxKeyAPIParse.MEMORY_TOTAL] if x[ProxmoxKeyAPIParse.MEMORY_TOTAL] > 0 else 0,
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.MEMORY_FREE]
+        / x[ProxmoxKeyAPIParse.MEMORY_TOTAL]
+        if x[ProxmoxKeyAPIParse.MEMORY_TOTAL] > 0
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
     ),
@@ -102,7 +108,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.SWAP_TOTAL,
         name="Swap total",
         icon="mdi:memory",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -112,7 +118,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.SWAP_FREE,
         name="Swap free",
         icon="mdi:memory",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -124,7 +130,10 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: x[ProxmoxKeyAPIParse.SWAP_FREE] / x[ProxmoxKeyAPIParse.SWAP_TOTAL] if x[ProxmoxKeyAPIParse.SWAP_TOTAL] > 0 else 0,
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.SWAP_FREE]
+        / x[ProxmoxKeyAPIParse.SWAP_TOTAL]
+        if x[ProxmoxKeyAPIParse.SWAP_TOTAL] > 0
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
     ),
@@ -132,7 +141,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.DISK_TOTAL,
         name="Disk total",
         icon="mdi:harddisk",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -142,7 +151,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.DISK_USED,
         name="Disk used",
         icon="mdi:harddisk",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -154,7 +163,10 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: 1 - x[ProxmoxKeyAPIParse.DISK_USED] / x[ProxmoxKeyAPIParse.DISK_TOTAL] if x[ProxmoxKeyAPIParse.DISK_TOTAL] > 0 else 0,
+        value_fn=lambda x: 1
+        - x[ProxmoxKeyAPIParse.DISK_USED] / x[ProxmoxKeyAPIParse.DISK_TOTAL]
+        if x[ProxmoxKeyAPIParse.DISK_TOTAL] > 0
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
@@ -175,7 +187,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.DISK_USED,
         name="Disk used",
         icon="mdi:harddisk",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -185,7 +197,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.DISK_TOTAL,
         name="Disk total",
         icon="mdi:harddisk-plus",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -197,7 +209,10 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: 1 - x[ProxmoxKeyAPIParse.DISK_USED] / x[ProxmoxKeyAPIParse.DISK_TOTAL] if x[ProxmoxKeyAPIParse.DISK_TOTAL] > 0 else 0,
+        value_fn=lambda x: 1
+        - x[ProxmoxKeyAPIParse.DISK_USED] / x[ProxmoxKeyAPIParse.DISK_TOTAL]
+        if x[ProxmoxKeyAPIParse.DISK_TOTAL] > 0
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
@@ -214,7 +229,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.MEMORY_USED,
         name="Memory used",
         icon="mdi:memory",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -223,7 +238,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.MEMORY_FREE,
         name="Memory free",
         icon="mdi:memory",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -232,7 +247,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.MEMORY_TOTAL,
         name="Memory total",
         icon="mdi:memory",
-        native_unit_of_measurement=DATA_GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -244,7 +259,10 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: x[ProxmoxKeyAPIParse.MEMORY_FREE] / x[ProxmoxKeyAPIParse.MEMORY_TOTAL] if x[ProxmoxKeyAPIParse.MEMORY_TOTAL] > 0 else 0,
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.MEMORY_FREE]
+        / x[ProxmoxKeyAPIParse.MEMORY_TOTAL]
+        if x[ProxmoxKeyAPIParse.MEMORY_TOTAL] > 0
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
@@ -252,7 +270,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.NETWORK_IN,
         name="Network in",
         icon="mdi:download-network-outline",
-        native_unit_of_measurement=DATA_MEGABYTES,
+        native_unit_of_measurement=UnitOfInformation.MEGABYTES,
         conversion_fn=lambda x: (x / 1048576),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -262,7 +280,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key=ProxmoxKeyAPIParse.NETWORK_OUT,
         name="Network out",
         icon="mdi:upload-network-outline",
-        native_unit_of_measurement=DATA_MEGABYTES,
+        native_unit_of_measurement=UnitOfInformation.MEGABYTES,
         conversion_fn=lambda x: (x / 1048576),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
