@@ -53,6 +53,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
             dt_util.utcnow() - timedelta(seconds=x) if x > 0 else None
         ),
         device_class=SensorDeviceClass.TIMESTAMP,
+        translation_key="uptime",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.CPU,
@@ -62,6 +63,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
+        translation_key="cpu_used",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.MEMORY_USED,
@@ -71,6 +73,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
+        translation_key="memory_used",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.MEMORY_FREE,
@@ -80,6 +83,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
+        translation_key="memory_free",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.MEMORY_TOTAL,
@@ -90,6 +94,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="memory_total",
     ),
     ProxmoxSensorEntityDescription(
         key="memory_free_perc",
@@ -103,6 +108,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
+        translation_key="memory_free_perc",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.SWAP_TOTAL,
@@ -113,6 +119,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="swap_total",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.SWAP_FREE,
@@ -123,6 +130,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="swap_free",
     ),
     ProxmoxSensorEntityDescription(
         key="swap_free_perc",
@@ -136,6 +144,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
+        translation_key="swap_free_perc",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.DISK_TOTAL,
@@ -146,6 +155,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="disk_total",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.DISK_USED,
@@ -156,6 +166,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="disk_used",
     ),
     ProxmoxSensorEntityDescription(
         key="disk_free_perc",
@@ -169,6 +180,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
+        translation_key="disk_free_perc",
     ),
 )
 
@@ -182,6 +194,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
             dt_util.utcnow() - timedelta(seconds=x) if x > 0 else None
         ),
         device_class=SensorDeviceClass.TIMESTAMP,
+        translation_key="uptime",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.DISK_USED,
@@ -192,6 +205,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="disk_used",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.DISK_TOTAL,
@@ -202,6 +216,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="disk_total",
     ),
     ProxmoxSensorEntityDescription(
         key="disk_free_perc",
@@ -215,6 +230,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
+        translation_key="disk_free_perc",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.CPU,
@@ -224,6 +240,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
+        translation_key="cpu_used",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.MEMORY_USED,
@@ -233,6 +250,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
+        translation_key="memory_used",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.MEMORY_FREE,
@@ -242,6 +260,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         conversion_fn=lambda x: (x / 1073741824),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
+        translation_key="memory_free",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.MEMORY_TOTAL,
@@ -252,6 +271,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="memory_total",
     ),
     ProxmoxSensorEntityDescription(
         key="memory_free_perc",
@@ -265,6 +285,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
+        translation_key="memory_free_perc",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.NETWORK_IN,
@@ -275,6 +296,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="network_in",
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.NETWORK_OUT,
@@ -285,6 +307,7 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
+        translation_key="network_out",
     ),
 )
 

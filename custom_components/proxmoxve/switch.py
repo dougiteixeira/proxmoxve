@@ -47,6 +47,7 @@ PROXMOX_SWITCH_TYPES: Final[tuple[ProxmoxSwitchDescription, ...]] = (
         name="Start",
         start_command=COMMAND_START,
         stop_command=COMMAND_SHUTDOWN,
+        translation_key="start",
     ),
     ProxmoxSwitchDescription(
         key="Switch_Stop",
@@ -54,6 +55,7 @@ PROXMOX_SWITCH_TYPES: Final[tuple[ProxmoxSwitchDescription, ...]] = (
         icon="mdi:server",
         start_command=COMMAND_START,
         stop_command=COMMAND_STOP,
+        translation_key="stop",
     ),
 )
 
