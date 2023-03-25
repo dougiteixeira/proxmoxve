@@ -56,7 +56,7 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="CPU used",
         icon="mdi:cpu-64-bit",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x[ProxmoxKeyAPIParse.CPU] > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
