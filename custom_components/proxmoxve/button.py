@@ -70,42 +70,49 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         key=ProxmoxCommand.REBOOT,
         icon="mdi:restart",
         name="Reboot",
+        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.START,
         icon="mdi:server",
         name="Start",
+        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
         icon="mdi:server-off",
         name="Shutdown",
+        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.STOP,
         icon="mdi:stop",
         name="Stop",
+        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESUME,
         icon="mdi:play",
         name="Resume",
+        api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SUSPEND,
         icon="mdi:pause",
         name="Suspend",
+        api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESET,
         icon="mdi:restart-alert",
         name="Reset",
+        api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
     ),
 )
@@ -150,7 +157,7 @@ async def async_setup_entry(
         if coordinator.data is None:
             continue
         for description in PROXMOX_BUTTON_VM:
-            if description.api_category in (None, ProxmoxType.QEMU):
+            if ProxmoxType.QEMU in description.api_category:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
@@ -174,7 +181,7 @@ async def async_setup_entry(
         if coordinator.data is None:
             continue
         for description in PROXMOX_BUTTON_VM:
-            if description.api_category in (None, ProxmoxType.LXC):
+            if ProxmoxType.LXC in description.api_category:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
