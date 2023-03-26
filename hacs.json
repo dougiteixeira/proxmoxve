@@ -6,5 +6,5 @@
     "sensor"
   ],
   "iot_class": "local_push",
-  "homeassistant": "2022.9.0"
+  "homeassistant": "2023.3.0"
 }
