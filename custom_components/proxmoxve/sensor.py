@@ -207,8 +207,8 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         entity_registry_enabled_default=False,
     ),
     ProxmoxSensorEntityDescription(
-        key="disk_free_perc",
-        name="Disk free percentage",
+        key="disk_used_perc",
+        name="Disk used percentage",
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
