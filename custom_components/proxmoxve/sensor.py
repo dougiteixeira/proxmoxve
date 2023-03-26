@@ -106,6 +106,20 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
+        entity_registry_enabled_default=False,
+    ),
+    ProxmoxSensorEntityDescription(
+        key="memory_used_perc",
+        name="Memory used percentage",
+        icon="mdi:memory",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.MEMORY_USED]
+        / x[ProxmoxKeyAPIParse.MEMORY_TOTAL]
+        if x[ProxmoxKeyAPIParse.MEMORY_TOTAL] > 0
+        else 0,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.SWAP_TOTAL,
@@ -141,6 +155,20 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
+        entity_registry_enabled_default=False,
+    ),
+    ProxmoxSensorEntityDescription(
+        key="swap_used_perc",
+        name="Swap used percentage",
+        icon="mdi:memory",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: 1
+        - (x[ProxmoxKeyAPIParse.SWAP_FREE] / x[ProxmoxKeyAPIParse.SWAP_TOTAL])
+        if x[ProxmoxKeyAPIParse.SWAP_TOTAL] > 0
+        else 0,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.DISK_TOTAL,
@@ -172,6 +200,20 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
         value_fn=lambda x: 1
         - x[ProxmoxKeyAPIParse.DISK_USED] / x[ProxmoxKeyAPIParse.DISK_TOTAL]
+        if x[ProxmoxKeyAPIParse.DISK_TOTAL] > 0
+        else 0,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        entity_registry_enabled_default=False,
+    ),
+    ProxmoxSensorEntityDescription(
+        key="disk_free_perc",
+        name="Disk free percentage",
+        icon="mdi:harddisk",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.DISK_USED]
+        / x[ProxmoxKeyAPIParse.DISK_TOTAL]
         if x[ProxmoxKeyAPIParse.DISK_TOTAL] > 0
         else 0,
         state_class=SensorStateClass.MEASUREMENT,
@@ -226,6 +268,19 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         suggested_display_precision=1,
     ),
     ProxmoxSensorEntityDescription(
+        key="disk_used_perc",
+        name="Disk used percentage",
+        icon="mdi:harddisk",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.DISK_USED]
+        / x[ProxmoxKeyAPIParse.DISK_TOTAL]
+        if x[ProxmoxKeyAPIParse.DISK_TOTAL] > 0
+        else 0,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
+    ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.CPU,
         name="CPU used",
         icon="mdi:cpu-64-bit",
@@ -272,6 +327,19 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x > 0 else 0,
         value_fn=lambda x: x[ProxmoxKeyAPIParse.MEMORY_FREE]
+        / x[ProxmoxKeyAPIParse.MEMORY_TOTAL]
+        if x[ProxmoxKeyAPIParse.MEMORY_TOTAL] > 0
+        else 0,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
+    ProxmoxSensorEntityDescription(
+        key="memory_used_perc",
+        name="Memory used percentage",
+        icon="mdi:memory",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: x[ProxmoxKeyAPIParse.MEMORY_USED]
         / x[ProxmoxKeyAPIParse.MEMORY_TOTAL]
         if x[ProxmoxKeyAPIParse.MEMORY_TOTAL] > 0
         else 0,
