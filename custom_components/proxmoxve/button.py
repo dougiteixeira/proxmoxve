@@ -74,50 +74,57 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         key=ProxmoxCommand.REBOOT,
         icon="mdi:restart",
         name="Reboot",
-        translation_key="reboot",
+        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
+        translation_key="reboot",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.START,
         icon="mdi:server",
         name="Start",
-        translation_key="start",
+        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
+        translation_key="start",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
         icon="mdi:server-off",
         name="Shutdown",
-        translation_key="shutdown",
+        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
+        translation_key="shutdown",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.STOP,
         icon="mdi:stop",
         name="Stop",
-        translation_key="stop",
+        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
+        translation_key="stop",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESUME,
         icon="mdi:play",
         name="Resume",
-        translation_key="resume",
+        api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
+        translation_key="resume",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SUSPEND,
         icon="mdi:pause",
         name="Suspend",
-        translation_key="suspend",
+        api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
+        translation_key="suspend",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESET,
         icon="mdi:restart-alert",
         name="Reset",
-        translation_key="reset",
+        api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
+        translation_key="reset",
     ),
 )
 
@@ -161,7 +168,7 @@ async def async_setup_entry(
         if coordinator.data is None:
             continue
         for description in PROXMOX_BUTTON_VM:
-            if description.api_category in (None, ProxmoxType.QEMU):
+            if ProxmoxType.QEMU in description.api_category:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
@@ -185,7 +192,7 @@ async def async_setup_entry(
         if coordinator.data is None:
             continue
         for description in PROXMOX_BUTTON_VM:
-            if description.api_category in (None, ProxmoxType.LXC):
+            if ProxmoxType.LXC in description.api_category:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,

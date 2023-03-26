@@ -8,5 +8,5 @@
   "issue_tracker": "https://github.com/dougiteixeira/proxmoxve/issues",
   "loggers": ["proxmoxer"],
   "requirements": ["proxmoxer==2.0.1"],
-  "version":"1.7.2"
+  "version":"1.7.3"
 }
