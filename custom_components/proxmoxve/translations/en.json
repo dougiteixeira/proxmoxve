@@ -1,232 +1,240 @@
 {
-    "config": {
-        "abort": {
-            "already_configured": "Device is already configured",
-            "no_nodes": "No nodes were returned for the host.",
-            "reauth_successful": "Re-authentication was successful"
-        },
-        "error": {
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
-        },
-        "step": {
-            "host": {
-                "data": {
-                    "host": "Host",
-                    "password": "Password",
-                    "port": "Port",
-                    "realm": "Realm",
-                    "username": "Username",
-                    "verify_ssl": "Verify SSL certificate"
-                },
-                "description": "Please fill out the form and then press submit when you're ready",
-                "title": "Proxmox host information"
-            },
-            "node": {
-                "data": {
-                    "node": "Node:"
-                },
-                "description": "Select the Proxmox instance nodes you want to expose:",
-                "title": "Proxmox node selection"
-            },
-            "reauth_confirm": {
-                "data": {
-                    "password": "Password",
-                    "username": "Username"
-                },
-                "description": "The username or password is invalid.",
-                "title": "Reauthenticate Integration"
-            },
-            "selection_qemu_lxc": {
-                "data": {
-                    "lxc": "Linux Containers (LXC)",
-                    "node": "Node",
-                    "qemu": "Virtual Machines (QEMU)"
-                },
-                "description": "Select the virtual machines and containers to expose:",
-                "title": "Selection of Virtual Machines (QEMU) and Containers (LXC):"
-            }
-        }
-    },
-    "issues": {
-        "import_already_configured": {
-            "description": "The YAML configuration of the {node} of {host}:{port} instance of {integration} (`{platform}`) already exists in the UI and was ignored on import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant.",
-            "title": "The node {node} of {host}:{port} already exists in the UI, can be removed"
-        },
-        "import_auth_error": {
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to authentication error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually.",
-            "title": "Error in importing YAML configuration from {host}:{port}"
-        },
-        "import_cant_connect": {
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to connection failed.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually.",
-            "title": "Error in importing YAML configuration from {host}:{port}"
-        },
-        "import_general_error": {
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to unknown error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually.",
-            "title": "Error in importing YAML configuration from {host}:{port}"
-        },
-        "import_invalid_port": {
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to invalid port.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually.",
-            "title": "Error in importing YAML configuration from {host}:{port}"
-        },
-        "import_node_not_exist": {
-            "description": "The {node} of the {host}:{port} instance of {integration} (`{platform}`) present in the YAML configuration does not exist in this instance and was ignored in the import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant.",
-            "title": "Node {node} does not exist in {host}:{port}"
-        },
-        "import_ssl_rejection": {
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to SSL rejection.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually.",
-            "title": "Error in importing YAML configuration from {host}:{port}"
-        },
-        "import_success": {
-            "description": "The YAML configuration of node {node} of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file.",
-            "title": "Node {node} of {host}:{port} was imported from YAML configuration"
-        },
-        "yaml_deprecated": {
-            "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in 2022.12. Resolve the import issues and remove the YAML configuration from your `configuration.yaml` file.",
-            "title": "Configuration of the {integration} in YAML is deprecated"
-        },
-        "vm_id_nonexistent": {
-            "description": "VM/container {vm_id} does not exist on node {node} ({host}:{port}), remove it in integration options.",
-            "title": "VM/container {vm_id} does not exist"
-        }
-    },
-    "options": {
-        "abort": {
-            "changes_successful": "Changes saved successfully.",
-            "no_nodes": "No nodes were returned for the host.",
-            "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node."
-        },
-        "error": {
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
-        },
-        "step": {
-            "host": {
-                "data": {
-                    "password": "Password",
-                    "realm": "Realm",
-                    "username": "Username",
-                    "verify_ssl": "Verify SSL certificate"
-                },
-                "description": "Please fill out the form and then press submit when you're ready",
-                "title": "Proxmox VE host information"
-            },
-            "interval_update": {
-                "data": {
-                    "interval_update_host": "Host (seconds)",
-                    "interval_update_lxc": "Linux Containers (LXC) (seconds)",
-                    "interval_update_node": "Node (seconds)",
-                    "interval_update_qemu": "Virtual Machines (QEMU) (seconds)"
-                },
-                "description": "Change the time (in seconds) for the information and sensors to update for each Proxmox resource:",
-                "title": "Information update interval setting:"
-            },
-            "selection_qemu_lxc": {
-                "data": {
-                    "lxc": "Linux Containers (LXC)",
-                    "node": "Node",
-                    "qemu": "Virtual Machines (QEMU)"
-                },
-                "description": "Select the virtual machines (QEMU) and containers (LXC) to expose:",
-                "title": "Selection of Virtual Machines (QEMU) and Containers (LXC):"
-            }
-        }
-    },
-    "entity": {
-      "binary_sensor":{
-        "status": {
-          "name": "Status"
-        },
-        "health": {
-          "name": "Health"
+  "config": {
+    "step": {
+      "host": {
+        "title": "Proxmox host information",
+        "description": "Please fill out the form and then press submit when you're ready",
+        "data": {
+          "host": "[%key:common::config_flow::data::host%]",
+          "port": "[%key:common::config_flow::data::port%]",
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]",
+          "realm": "Realm",
+          "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
         }
       },
-      "button": {
-        "start_all": {
-          "name": "Start all"
-        },
-        "stop_all": {
-          "name": "Stop all"
-        },
-        "shutdown": {
-          "name": "Shutdown"
-        },
-        "reboot": {
-          "name": "Reboot"
-        },
-        "start": {
-          "name": "Start"
-        },
-        "stop": {
-          "name": "Stop"
-        },
-        "resume": {
-          "name": "Resume"
-        },
-        "suspend": {
-          "name": "Suspend"
-        },
-        "reset": {
-          "name": "Reset"
+      "node": {
+        "title": "Proxmox node selection",
+        "description": "Select the Proxmox instance nodes you want to expose:",
+        "data": {
+          "node": "Node:"
         }
       },
-      "sensor": {
-        "uptime": {
-          "name": "Uptime"
-        },
-        "cpu_used": {
-          "name": "CPU used"
-        },
-        "memory_used": {
-          "name": "Memory used"
-        },
-        "memory_free": {
-          "name": "Memory free"
-        },
-        "memory_total": {
-          "name": "Memory total"
-        },
-        "memory_free_perc": {
-          "name": "Memory free percentage"
-        },
-        "swap_total": {
-          "name": "Swap total"
-        },
-        "swap_free": {
-          "name": "Swap free"
-        },
-        "swap_free_perc": {
-          "name": "Swap free percentage"
-        },
-        "disk_total": {
-          "name": "Disk total"
-        },
-        "disk_used": {
-          "name": "Disk used"
-        },
-        "disk_free_perc": {
-          "name": "Disk free percentage"
-        },
-        "network_in": {
-          "name": "Network in"
-        },
-        "network_out": {
-          "name": "Network out"
+      "selection_qemu_lxc": {
+        "title": "Selection of Virtual Machines (QEMU) and Containers (LXC):",
+        "description": "Select the virtual machines and containers to expose:",
+        "data": {
+          "node": "Node",
+          "qemu": "Virtual Machines (QEMU)",
+          "lxc": "Linux Containers (LXC)"
         }
       },
-      "switch": {
-        "start": {
-          "name": "Start"
-        },
-        "stop": {
-          "name": "Stop"
+      "reauth_confirm": {
+        "description": "The username or password is invalid.",
+        "title": "[%key:common::config_flow::title::reauth%]",
+        "data": {
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]"
         }
       }
+    },
+    "error": {
+      "auth_error": "[%key:common::config_flow::error::invalid_auth%]",
+      "ssl_rejection": "Could not verify the SSL certificate",
+      "cant_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "general_error": "[%key:common::config_flow::error::unknown%]",
+      "invalid_port": "Invalid port number"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "no_nodes": "No nodes were returned for the host."
     }
+  },
+  "issues": {
+    "import_success": {
+      "title": "Node {node} of {host}:{port} was imported from YAML configuration",
+      "description": "The YAML configuration of node {node} of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file."
+    },
+    "import_invalid_port": {
+      "title": "Error in importing YAML configuration from {host}:{port}",
+      "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to invalid port.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+    },
+    "import_auth_error": {
+      "title": "Error in importing YAML configuration from {host}:{port}",
+      "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to authentication error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+    },
+    "import_ssl_rejection": {
+      "title": "Error in importing YAML configuration from {host}:{port}",
+      "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to SSL rejection.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+    },
+    "import_cant_connect": {
+      "title": "Error in importing YAML configuration from {host}:{port}",
+      "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to connection failed.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+    },
+    "import_general_error": {
+      "title": "Error in importing YAML configuration from {host}:{port}",
+      "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to unknown error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+    },
+    "import_already_configured": {
+      "title": "The node {node} of {host}:{port} already exists in the UI, can be removed",
+      "description": "The YAML configuration of the {node} of {host}:{port} instance of {integration} (`{platform}`) already exists in the UI and was ignored on import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+    },
+    "import_node_not_exist": {
+      "title": "Node {node} does not exist in {host}:{port}",
+      "description": "The {node} of the {host}:{port} instance of {integration} (`{platform}`) present in the YAML configuration does not exist in this instance and was ignored in the import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+    },
+    "yaml_deprecated": {
+      "title": "Configuration of the {integration} in YAML is deprecated",
+      "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in 2022.12. Resolve the import issues and remove the YAML configuration from your `configuration.yaml` file."
+    }
+  },
+  "options": {
+    "step": {
+      "host": {
+        "title": "Proxmox VE host information",
+        "description": "[%key:component::proxmoxve::config::step::host::description%]",
+        "data": {
+          "username": "[%key:component::proxmoxve::config::step::host::data::username%]",
+          "password": "[%key:component::proxmoxve::config::step::host::data::password%]",
+          "realm": "[%key:component::proxmoxve::config::step::host::data::realm%]",
+          "verify_ssl": "[%key:component::proxmoxve::config::step::host::data::verify_ssl%]"
+        }
+      },
+      "selection_qemu_lxc": {
+        "title": "Selection of Virtual Machines (QEMU) and Containers (LXC):",
+        "description": "Select the virtual machines (QEMU) and containers (LXC) to expose:",
+        "data": {
+          "node": "Node",
+          "qemu": "Virtual Machines (QEMU)",
+          "lxc": "Linux Containers (LXC)"
+        }
+      },
+      "interval_update": {
+        "title": "Information update interval setting:",
+        "description": "Change the time (in seconds) for the information and sensors to update for each Proxmox resource:",
+        "data": {
+          "interval_update_host": "Host (segundos)",
+          "interval_update_node": "Node (segundos)",
+          "interval_update_qemu": "Virtual Machines (QEMU) (segundos)",
+          "interval_update_lxc": "Linux Containers (LXC) (segundos)"
+        }
+      }
+    },
+    "error": {
+      "auth_error": "[%key:component::proxmoxve::config::error::auth_error%]",
+      "ssl_rejection": "[%key:component::proxmoxve::config::error::ssl_rejection%]",
+      "cant_connect": "[%key:component::proxmoxve::config::error::cant_connect%]",
+      "general_error": "[%key:component::proxmoxve::config::error::general_error%]",
+      "invalid_port": "[%key:component::proxmoxve::config::error::invalid_port%]"
+    },
+    "abort": {
+      "no_nodes": "No nodes were returned for the host.",
+      "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
+      "changes_successful": "Changes saved successfully."
+    }
+  },
+  "entity": {
+    "binary_sensor":{
+      "status": {
+        "name": "Status"
+      },
+      "health": {
+        "name": "Health"
+      }
+    },
+    "button": {
+      "start_all": {
+        "name": "Start all"
+      },
+      "stop_all": {
+        "name": "Stop all"
+      },
+      "shutdown": {
+        "name": "Shutdown"
+      },
+      "reboot": {
+        "name": "Reboot"
+      },
+      "start": {
+        "name": "Start"
+      },
+      "stop": {
+        "name": "Stop"
+      },
+      "resume": {
+        "name": "Resume"
+      },
+      "suspend": {
+        "name": "Suspend"
+      },
+      "reset": {
+        "name": "Reset"
+      }
+    },
+    "sensor": {
+      "cpu_used": {
+        "name": "CPU used"
+      },
+      "disk_free_perc": {
+        "name": "Disk free percentage"
+      },
+      "disk_total": {
+        "name": "Disk total"
+      },
+      "disk_used": {
+        "name": "Disk used"
+      },
+      "disk_used_perc": {
+        "name": "Disk used percentage"
+      },
+      "memory_free": {
+        "name": "Memory free"
+      },
+      "memory_free_perc": {
+        "name": "Memory free percentage"
+      },
+      "memory_total": {
+        "name": "Memory total"
+      },
+      "memory_used": {
+        "name": "Memory used"
+      },
+      "memory_used_perc": {
+        "name": "Memory used percentage"
+      },
+      "network_in": {
+        "name": "Network in"
+      },
+      "network_out": {
+        "name": "Network out"
+      },
+      "swap_free": {
+        "name": "Swap free"
+      },
+      "swap_free_perc": {
+        "name": "Swap free percentage"
+      },
+      "swap_total": {
+        "name": "Swap total"
+      },
+      "swap_used": {
+        "name": "Swap used"
+      },
+      "swap_used_perc": {
+        "name": "Swap used percentage"
+      },
+      "uptime": {
+        "name": "Uptime"
+      }
+    },
+    "switch": {
+      "start": {
+        "name": "Start"
+      },
+      "stop": {
+        "name": "Stop"
+      }
+    }
+  }
 }
