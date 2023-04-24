@@ -15,7 +15,7 @@ After configuring this integration, the following information is available:
 
 ### Installation via HACS
 
-Have HACS installed, this will allow you to update easily.
+Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
 
 * Adding Proxmox VE to HACS can be using this button:
 
@@ -44,7 +44,7 @@ If the button above doesn't work, you can also perform the following steps manua
 * In the sidebar, click Settings.
 * From the Setup menu, select: Devices & Services.
 * In the lower right corner, click the Add integration button.
-* In the list, search and select `Drivvo`.
+* In the list, search and select `Proxmox VE`.
 * Follow the on-screen instructions to complete the setup.
 
 ## Debugging
