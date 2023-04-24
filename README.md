@@ -11,44 +11,51 @@ After configuring this integration, the following information is available:
 
 ![image](https://user-images.githubusercontent.com/31328123/189549962-1b195b2c-a5b8-40eb-947e-74052543d804.png)
 
-## Installation
+## Install
 
-### If you use [HACS](https://hacs.xyz/):
+### Installation via HACS
 
-1. Click on HACS in the Home Assistant menu
-2. Click on the 3 dots in the top right corner.
-3. Select "Custom repositories"
-4. Add the URL to the repository.
-5. Select the Integration category.
-6. Click the "ADD" button.
+Have HACS installed, this will allow you to update easily.
 
-7. Click on HACS in the Home Assistant menu
-8. Click on `Integrations`
-9. Click the `EXPLORE & DOWNLOAD REPOSITORIES` button
-10. Search for `Proxmox VE`
-11. Click the `DOWNLOAD` button
-12. Restart Home Assistant
+* Adding Proxmox VE to HACS can be using this button:
 
-### Manually:
+[![image](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dougiteixeira&repository=proxmoxve&category=integration)
 
-1. Copy `proxmoxve` folder from [latest release](https://github.com/dougiteixeira/proxmoxve/releases/latest) to [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations). in your config folder.
-2. Restart Home Assistant
+(If the button above doesn't work, add `https://github.com/dougiteixeira/proxmoxve` as a custom repository of type Integration in HACS.)
+* Click Install on the `Proxmox VE` integration.
+* Restart the Home Assistant.
+
+### Manual installation
+
+- Copy `proxmoxve`  folder from [latest release](https://github.com/dougiteixeira/proxmoxve/releases/latest) to [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations) in your config directory.
+- Restart the Home Assistant.
 
 ## Configuration
 
-Adding Proxmox VE to your Home Assistant instance can be done via the user interface, by using this My button:
+Adding Drivvo to your Home Assistant instance can be done via the UI using this button:
 
-[![image](https://user-images.githubusercontent.com/31328123/189550000-6095719b-ca38-4860-b817-926b19de1b32.png)](https://my.home-assistant.io/redirect/config_flow_start?domain=proxmoxve)
+[![image](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=proxmoxve)
 
-### Manual configuration steps
-If the above My button doesn’t work, you can also perform the following steps manually:
+### Manual Configuration
 
-* Browse to your Home Assistant instance.
-* In the sidebar click on  Settings.
-* From the configuration menu select: Devices & Services.
-* In the bottom right, click on the  Add Integration button.
-* From the list, search and select “Proxmox VE”.
-* Follow the instruction on screen to complete the set up.
+If the button above doesn't work, you can also perform the following steps manually:
+
+* Navigate to your Home Assistant instance.
+* In the sidebar, click Settings.
+* From the Setup menu, select: Devices & Services.
+* In the lower right corner, click the Add integration button.
+* In the list, search and select `Drivvo`.
+* Follow the on-screen instructions to complete the setup.
+
+## Debugging
+
+To enable debug for Drivvo integration, add following to your `configuration.yaml`:
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.proxmoxve: debug
+```
 
 ## Proxmox Permissions
 
