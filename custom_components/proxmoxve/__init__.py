@@ -379,6 +379,7 @@ def get_data_node(
 ) -> dict[str, Any]:
     """Get the node data in two API endpoints."""
     api_status = proxmox.nodes(node).status.get()
+    api_status.update(proxmox.nodes(node).storage('local-zfs').status.get())
     if nodes_api := proxmox.nodes.get():
         for node_api in nodes_api:
             if node_api["node"] == node:
@@ -447,6 +448,9 @@ def parse_api_proxmox(
             ProxmoxKeyAPIParse.NETWORK_OUT: status["netout"],
             ProxmoxKeyAPIParse.DISK_TOTAL: status["maxdisk"],
             ProxmoxKeyAPIParse.DISK_USED: status["disk"],
+            ProxmoxKeyAPIParse.DISK_ZFS_TOTAL: status["total"],
+            ProxmoxKeyAPIParse.DISK_ZFS_USED: status["used"],
+            ProxmoxKeyAPIParse.DISK_ZFS_AVAIL: status["avail"],            
         }
     return {}
 
