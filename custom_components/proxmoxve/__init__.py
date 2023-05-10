@@ -491,7 +491,10 @@ def device_info(
         name = f"{api_category.upper()} {vm_name} ({vm_id})"
         identifier = f"{config_entry.entry_id}_{api_category.upper()}_{vm_id}"
         url = f"https://{host}:{port}/#v1:0:={api_category}/{vm_id}"
-        via_device = (DOMAIN, f"{ProxmoxType.Node.upper()}_{node}")
+        via_device = (
+            DOMAIN,
+            f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
+        )
         default_model = api_category.upper()
 
     elif api_category is ProxmoxType.Node:
