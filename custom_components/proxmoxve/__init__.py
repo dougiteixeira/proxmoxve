@@ -214,6 +214,39 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 remove_config_entry_id=config_entry.entry_id,
             )
 
+    if config_entry.version == 2:
+        device_identifiers = []
+        for resource in config_entry.data.get(CONF_NODES):
+            device_identifiers.append(f"{ProxmoxType.Node.upper()}_{resource}")
+        for resource in config_entry.data.get(CONF_QEMU):
+            device_identifiers.append(f"{ProxmoxType.QEMU.upper()}_{resource}")
+        for resource in config_entry.data.get(CONF_LXC):
+            device_identifiers.append(f"{ProxmoxType.LXC.upper()}_{resource}")
+
+        config_entry.version = 3
+        hass.config_entries.async_update_entry(
+            config_entry, data=config_entry.data, options={}
+        )
+
+        LOGGER.debug("Migration - remove devices: %s", device_identifiers)
+        for device_identifier in device_identifiers:
+            device_identifiers = {
+                (
+                    DOMAIN,
+                    device_identifier,
+                )
+            }
+            dev_reg = dr.async_get(hass)
+            device = dev_reg.async_get_or_create(
+                config_entry_id=config_entry.entry_id,
+                identifiers=device_identifiers,
+            )
+
+            dev_reg.async_update_device(
+                device_id=device.id,
+                remove_config_entry_id=config_entry.entry_id,
+            )
+
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True
@@ -420,6 +453,19 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
 
 
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Remove a config entry from a device."""
+    dev_reg = dr.async_get(hass)
+    dev_reg.async_update_device(
+        device_id=device_entry.id,
+        remove_config_entry_id=config_entry.entry_id,
+    )
+    LOGGER.debug("Device %s (%s) removed", device_entry.name, device_entry.id)
+    return True
+
+
 def device_info(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -443,7 +489,7 @@ def device_info(
             node = coordinator_data.node
 
         name = f"{api_category.upper()} {vm_name} ({vm_id})"
-        identifier = f"{api_category.upper()}_{vm_id}"
+        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{vm_id}"
         url = f"https://{host}:{port}/#v1:0:={api_category}/{vm_id}"
         via_device = (DOMAIN, f"{ProxmoxType.Node.upper()}_{node}")
         default_model = api_category.upper()
@@ -455,7 +501,7 @@ def device_info(
             proxmox_version = f"Proxmox {coordinator_data.version}"
 
         name = f"Node {node}"
-        identifier = f"{api_category.upper()}_{node}"
+        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{node}"
         url = f"https://{host}:{port}/#v1:0:=node/{node}"
         via_device = ("", "")
         default_model = model_processor
