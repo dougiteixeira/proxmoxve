@@ -353,7 +353,7 @@ def update_device_via(
         identifiers={
             (
                 DOMAIN,
-                f"{api_category.upper()}_{self.vm_id}",
+                f"{self.config_entry.entry_id}_{api_category.upper()}_{self.vm_id}",
             )
         },
     )
@@ -361,7 +361,7 @@ def update_device_via(
         {
             (
                 DOMAIN,
-                f"{ProxmoxType.Node.upper()}_{self.node_name}",
+                f"{self.config_entry.entry_id}_{ProxmoxType.Node.upper()}_{self.node_name}",
             )
         }
     )

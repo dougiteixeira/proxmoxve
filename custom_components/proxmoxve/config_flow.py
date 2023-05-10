@@ -266,7 +266,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         for node in self.config_entry.data[CONF_NODES]:
             if node not in node_selecition:
                 # Remove device
-                identifier = f"{ProxmoxType.Node.upper()}_{node}"
+                identifier = (
+                    f"{self.config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
+                )
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
@@ -288,7 +290,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         for qemu_id in self.config_entry.data[CONF_QEMU]:
             if qemu_id not in qemu_selecition:
                 # Remove device
-                identifier = f"{ProxmoxType.QEMU.upper()}_{qemu_id}"
+                identifier = (
+                    f"{self.config_entry.entry_id}_{ProxmoxType.QEMU.upper()}_{qemu_id}"
+                )
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
@@ -310,7 +314,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         for lxc_id in self.config_entry.data[CONF_LXC]:
             if lxc_id not in lxc_selecition:
                 # Remove device
-                identifier = f"{ProxmoxType.LXC.upper()}_{lxc_id}"
+                identifier = (
+                    f"{self.config_entry.entry_id}_{ProxmoxType.LXC.upper()}_{lxc_id}"
+                )
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
@@ -358,7 +364,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """ProxmoxVE Config Flow class."""
 
-    VERSION = 2
+    VERSION = 3
     _reauth_entry: config_entries.ConfigEntry | None = None
 
     def __init__(self) -> None:
