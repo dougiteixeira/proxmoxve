@@ -305,6 +305,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             resources = await self.hass.async_add_executor_job(
                 proxmox.cluster.resources.get
             )
+            LOGGER.debug("Response API - Resources: %s", resources)
             resource_qemu = {}
             resource_lxc = {}
             for resource in resources:
@@ -312,13 +313,19 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     if resource["node"] not in resource_nodes:
                         resource_nodes.append(resource["node"])
                 if ("type" in resource) and (resource["type"] == ProxmoxType.QEMU):
-                    resource_qemu[
-                        str(resource["vmid"])
-                    ] = f"{resource['vmid']} {resource['name']}"
+                    if "name" in resource:
+                        resource_qemu[
+                            str(resource["vmid"])
+                        ] = f"{resource['vmid']} {resource['name']}"
+                    else:
+                        resource_qemu[str(resource["vmid"])] = f"{resource['vmid']}"
                 if ("type" in resource) and (resource["type"] == ProxmoxType.LXC):
-                    resource_lxc[
-                        str(resource["vmid"])
-                    ] = f"{resource['vmid']} {resource['name']}"
+                    if "name" in resource:
+                        resource_lxc[
+                            str(resource["vmid"])
+                        ] = f"{resource['vmid']} {resource['name']}"
+                    else:
+                        resource_lxc[str(resource["vmid"])] = f"{resource['vmid']}"
 
             return self.async_show_form(
                 step_id="change_expose",
@@ -796,6 +803,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             resources = await self.hass.async_add_executor_job(
                 proxmox.cluster.resources.get
             )
+            LOGGER.debug("Response API - Resources: %s", resources)
             resource_nodes = []
             resource_qemu = {}
             resource_lxc = {}
@@ -806,13 +814,19 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     if resource["node"] not in resource_nodes:
                         resource_nodes.append(resource["node"])
                 if ("type" in resource) and (resource["type"] == ProxmoxType.QEMU):
-                    resource_qemu[
-                        str(resource["vmid"])
-                    ] = f"{resource['vmid']} {resource['name']}"
+                    if "name" in resource:
+                        resource_qemu[
+                            str(resource["vmid"])
+                        ] = f"{resource['vmid']} {resource['name']}"
+                    else:
+                        resource_qemu[str(resource["vmid"])] = f"{resource['vmid']}"
                 if ("type" in resource) and (resource["type"] == ProxmoxType.LXC):
-                    resource_lxc[
-                        str(resource["vmid"])
-                    ] = f"{resource['vmid']} {resource['name']}"
+                    if "name" in resource:
+                        resource_lxc[
+                            str(resource["vmid"])
+                        ] = f"{resource['vmid']} {resource['name']}"
+                    else:
+                        resource_lxc[str(resource["vmid"])] = f"{resource['vmid']}"
 
             return self.async_show_form(
                 step_id="expose",
