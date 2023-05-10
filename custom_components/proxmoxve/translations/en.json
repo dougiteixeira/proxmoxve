@@ -16,7 +16,7 @@
             "expose": {
                 "data": {
                     "lxc": "Linux Containers (LXC)",
-                    "node": "Node",
+                    "nodes": "Nodes",
                     "qemu": "Virtual Machines (QEMU)"
                 },
                 "description": "Select the virtual machines and containers to expose:",
@@ -113,7 +113,7 @@
             "change_expose": {
                 "data": {
                     "lxc": "Linux Containers (LXC)",
-                    "nodes": "Node",
+                    "nodes": "Nodes",
                     "qemu": "Virtual Machines (QEMU)"
                 },
                 "description": "Select the virtual machines and containers to expose:",

@@ -17,7 +17,7 @@
         "title": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose.",
         "description": "Select the virtual machines and containers to expose:",
         "data": {
-          "node": "Node",
+          "nodes": "Nodes",
           "qemu": "Virtual Machines (QEMU)",
           "lxc": "Linux Containers (LXC)"
         }
