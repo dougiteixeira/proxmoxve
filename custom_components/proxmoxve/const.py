@@ -1,12 +1,23 @@
-"""Constants for Proxmox integration."""
-from __future__ import annotations
+"""Constants for ProxmoxVE."""
 
 import logging
 
 from homeassistant.backports.enum import StrEnum
 
 DOMAIN = "proxmoxve"
-INTEGRATION_NAME = "Proxmox VE"
+PROXMOX_CLIENTS = "proxmox_clients"
+CONF_REALM = "realm"
+CONF_NODE = "node"
+CONF_NODES = "nodes"
+CONF_VMS = "vms"
+CONF_CONTAINERS = "containers"
+
+COORDINATORS = "coordinators"
+
+DEFAULT_PORT = 8006
+DEFAULT_REALM = "pam"
+DEFAULT_VERIFY_SSL = True
+UPDATE_INTERVAL = 60
 
 LOGGER = logging.getLogger(__package__)
 
@@ -18,20 +29,9 @@ CONF_QEMU = "qemu"
 CONF_REALM = "realm"
 CONF_VMS = "vms"
 
-CONF_SCAN_INTERVAL_HOST = "interval_update_host"
-CONF_SCAN_INTERVAL_NODE = "interval_update_node"
-CONF_SCAN_INTERVAL_QEMU = "interval_update_qemu"
-CONF_SCAN_INTERVAL_LXC = "interval_update_lxc"
-
-UPDATE_INTERVAL_DEFAULT = 60
-
-DEFAULT_PORT = 8006
-DEFAULT_REALM = "pve"
-DEFAULT_VERIFY_SSL = False
-
-ID = "vmid"
-COORDINATORS = "coordinators"
 PROXMOX_CLIENT = "proxmox_client"
+
+VERSION_REMOVE_YAML = "2023.8"
 
 
 class ProxmoxType(StrEnum):
@@ -70,8 +70,9 @@ class ProxmoxKeyAPIParse(StrEnum):
     MEMORY_FREE = "memory_free"
     SWAP_TOTAL = "swap_total"
     SWAP_FREE = "swap_free"
-    DISK_USED = "disk_used"
+    SWAP_USED = "swap_used"
     DISK_TOTAL = "disk_total"
+    DISK_USED = "disk_used"
     HEALTH = "health"
     NAME = "name"
     NETWORK_IN = "network_in"

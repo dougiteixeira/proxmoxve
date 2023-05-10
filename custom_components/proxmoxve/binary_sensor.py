@@ -15,8 +15,10 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from . import COORDINATORS, DOMAIN, ProxmoxEntity, ProxmoxEntityDescription, device_info
-from .const import CONF_LXC, CONF_QEMU, ProxmoxKeyAPIParse, ProxmoxType
+from . import COORDINATORS, DOMAIN, device_info
+from .const import CONF_LXC, CONF_NODES, CONF_QEMU, ProxmoxKeyAPIParse, ProxmoxType
+from .entity import ProxmoxEntity
+from .models import ProxmoxEntityDescription
 
 
 @dataclass
@@ -67,24 +69,25 @@ async def async_setup_entry(
     sensors = []
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
-    coordinator = coordinators[ProxmoxType.Node]
-    # unfound node case
-    if coordinator.data is not None:
-        for description in PROXMOX_BINARYSENSOR_NODES:
-            sensors.append(
-                create_binary_sensor(
-                    coordinator=coordinator,
-                    config_entry=config_entry,
-                    info_device=device_info(
-                        hass=hass,
+    for node in config_entry.data[CONF_NODES]:
+        coordinator = coordinators[node]
+        # unfound node case
+        if coordinator.data is not None:
+            for description in PROXMOX_BINARYSENSOR_NODES:
+                sensors.append(
+                    create_binary_sensor(
+                        coordinator=coordinator,
                         config_entry=config_entry,
-                        api_category=ProxmoxType.Node,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.Node,
+                            node=node,
+                        ),
+                        description=description,
                         vm_id=None,
-                    ),
-                    description=description,
-                    vm_id=None,
+                    )
                 )
-            )
 
     for vm_id in config_entry.data[CONF_QEMU]:
         coordinator = coordinators[vm_id]
@@ -172,15 +175,18 @@ class ProxmoxBinarySensorEntity(ProxmoxEntity, BinarySensorEntity):
         if (data := self.coordinator.data) is None:
             return False
 
-        if self.entity_description.key not in data:
+        if not getattr(data, self.entity_description.key):
             return False
 
         if self.entity_description.inverted:
             return (
-                not data[self.entity_description.key]
-                == self.entity_description.on_value
+                getattr(data, self.entity_description.key)
+                != self.entity_description.on_value
             )
-        return data[self.entity_description.key] == self.entity_description.on_value
+        return (
+            getattr(data, self.entity_description.key)
+            == self.entity_description.on_value
+        )
 
     @property
     def available(self) -> bool:

@@ -13,14 +13,13 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from . import (
     ProxmoxClient,
-    ProxmoxEntity,
-    ProxmoxEntityDescription,
     call_api_post_status,
     device_info,
 )
 from .const import (
     CONF_LXC,
     CONF_NODE,
+    CONF_NODES,
     CONF_QEMU,
     COORDINATORS,
     DOMAIN,
@@ -29,6 +28,8 @@ from .const import (
     ProxmoxCommand,
     ProxmoxType,
 )
+from .entity import ProxmoxEntity
+from .models import ProxmoxEntityDescription
 
 
 @dataclass
@@ -130,26 +131,27 @@ async def async_setup_entry(
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
     proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
 
-    coordinator = coordinators[ProxmoxType.Node]
-    # unfound vm case
-    if coordinator.data is not None:
-        for description in PROXMOX_BUTTON_NODE:
-            buttons.append(
-                create_button(
-                    coordinator=coordinator,
-                    info_device=device_info(
-                        hass=hass,
-                        config_entry=config_entry,
+    for node in config_entry.data[CONF_NODES]:
+        coordinator = coordinators[node]
+        # unfound vm case
+        if coordinator.data is not None:
+            for description in PROXMOX_BUTTON_NODE:
+                buttons.append(
+                    create_button(
+                        coordinator=coordinator,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.Node,
+                            node=node,
+                        ),
+                        description=description,
+                        resource_id=node,
+                        proxmox_client=proxmox_client,
                         api_category=ProxmoxType.Node,
-                        vm_id=None,
-                    ),
-                    description=description,
-                    vm_id=None,
-                    proxmox_client=proxmox_client,
-                    api_category=ProxmoxType.Node,
-                    config_entry=config_entry,
+                        config_entry=config_entry,
+                    )
                 )
-            )
 
     for vm_id in config_entry.data[CONF_QEMU]:
         coordinator = coordinators[vm_id]
@@ -168,7 +170,7 @@ async def async_setup_entry(
                             vm_id=vm_id,
                         ),
                         description=description,
-                        vm_id=vm_id,
+                        resource_id=vm_id,
                         proxmox_client=proxmox_client,
                         api_category=ProxmoxType.QEMU,
                         config_entry=config_entry,
@@ -192,7 +194,7 @@ async def async_setup_entry(
                             vm_id=ct_id,
                         ),
                         description=description,
-                        vm_id=ct_id,
+                        resource_id=ct_id,
                         proxmox_client=proxmox_client,
                         api_category=ProxmoxType.LXC,
                         config_entry=config_entry,
@@ -208,8 +210,8 @@ def create_button(
     description: ProxmoxButtonEntityDescription,
     proxmox_client: ProxmoxClient,
     api_category: ProxmoxType,
+    resource_id: str | int,
     config_entry: ConfigEntry,
-    vm_id: str | None = None,
 ) -> ProxmoxButtonEntity:
     """Create a button based on the given data."""
     return ProxmoxButtonEntity(
@@ -217,8 +219,8 @@ def create_button(
         proxmox_client=proxmox_client,
         api_category=api_category,
         coordinator=coordinator,
-        unique_id=f"{config_entry.entry_id}_{vm_id}_{description.key}",
-        vm_id=vm_id,
+        unique_id=f"{config_entry.entry_id}_{resource_id}_{description.key}",
+        resource_id=resource_id,
         info_device=info_device,
         config_entry=config_entry,
     )
@@ -237,8 +239,8 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
         unique_id: str,
         proxmox_client: ProxmoxClient,
         api_category: ProxmoxType,
+        resource_id: str | int,
         config_entry: ConfigEntry,
-        vm_id: str | None = None,
     ) -> None:
         """Create the button for vms or containers."""
         super().__init__(coordinator, unique_id, description)
@@ -247,9 +249,19 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
 
         def _button_press():
             """Post start command & tell HA state is on."""
+
+            if api_category == ProxmoxType.Node:
+                node = resource_id
+                vm_id = None
+            else:
+                if (data := self.coordinator.data) is None:
+                    return None
+                node = data.node
+                vm_id = resource_id
+
             call_api_post_status(
                 proxmox=proxmox_client.get_api_client(),
-                node=config_entry.data[CONF_NODE],
+                node=node,
                 vm_id=vm_id,
                 api_category=api_category,
                 command=description.key,
@@ -257,7 +269,7 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
 
             LOGGER.debug(
                 "Button press: %s - %s - %s - %s",
-                config_entry.data[CONF_NODE],
+                node,
                 vm_id,
                 api_category,
                 description.key,

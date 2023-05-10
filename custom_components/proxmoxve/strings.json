@@ -13,15 +13,8 @@
           "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
         }
       },
-      "node": {
-        "title": "Proxmox node selection",
-        "description": "Select the Proxmox instance nodes you want to expose:",
-        "data": {
-          "node": "Node:"
-        }
-      },
-      "selection_qemu_lxc": {
-        "title": "Selection of Virtual Machines (QEMU) and Containers (LXC):",
+      "expose": {
+        "title": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose.",
         "description": "Select the virtual machines and containers to expose:",
         "data": {
           "node": "Node",
@@ -48,13 +41,13 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-      "no_nodes": "No nodes were returned for the host."
+      "no_resources": "No resources were returned for this instance."
     }
   },
   "issues": {
     "import_success": {
-      "title": "Node {node} of {host}:{port} was imported from YAML configuration",
-      "description": "The YAML configuration of node {node} of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file."
+      "title": "{host}:{port} was imported from YAML configuration",
+      "description": "The YAML configuration of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file."
     },
     "import_invalid_port": {
       "title": "Error in importing YAML configuration from {host}:{port}",
@@ -77,8 +70,8 @@
       "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to unknown error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
     },
     "import_already_configured": {
-      "title": "The node {node} of {host}:{port} already exists in the UI, can be removed",
-      "description": "The YAML configuration of the {node} of {host}:{port} instance of {integration} (`{platform}`) already exists in the UI and was ignored on import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+      "title": "The instance {host}:{port} already exists in the UI, can be removed",
+      "description": "The YAML configuration of instace {host}:{port} of {integration} (`{platform}`) already exists in the UI and was ignored on import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
     },
     "import_node_not_exist": {
       "title": "Node {node} does not exist in {host}:{port}",
@@ -86,13 +79,31 @@
     },
     "yaml_deprecated": {
       "title": "Configuration of the {integration} in YAML is deprecated",
-      "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in 2022.12. Resolve the import issues and remove the YAML configuration from your `configuration.yaml` file."
+      "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in {version}.\n\nResolve the import issues and remove the YAML configuration from your `configuration.yaml` file."
+    },
+    "resource_nonexistent": {
+      "description": "{resource_type} {resource} does not exist on ({host}:{port}), remove it in integration options.\n\nThis can also be caused if the user doesn't have enough permission to access the resource.",
+      "title": "{resource_type} {resource} does not exist"
+    },
+    "no_permissions": {
+      "description": "The user `{user}` does not have the required permissions for all features.\n\nThe following features are not accessible by the user:\n`{errors}`\n\nCheck the user permissions as described in the documentation.",
+      "title": "User `{user}` does not have the required permissions"
+    },
+    "resource_exception_forbiden": {
+      "description": "User {user} does not have sufficient permissions to access resource {resource}.\n\nPlease check documentation and user permissions.",
+      "title": "Permissions error for `{resource}`"
     }
   },
   "options": {
     "step": {
-      "host": {
-        "title": "Proxmox VE host information",
+      "menu": {
+        "menu_options": {
+          "host_auth": "Change host authentication information",
+          "change_expose": "Add or remove Nodes, VMs or Containers"
+        }
+      },
+      "host_auth": {
+        "title": "[%key:component::proxmoxve::config::step::host::title%]",
         "description": "[%key:component::proxmoxve::config::step::host::description%]",
         "data": {
           "username": "[%key:component::proxmoxve::config::step::host::data::username%]",
@@ -101,23 +112,13 @@
           "verify_ssl": "[%key:component::proxmoxve::config::step::host::data::verify_ssl%]"
         }
       },
-      "selection_qemu_lxc": {
-        "title": "Selection of Virtual Machines (QEMU) and Containers (LXC):",
-        "description": "Select the virtual machines (QEMU) and containers (LXC) to expose:",
+      "change_expose": {
+        "title": "[%key:component::proxmoxve::config::step::expose::title%]",
+        "description": "[%key:component::proxmoxve::config::step::expose::description%]",
         "data": {
-          "node": "Node",
-          "qemu": "Virtual Machines (QEMU)",
-          "lxc": "Linux Containers (LXC)"
-        }
-      },
-      "interval_update": {
-        "title": "Information update interval setting:",
-        "description": "Change the time (in seconds) for the information and sensors to update for each Proxmox resource:",
-        "data": {
-          "interval_update_host": "Host (segundos)",
-          "interval_update_node": "Node (segundos)",
-          "interval_update_qemu": "Virtual Machines (QEMU) (segundos)",
-          "interval_update_lxc": "Linux Containers (LXC) (segundos)"
+          "nodes": "[%key:component::proxmoxve::config::step::expose::data::node%]",
+          "qemu": "[%key:component::proxmoxve::config::step::expose::data::qemu%]",
+          "lxc": "[%key:component::proxmoxve::config::step::expose::data::lxc%]"
         }
       }
     },
@@ -131,7 +132,9 @@
     "abort": {
       "no_nodes": "No nodes were returned for the host.",
       "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
-      "changes_successful": "Changes saved successfully."
+      "changes_successful": "Changes saved successfully.",
+      "no_nodes_to_add": "No nodes to add.",
+      "node_already_exists": "The selected node already exists."
     }
   }
 }
