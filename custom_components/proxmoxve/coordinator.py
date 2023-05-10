@@ -20,8 +20,8 @@ from homeassistant.helpers.issue_registry import (
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import CONF_NODE, DOMAIN, LOGGER, UPDATE_INTERVAL
-from .models import ProxmoxNodeData, ProxmoxVMData, ProxmoxLXCData, ProxmoxType
+from .const import CONF_NODE, DOMAIN, LOGGER, UPDATE_INTERVAL, ProxmoxType
+from .models import ProxmoxNodeData, ProxmoxVMData, ProxmoxLXCData
 
 
 class ProxmoxCoordinator(
