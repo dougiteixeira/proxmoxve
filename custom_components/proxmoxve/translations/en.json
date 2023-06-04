@@ -20,7 +20,7 @@
                     "qemu": "Virtual Machines (QEMU)"
                 },
                 "description": "Select the virtual machines and containers to expose:",
-                "title": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose."
+                "title": "Select the Proxmox instance nodes and Virtual Machines (QEMU) and Containers (LXC) you want to expose."
             },
             "host": {
                 "data": {
@@ -117,7 +117,7 @@
                     "qemu": "Virtual Machines (QEMU)"
                 },
                 "description": "Select the virtual machines and containers to expose:",
-                "title": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose."
+                "title": "Select the Proxmox instance nodes and Virtual Machines (QEMU) and Containers (LXC) you want to expose."
             },
             "host_auth": {
                 "data": {
