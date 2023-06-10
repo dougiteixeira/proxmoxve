@@ -12,6 +12,11 @@ from requests.exceptions import (
 )
 import voluptuous as vol
 
+import warnings
+from urllib3.exceptions import InsecureRequestWarning
+
+warnings.filterwarnings("ignore", category=InsecureRequestWarning)
+
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
