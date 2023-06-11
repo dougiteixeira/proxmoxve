@@ -12,6 +12,8 @@ from requests.exceptions import (
 )
 import voluptuous as vol
 
+import warnings
+
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
@@ -32,6 +34,9 @@ from homeassistant.helpers.issue_registry import (
     async_delete_issue,
 )
 from homeassistant.helpers.typing import ConfigType
+
+
+from urllib3.exceptions import InsecureRequestWarning
 
 from .const import (
     CONF_CONTAINERS,
@@ -102,6 +107,8 @@ CONFIG_SCHEMA = vol.Schema(
     },
     extra=vol.ALLOW_EXTRA,
 )
+
+warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
