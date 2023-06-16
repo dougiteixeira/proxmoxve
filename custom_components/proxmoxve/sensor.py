@@ -44,8 +44,7 @@ class ProxmoxSensorEntityDescription(ProxmoxEntityDescription, SensorEntityDescr
     value_fn: Callable[[Any], bool | str] | None = None
     api_category: ProxmoxType | None = None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
 
-
-PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.CPU,
         name="CPU used",
@@ -110,6 +109,8 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
+)
+PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.MEMORY_FREE,
         name="Memory free",
@@ -166,223 +167,8 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
     ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.SWAP_FREE,
-        name="Swap free",
-        icon="mdi:memory",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-    ),
-    ProxmoxSensorEntityDescription(
-        key="swap_free_perc",
-        name="Swap free percentage",
-        icon="mdi:memory",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: (x.swap_free / x.swap_total) if x.swap_total > 0 else 0,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        entity_registry_enabled_default=False,
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.SWAP_TOTAL,
-        name="Swap total",
-        icon="mdi:memory",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-        entity_registry_enabled_default=False,
-    ),
-    ProxmoxSensorEntityDescription(
-        key="swap_used",
-        name="Swap used",
-        icon="mdi:memory",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-        entity_registry_enabled_default=False,
-    ),    
-    ProxmoxSensorEntityDescription(
-        key="swap_used_perc",
-        name="Swap used percentage",
-        icon="mdi:memory",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: (x.swap_used / x.swap_total) if x.swap_total > 0 else 0,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.UPTIME,
-        name="Uptime",
-        icon="mdi:database-clock-outline",
-        conversion_fn=lambda x: (
-            dt_util.utcnow() - timedelta(seconds=x) if x > 0 else None
-        ),
-        device_class=SensorDeviceClass.TIMESTAMP,
-    ),
 )
-
-
-PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.CPU,
-        name="CPU used",
-        icon="mdi:cpu-64-bit",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x >= 0 else 0,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
-    ),
-    ProxmoxSensorEntityDescription(
-        key="disk_free",
-        name="Disk free",
-        icon="mdi:harddisk",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        value_fn=lambda x: (x.disk_total - x.disk_used),
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-        entity_registry_enabled_default=False,
-    ),
-    ProxmoxSensorEntityDescription(
-        key="disk_free_perc",
-        name="Disk free percentage",
-        icon="mdi:harddisk",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: 1 - x.disk_used / x.disk_total if x.disk_total > 0 else 0,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.DISK_TOTAL,
-        name="Disk total",
-        icon="mdi:harddisk-plus",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-        entity_registry_enabled_default=False,
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.DISK_USED,
-        name="Disk used",
-        icon="mdi:harddisk",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-        entity_registry_enabled_default=False,
-    ),
-    ProxmoxSensorEntityDescription(
-        key="disk_used_perc",
-        name="Disk used percentage",
-        icon="mdi:harddisk",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: x.disk_used / x.disk_total if x.disk_total > 0 else 0,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.MEMORY_FREE,
-        name="Memory free",
-        icon="mdi:memory",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-    ),
-    ProxmoxSensorEntityDescription(
-        key="memory_free_perc",
-        name="Memory free percentage",
-        icon="mdi:memory",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: x.memory_free / x.memory_total if x.memory_total > 0 else 0,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
-        entity_registry_enabled_default=False,
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.MEMORY_TOTAL,
-        name="Memory total",
-        icon="mdi:memory",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-        entity_registry_enabled_default=False,
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.MEMORY_USED,
-        name="Memory used",
-        icon="mdi:memory",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-    ),
-    ProxmoxSensorEntityDescription(
-        key="memory_used_perc",
-        name="Memory used percentage",
-        icon="mdi:memory",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        value_fn=lambda x: x.memory_used / x.memory_total if x.memory_total > 0 else 0,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.NETWORK_IN,
-        name="Network in",
-        icon="mdi:download-network-outline",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
-        entity_registry_enabled_default=False,
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.NETWORK_OUT,
-        name="Network out",
-        icon="mdi:upload-network-outline",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
-        entity_registry_enabled_default=False,
-    ),
-    ProxmoxSensorEntityDescription(
-        key="node",
-        name="Node",
-        icon="mdi:server",
-    ),
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.UPTIME,
-        name="Uptime",
-        icon="mdi:database-clock-outline",
-        conversion_fn=lambda x: (
-            dt_util.utcnow() - timedelta(seconds=x) if x > 0 else None
-        ),
-        device_class=SensorDeviceClass.TIMESTAMP,
-    ),
+PROXMOX_SENSOR_SWAP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.SWAP_FREE,
         name="Swap free",
@@ -439,7 +225,87 @@ PROXMOX_SENSOR_VM: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         entity_registry_enabled_default=False,
     ),
 )
+PROXMOX_SENSOR_UPTIME: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key=ProxmoxKeyAPIParse.UPTIME,
+        name="Uptime",
+        icon="mdi:database-clock-outline",
+        conversion_fn=lambda x: (
+            dt_util.utcnow() - timedelta(seconds=x) if x > 0 else None
+        ),
+        device_class=SensorDeviceClass.TIMESTAMP,
+    ),
+)
+PROXMOX_SENSOR_NETWORK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key=ProxmoxKeyAPIParse.NETWORK_IN,
+        name="Network in",
+        icon="mdi:download-network-outline",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        entity_registry_enabled_default=False,
+    ),
+    ProxmoxSensorEntityDescription(
+        key=ProxmoxKeyAPIParse.NETWORK_OUT,
+        name="Network out",
+        icon="mdi:upload-network-outline",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        entity_registry_enabled_default=False,
+    ),
+)
+PROXMOX_SENSOR_CPU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key=ProxmoxKeyAPIParse.CPU,
+        name="CPU used",
+        icon="mdi:cpu-64-bit",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x >= 0 else 0,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
+)
 
+PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    *PROXMOX_SENSOR_CPU,
+    *PROXMOX_SENSOR_DISK,
+    *PROXMOX_SENSOR_MEMORY,
+    *PROXMOX_SENSOR_SWAP,
+    *PROXMOX_SENSOR_UPTIME,
+)
+
+PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key="node",
+        name="Node",
+        icon="mdi:server",
+    ),
+    *PROXMOX_SENSOR_CPU,
+    *PROXMOX_SENSOR_DISK,
+    *PROXMOX_SENSOR_MEMORY,
+    *PROXMOX_SENSOR_NETWORK,
+    *PROXMOX_SENSOR_UPTIME,
+)
+
+PROXMOX_SENSOR_LXC: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key="node",
+        name="Node",
+        icon="mdi:server",
+    ),
+    *PROXMOX_SENSOR_CPU,
+    *PROXMOX_SENSOR_DISK,
+    *PROXMOX_SENSOR_MEMORY,
+    *PROXMOX_SENSOR_NETWORK,
+    *PROXMOX_SENSOR_SWAP,
+    *PROXMOX_SENSOR_UPTIME,
+)
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -477,7 +343,7 @@ async def async_setup_entry(
         # unfound vm case
         if coordinator.data is None:
             continue
-        for description in PROXMOX_SENSOR_VM:
+        for description in PROXMOX_SENSOR_QEMU:
             if description.api_category in (None, ProxmoxType.QEMU):
                 sensors.append(
                     create_sensor(
@@ -499,7 +365,7 @@ async def async_setup_entry(
         # unfound container case
         if coordinator.data is None:
             continue
-        for description in PROXMOX_SENSOR_VM:
+        for description in PROXMOX_SENSOR_LXC:
             if description.api_category in (None, ProxmoxType.LXC):
                 sensors.append(
                     create_sensor(
