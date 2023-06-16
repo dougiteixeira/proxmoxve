@@ -85,7 +85,7 @@ async def async_setup_entry(
                             node=node,
                         ),
                         description=description,
-                        vm_id=None,
+                        resource_id=node,
                     )
                 )
 
@@ -107,7 +107,7 @@ async def async_setup_entry(
                             vm_id=vm_id,
                         ),
                         description=description,
-                        vm_id=vm_id,
+                        resource_id=vm_id,
                     )
                 )
 
@@ -129,7 +129,7 @@ async def async_setup_entry(
                             vm_id=container_id,
                         ),
                         description=description,
-                        vm_id=container_id,
+                        resource_id=container_id,
                     )
                 )
 
@@ -138,7 +138,7 @@ async def async_setup_entry(
 
 def create_binary_sensor(
     coordinator,
-    vm_id,
+    resource_id,
     config_entry,
     info_device,
     description,
@@ -146,7 +146,7 @@ def create_binary_sensor(
     """Create a binary sensor based on the given data."""
     return ProxmoxBinarySensorEntity(
         coordinator=coordinator,
-        unique_id=f"{config_entry.entry_id}_{vm_id}_{description.key}",
+        unique_id=f"{config_entry.entry_id}_{resource_id}_{description.key}",
         description=description,
         info_device=info_device,
     )

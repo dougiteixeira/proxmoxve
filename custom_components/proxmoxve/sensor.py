@@ -432,7 +432,7 @@ async def async_setup_entry(
                             node=node,
                         ),
                         description=description,
-                        vm_id=None,
+                        resource_id=node,
                         config_entry=config_entry,
                     )
                 )
@@ -454,7 +454,7 @@ async def async_setup_entry(
                             vm_id=vm_id,
                         ),
                         description=description,
-                        vm_id=vm_id,
+                        resource_id=vm_id,
                         config_entry=config_entry,
                     )
                 )
@@ -476,7 +476,7 @@ async def async_setup_entry(
                             vm_id=ct_id,
                         ),
                         description=description,
-                        vm_id=ct_id,
+                        resource_id=ct_id,
                         config_entry=config_entry,
                     )
                 )
@@ -489,13 +489,13 @@ def create_sensor(
     info_device: DeviceInfo,
     description: ProxmoxSensorEntityDescription,
     config_entry: ConfigEntry,
-    vm_id: str | None = None,
+    resource_id: str | None = None,
 ) -> ProxmoxSensorEntity:
     """Create a sensor based on the given data."""
     return ProxmoxSensorEntity(
         coordinator=coordinator,
         description=description,
-        unique_id=f"{config_entry.entry_id}_{vm_id}_{description.key}",
+        unique_id=f"{config_entry.entry_id}_{resource_id}_{description.key}",
         info_device=info_device,
     )
 
