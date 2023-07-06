@@ -32,7 +32,7 @@ Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
 
 ## Configuration
 
-Adding Drivvo to your Home Assistant instance can be done via the UI using this button:
+Adding Proxmox VE to your Home Assistant instance can be done via the UI using this button:
 
 [![image](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=proxmoxve)
 
@@ -49,7 +49,7 @@ If the button above doesn't work, you can also perform the following steps manua
 
 ## Debugging
 
-To enable debug for Drivvo integration, add following to your `configuration.yaml`:
+To enable debug for Proxmox VE integration, add following to your `configuration.yaml`:
 ```yaml
 logger:
   default: info
