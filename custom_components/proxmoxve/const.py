@@ -55,6 +55,7 @@ class ProxmoxCommand(StrEnum):
     RESET = "reset"
     START_ALL = "startall"
     STOP_ALL = "stopall"
+    HIBERNATE = "hibernate"
 
 
 class ProxmoxKeyAPIParse(StrEnum):
