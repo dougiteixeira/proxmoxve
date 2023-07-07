@@ -110,6 +110,13 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         entity_registry_enabled_default=False,
     ),
     ProxmoxButtonEntityDescription(
+        key=ProxmoxCommand.HIBERNATE,
+        icon="mdi:bed",
+        name="Hibernate",
+        api_category=ProxmoxType.QEMU,
+        entity_registry_enabled_default=False,
+    ),
+    ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESET,
         icon="mdi:restart-alert",
         name="Reset",
