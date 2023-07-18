@@ -6,7 +6,7 @@ blueprint:
   input:
     proxmox_host_status:
       name: Host status
-      description: Select the Proxmox host connectivity entity (see details at https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md#when-the-integration-does-not-recover-after-the-host-goes-offline-for-an-extended-period-of-time-and-then-comes-back-online)
+      description: Select the Proxmox host connectivity entity ([see details at here](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md#when-the-integration-does-not-recover-after-the-host-goes-offline-for-an-extended-period-of-time-and-then-comes-back-online))
       selector:
           entity:
             multiple: false
