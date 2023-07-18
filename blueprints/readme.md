@@ -4,6 +4,22 @@ Here you will find some blueprints that help you to solve small integration bugs
 
 ### When the integration does not recover after the host goes offline for an extended period of time and then comes back online:
 
+#### Previous steps:
+
+To use this blueprint you need to create a binary sensor in your Home Assistant using the Ping integration ([see documentation here](https://www.home-assistant.io/integrations/ping/#binary-sensor)), follow the steps below:
+
+* Include the code below in your configuration file (`configuration.yaml`):
+  ```
+    - platform: ping
+      host: 10.10.10.10 # Change to the IP address of your Proxmox host
+      name: Proxmox host connectivity
+      count: 2
+      scan_interval: 30
+  ```
+* Change to the IP address of your Proxmox host in the file.
+* Save the file.
+* Restart Home Assistant.
+
 #### Importing via My Home Assistant:
 * Click this button to import:
   
