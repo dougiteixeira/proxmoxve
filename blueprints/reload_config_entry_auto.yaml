@@ -2,11 +2,11 @@ blueprint:
   name: Proxmox - Reload Config Entry
   description: ""
   domain: automation
-  source_url: https://gist.github.com/XXXXXX
+  source_url: https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/reload_config_entry_auto.yaml
   input:
     proxmox_host_status:
       name: Host status
-      description: Select the Proxmox host connectivity entity (see details at xxxx)
+      description: Select the Proxmox host connectivity entity (see details at https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md#when-the-integration-does-not-recover-after-the-host-goes-offline-for-an-extended-period-of-time-and-then-comes-back-online)
       selector:
           entity:
             multiple: false
