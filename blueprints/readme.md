@@ -26,7 +26,7 @@ To use this blueprint you need to create a binary sensor in your Home Assistant 
 ### Importing via My Home Assistant:
 * Click this button to import:
   
-  [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdougiteixeira%2Fproxmoxve%2Fnew%2Fdougiteixeira-patch-1%2Fblueprints)
+  [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/reload_config_entry_auto.yaml)
 
 #### Or do the import manually:
 
