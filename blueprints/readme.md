@@ -33,7 +33,7 @@ To use this blueprint you need to create a binary sensor in your Home Assistant 
 * Go to [Settings > Automations & Scenes > Blueprints](https://my.home-assistant.io/redirect/blueprints/).
 * Select the blue Import Blueprint button in the bottom right.
 * A new dialog will pop-up asking you for the URL.
-* Enter the URL and select Preview.
+* Enter the URL `https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/reload_config_entry_auto.yaml` and select Preview.
 * This will load the blueprint and show a preview in the import dialog.
 * You can change the name and finish the import.
 * The blueprint can now be used for creating automations.
