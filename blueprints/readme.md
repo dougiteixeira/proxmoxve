@@ -13,7 +13,7 @@ To use this blueprint you need to create a binary sensor in your Home Assistant 
 
 * Include the code below in your configuration file (`configuration.yaml`):
   ```
-  sensor:
+  binary_sensor:
     - platform: ping
       host: 10.10.10.10 # Change to the IP address of your Proxmox host
       name: Proxmox host connectivity
