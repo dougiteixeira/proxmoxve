@@ -13,6 +13,14 @@
           "ssl_rejection": "Não foi possível verificar o certificado SSL"
       },
       "step": {
+          "expose": {
+              "data": {
+                  "lxc": "Contêiner Linux (LXC)",
+                  "node": "Nó",
+                  "qemu": "Maquina Virtual (QEMU)"
+              },
+              "description": "Selecione os nós da instância Proxmox, as máquinas virtuais (QEMU) e contêineres (LXC) que deseja expor"
+          },
           "host": {
               "data": {
                   "host": "Host",
@@ -22,15 +30,7 @@
                   "username": "Usuário",
                   "verify_ssl": "Verificar certificado SSL"
               },
-              "description": "Por favor, preencha o formulário e pressione enviar quando estiver pronto",
-              "title": "Informações do host Proxmox"
-          },
-          "node": {
-              "data": {
-                  "node": "Nó:"
-              },
-              "description": "Selecione os nós da instância do Proxmox que você deseja expor:",
-              "title": "Seleção de nó Proxmox"
+              "description": "Informações do host Proxmox"
           },
           "reauth_confirm": {
               "data": {
@@ -39,15 +39,107 @@
               },
               "description": "O nome de usuário ou senha é inválido.",
               "title": "Reautenticar Integração"
+          }
+      }
+  },
+  "entity": {
+      "binary_sensor":{
+          "status": {
+            "name": "Status"
           },
-          "selection_qemu_lxc": {
-              "data": {
-                  "lxc": "Contêiner Linux (LXC)",
-                  "node": "Nó",
-                  "qemu": "Maquina Virtual (QEMU)"
-              },
-              "description": "Selecione as máquinas virtuais e contêineres para expor:",
-              "title": "Seleção de Máquinas Virtuais (QEMU) e Containers (LXC)"
+          "health": {
+            "name": "Integridade"
+          }
+      },
+      "button": {
+          "start_all": {
+            "name": "Inciar tudo"
+          },
+          "stop_all": {
+            "name": "Parar tudo"
+          },
+          "shutdown": {
+            "name": "Desligar"
+          },
+          "reboot": {
+            "name": "Reiniciar"
+          },
+          "start": {
+            "name": "Iniciar"
+          },
+          "stop": {
+            "name": "Parar"
+          },
+          "resume": {
+            "name": "Retomar"
+          },
+          "suspend": {
+            "name": "Suspender"
+          },
+          "reset": {
+            "name": "Resetar"
+          }
+      },
+      "sensor": {
+          "cpu_used": {
+            "name": "CPU em uso"
+          },
+          "disk_free": {
+            "name": "Disco disponível"
+          },
+          "disk_free_perc": {
+            "name": "Disco percentual disponível"
+          },
+          "disk_total": {
+            "name": "Disco total"
+          },
+          "disk_used": {
+            "name": "Disco em uso"
+          },
+          "disk_used_perc": {
+            "name": "Disco percentual em uso"
+          },
+          "memory_free": {
+            "name": "Memória disponível"
+          },
+          "memory_free_perc": {
+            "name": "Memória percentual disponível"
+          },
+          "memory_total": {
+            "name": "Memória total"
+          },
+          "memory_used": {
+            "name": "Memória em uso"
+          },
+          "memory_used_perc": {
+            "name": "Memória percentual em uso"
+          },
+          "network_in": {
+            "name": "Rede recebido"
+          },
+          "network_out": {
+            "name": "Rede enviado"
+          },
+          "node": {
+              "name": "Nó"
+          },
+          "swap_free": {
+            "name": "Swap disponível"
+          },
+          "swap_free_perc": {
+            "name": "Swap percentual disponível"
+          },
+          "swap_total": {
+            "name": "Swap total"
+          },
+          "swap_used": {
+            "name": "Swap em uso"
+          },
+          "swap_used_perc": {
+            "name": "Swap percentual em uso"
+          },
+          "uptime": {
+            "name": "Tempo de atividade"
           }
       }
   },
@@ -92,8 +184,8 @@
           "description": "VM/container {vm_id} não existe no nó {node} ({host}:{port}), remova-o nas opções da integração.",
           "title": "A VM/contêiner {vm_id} não existe"
       }
-  },
-  "options": {
+},
+"options": {
       "abort": {
           "changes_successful": "Alterações salvas com sucesso.",
           "no_nodes": "Nenhum nó foi retornado para o host.",
@@ -107,138 +199,29 @@
           "ssl_rejection": "Não foi possível verificar o certificado SSL"
       },
       "step": {
-          "host": {
+          "change_expose": {
+              "data": {
+                  "lxc": "Contêiner Linux (LXC)",
+                  "node": "Nó",
+                  "qemu": "Maquina Virtual (QEMU)"
+              },
+              "description": "Selecione os nós da instância Proxmox, as máquinas virtuais (QEMU) e contêineres (LXC) que deseja expor"
+          },
+          "host_auth": {
               "data": {
                   "password": "Senha",
                   "realm": "Domínio",
                   "username": "Usuário",
                   "verify_ssl": "Verificar certificado SSL"
               },
-              "description": "Por favor, preencha o formulário e pressione enviar quando estiver pronto",
-              "title": "Informações do host Proxmox VE"
+              "description": "Informações do host Proxmox"
           },
-          "interval_update": {
-              "data": {
-                  "interval_update_host": "Host (segundos)",
-                  "interval_update_lxc": "Contêineres Linux (LXC) (segundos)",
-                  "interval_update_node": "Nó (segundos)",
-                  "interval_update_qemu": "Máquinas Virtuais (QEMU) (segundos)"
-              },
-              "description": "Altere o tempo (em segundos) para que as informações e os sensores sejam atualizados para cada recurso Proxmox:",
-              "title": "Configuração do intervalo de atualização de informações:"
-          },
-          "selection_qemu_lxc": {
-              "data": {
-                  "lxc": "Contêineres Linux (LXC)",
-                  "node": "Nó",
-                  "qemu": "Máquinas Virtuais (QEMU)"
-              },
-              "description": "Selecione as máquinas virtuais (QEMU) e contêineres (LXC) para expor:",
-              "title": "Seleção de Máquinas Virtuais (QEMU) e Containers (LXC):"
+          "menu": {
+              "menu_options": {
+                  "change_expose": "Adicionar ou remover Nós, VMs ou Contêineres",
+                  "host_auth": "Alterar as informações de autenticação do host"
+              }
           }
       }
-  },
-  "entity": {
-    "binary_sensor":{
-      "status": {
-        "name": "Status"
-      },
-      "health": {
-        "name": "Integridade"
-      }
-    },
-    "button": {
-      "start_all": {
-        "name": "Inciar tudo"
-      },
-      "stop_all": {
-        "name": "Parar tudo"
-      },
-      "shutdown": {
-        "name": "Desligar"
-      },
-      "reboot": {
-        "name": "Reiniciar"
-      },
-      "start": {
-        "name": "Iniciar"
-      },
-      "stop": {
-        "name": "Parar"
-      },
-      "resume": {
-        "name": "Retomar"
-      },
-      "suspend": {
-        "name": "Suspender"
-      },
-      "reset": {
-        "name": "Resetar"
-      }
-    },
-    "sensor": {
-      "cpu_used": {
-        "name": "CPU em uso"
-      },
-      "disk_free_perc": {
-        "name": "Disco percentual disponível"
-      },
-      "disk_total": {
-        "name": "Disco total"
-      },
-      "disk_used": {
-        "name": "Disco em uso"
-      },
-      "disk_used_perc": {
-        "name": "Disco percentual em uso"
-      },
-      "memory_free": {
-        "name": "Memória disponível"
-      },
-      "memory_free_perc": {
-        "name": "Memória percentual disponível"
-      },
-      "memory_total": {
-        "name": "Memória total"
-      },
-      "memory_used": {
-        "name": "Memória em uso"
-      },
-      "memory_used_perc": {
-        "name": "Memória percentual em uso"
-      },
-      "network_in": {
-        "name": "Rede recebido"
-      },
-      "network_out": {
-        "name": "Rede enviado"
-      },
-      "swap_free": {
-        "name": "Swap disponível"
-      },
-      "swap_free_perc": {
-        "name": "Swap percentual disponível"
-      },
-      "swap_total": {
-        "name": "Swap total"
-      },
-      "swap_used": {
-        "name": "Swap em uso"
-      },
-      "swap_used_perc": {
-        "name": "Swap percentual em uso"
-      },
-      "uptime": {
-        "name": "Tempo de atividade"
-      }
-    },
-    "switch": {
-      "start": {
-        "name": "Iniciar"
-      },
-      "stop": {
-        "name": "Parar"
-      }
-    }
   }
 }
