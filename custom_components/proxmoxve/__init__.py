@@ -1,6 +1,8 @@
 """Support for Proxmox VE."""
 from __future__ import annotations
+
 from typing import Any
+import warnings
 
 from proxmoxer import AuthenticationError, ProxmoxAPI
 from proxmoxer.core import ResourceException
@@ -10,9 +12,8 @@ from requests.exceptions import (
     RetryError,
     SSLError,
 )
+from urllib3.exceptions import InsecureRequestWarning
 import voluptuous as vol
-
-import warnings
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
@@ -34,9 +35,6 @@ from homeassistant.helpers.issue_registry import (
     async_delete_issue,
 )
 from homeassistant.helpers.typing import ConfigType
-
-
-from urllib3.exceptions import InsecureRequestWarning
 
 from .const import (
     CONF_CONTAINERS,
@@ -176,11 +174,11 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         device_identifiers.append(
             f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data.get(CONF_NODE)}"
         )
-        for resource in config_entry.data.get(CONF_QEMU):
+        for resource in config_entry.data[CONF_QEMU]:
             device_identifiers.append(
                 f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data.get(CONF_NODE)}_{resource}"
             )
-        for resource in config_entry.data.get(CONF_LXC):
+        for resource in config_entry.data[CONF_LXC]:
             device_identifiers.append(
                 f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data.get(CONF_NODE)}_{resource}"
             )

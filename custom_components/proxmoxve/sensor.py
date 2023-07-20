@@ -28,7 +28,6 @@ from .const import (
     CONF_QEMU,
     COORDINATORS,
     DOMAIN,
-    LOGGER,
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
@@ -441,11 +440,10 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
         if not getattr(data, self.entity_description.key, False):
             if value := self.entity_description.value_fn:
                 native_value = value(data)
+            elif self.entity_description.key is ProxmoxKeyAPIParse.CPU:
+                return 0
             else:
-                if self.entity_description.key is ProxmoxKeyAPIParse.CPU:
-                    return 0
-                else:
-                    return None
+                return None
         else:
             native_value = getattr(data, self.entity_description.key)
 
