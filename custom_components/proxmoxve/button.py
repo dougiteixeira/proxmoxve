@@ -45,6 +45,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Start all",
         translation_key="start_all",
         entity_registry_enabled_default=False,
+        translation_key="start_all",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.STOP_ALL,
@@ -52,6 +53,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Stop all",
         translation_key="stop_all",
         entity_registry_enabled_default=False,
+        translation_key="stop_all",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
@@ -59,6 +61,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Shutdown",
         translation_key="shutdown",
         entity_registry_enabled_default=False,
+        translation_key="shutdown",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.REBOOT,
@@ -66,6 +69,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Reboot",
         translation_key="reboot",
         entity_registry_enabled_default=False,
+        translation_key="reboot",
     ),
 )
 

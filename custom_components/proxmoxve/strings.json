@@ -176,6 +176,9 @@
       "cpu_used": {
         "name": "CPU used"
       },
+      "disk_free": {
+        "name": "Disk free"
+      },
       "disk_free_perc": {
         "name": "Disk free percentage"
       },
@@ -209,6 +212,9 @@
       "network_out": {
         "name": "Network out"
       },
+      "node": {
+        "name": "Node"
+      },
       "swap_free": {
         "name": "Swap free"
       },
@@ -226,14 +232,6 @@
       },
       "uptime": {
         "name": "Uptime"
-      }
-    },
-    "switch": {
-      "start": {
-        "name": "Start"
-      },
-      "stop": {
-        "name": "Stop"
       }
     }
   }
