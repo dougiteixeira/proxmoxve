@@ -9,7 +9,7 @@ from proxmoxer.core import ResourceException
 from requests.exceptions import ConnectTimeout, SSLError
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_USERNAME
+from homeassistant.const import CONF_HOST, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.issue_registry import (
@@ -21,7 +21,7 @@ from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import CONF_NODE, DOMAIN, LOGGER, UPDATE_INTERVAL, ProxmoxType
-from .models import ProxmoxNodeData, ProxmoxVMData, ProxmoxLXCData
+from .models import ProxmoxLXCData, ProxmoxNodeData, ProxmoxVMData
 
 
 class ProxmoxCoordinator(

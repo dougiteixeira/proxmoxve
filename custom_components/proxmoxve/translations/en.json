@@ -19,8 +19,7 @@
                     "nodes": "Nodes",
                     "qemu": "Virtual Machines (QEMU)"
                 },
-                "description": "Select the virtual machines and containers to expose:",
-                "title": "Select the Proxmox instance nodes and Virtual Machines (QEMU) and Containers (LXC) you want to expose."
+                "description": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose"
             },
             "host": {
                 "data": {
@@ -31,8 +30,7 @@
                     "username": "Username",
                     "verify_ssl": "Verify SSL certificate"
                 },
-                "description": "Please fill out the form and then press submit when you're ready",
-                "title": "Proxmox host information"
+                "description": "Proxmox host information"
             },
             "reauth_confirm": {
                 "data": {
@@ -41,6 +39,107 @@
                 },
                 "description": "The username or password is invalid.",
                 "title": "Reauthenticate Integration"
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "health": {
+                "name": "Health"
+            },
+            "status": {
+                "name": "Status"
+            }
+        },
+        "button": {
+            "reboot": {
+                "name": "Reboot"
+            },
+            "reset": {
+                "name": "Reset"
+            },
+            "resume": {
+                "name": "Resume"
+            },
+            "shutdown": {
+                "name": "Shutdown"
+            },
+            "start": {
+                "name": "Start"
+            },
+            "start_all": {
+                "name": "Start all"
+            },
+            "stop": {
+                "name": "Stop"
+            },
+            "stop_all": {
+                "name": "Stop all"
+            },
+            "suspend": {
+                "name": "Suspend"
+            }
+        },
+        "sensor": {
+            "cpu_used": {
+                "name": "CPU used"
+            },
+            "disk_free": {
+                "name": "Disk free"
+            },
+            "disk_free_perc": {
+                "name": "Disk free percentage"
+            },
+            "disk_total": {
+                "name": "Disk total"
+            },
+            "disk_used": {
+                "name": "Disk used"
+            },
+            "disk_used_perc": {
+                "name": "Disk used percentage"
+            },
+            "memory_free": {
+                "name": "Memory free"
+            },
+            "memory_free_perc": {
+                "name": "Memory free percentage"
+            },
+            "memory_total": {
+                "name": "Memory total"
+            },
+            "memory_used": {
+                "name": "Memory used"
+            },
+            "memory_used_perc": {
+                "name": "Memory used percentage"
+            },
+            "network_in": {
+                "name": "Network in"
+            },
+            "network_out": {
+                "name": "Network out"
+            },
+            "node": {
+                "name": "Node"
+            },
+            "swap_free": {
+                "name": "Swap free"
+            },
+            "swap_free_perc": {
+                "name": "Swap free percentage"
+            },
+            "swap_total": {
+                "name": "Swap total"
+            },
+            "swap_used": {
+                "name": "Swap used"
+            },
+            "swap_used_perc": {
+                "name": "Swap used percentage"
+            },
+            "uptime": {
+                "name": "Uptime"
             }
         }
     },
@@ -116,8 +215,7 @@
                     "nodes": "Nodes",
                     "qemu": "Virtual Machines (QEMU)"
                 },
-                "description": "Select the virtual machines and containers to expose:",
-                "title": "Select the Proxmox instance nodes and Virtual Machines (QEMU) and Containers (LXC) you want to expose."
+                "description": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose"
             },
             "host_auth": {
                 "data": {
@@ -126,8 +224,7 @@
                     "username": "Username",
                     "verify_ssl": "Verify SSL certificate"
                 },
-                "description": "Please fill out the form and then press submit when you're ready",
-                "title": "Proxmox host information"
+                "description": "Proxmox host information"
             },
             "menu": {
                 "menu_options": {

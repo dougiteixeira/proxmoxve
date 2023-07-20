@@ -18,7 +18,6 @@ from . import (
 )
 from .const import (
     CONF_LXC,
-    CONF_NODE,
     CONF_NODES,
     CONF_QEMU,
     COORDINATORS,
@@ -43,26 +42,30 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.START_ALL,
         icon="mdi:play",
-        name="Start All",
+        name="Start all",
         entity_registry_enabled_default=False,
+        translation_key="start_all",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.STOP_ALL,
         icon="mdi:stop",
-        name="Stop All",
+        name="Stop all",
         entity_registry_enabled_default=False,
+        translation_key="stop_all",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
         icon="mdi:server-off",
         name="Shutdown",
         entity_registry_enabled_default=False,
+        translation_key="shutdown",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.REBOOT,
         icon="mdi:restart",
         name="Reboot",
         entity_registry_enabled_default=False,
+        translation_key="reboot",
     ),
 )
 
@@ -73,6 +76,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Reboot",
         api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
+        translation_key="reboot",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.START,
@@ -80,6 +84,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Start",
         api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
+        translation_key="start",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
@@ -87,6 +92,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Shutdown",
         api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
+        translation_key="shutdown",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.STOP,
@@ -94,6 +100,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Stop",
         api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
+        translation_key="stop",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESUME,
@@ -101,6 +108,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Resume",
         api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
+        translation_key="resume",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SUSPEND,
@@ -108,6 +116,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Suspend",
         api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
+        translation_key="suspend",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESET,
@@ -115,6 +124,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Reset",
         api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
+        translation_key="reset",
     ),
 )
 
