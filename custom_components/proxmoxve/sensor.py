@@ -13,10 +13,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    UnitOfInformation,
-    PERCENTAGE,
-)
+from homeassistant.const import PERCENTAGE, UnitOfInformation
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -24,15 +21,19 @@ from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 import homeassistant.util.dt as dt_util
 
-from . import ProxmoxEntity, ProxmoxEntityDescription, device_info
+from . import device_info
 from .const import (
     CONF_LXC,
+    CONF_NODES,
     CONF_QEMU,
     COORDINATORS,
     DOMAIN,
+    LOGGER,
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
+from .entity import ProxmoxEntity
+from .models import ProxmoxEntityDescription
 
 
 @dataclass
@@ -330,31 +331,32 @@ async def async_setup_entry(
 
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
-    coordinator = coordinators[ProxmoxType.Node]
-    # unfound vm case
-    if coordinator.data is not None:
-        for description in PROXMOX_SENSOR_NODES:
-            sensors.append(
-                create_sensor(
-                    coordinator=coordinator,
-                    info_device=device_info(
-                        hass=hass,
+    for node in config_entry.data[CONF_NODES]:
+        coordinator = coordinators[node]
+        # unfound vm case
+        if coordinator.data is not None:
+            for description in PROXMOX_SENSOR_NODES:
+                sensors.append(
+                    create_sensor(
+                        coordinator=coordinator,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.Node,
+                            node=node,
+                        ),
+                        description=description,
+                        resource_id=node,
                         config_entry=config_entry,
-                        api_category=ProxmoxType.Node,
-                        vm_id=None,
-                    ),
-                    description=description,
-                    vm_id=None,
-                    config_entry=config_entry,
+                    )
                 )
-            )
 
     for vm_id in config_entry.data[CONF_QEMU]:
         coordinator = coordinators[vm_id]
         # unfound vm case
         if coordinator.data is None:
             continue
-        for description in PROXMOX_SENSOR_VM:
+        for description in PROXMOX_SENSOR_QEMU:
             if description.api_category in (None, ProxmoxType.QEMU):
                 sensors.append(
                     create_sensor(
@@ -366,7 +368,7 @@ async def async_setup_entry(
                             vm_id=vm_id,
                         ),
                         description=description,
-                        vm_id=vm_id,
+                        resource_id=vm_id,
                         config_entry=config_entry,
                     )
                 )
@@ -376,7 +378,7 @@ async def async_setup_entry(
         # unfound container case
         if coordinator.data is None:
             continue
-        for description in PROXMOX_SENSOR_VM:
+        for description in PROXMOX_SENSOR_LXC:
             if description.api_category in (None, ProxmoxType.LXC):
                 sensors.append(
                     create_sensor(
@@ -388,7 +390,7 @@ async def async_setup_entry(
                             vm_id=ct_id,
                         ),
                         description=description,
-                        vm_id=ct_id,
+                        resource_id=ct_id,
                         config_entry=config_entry,
                     )
                 )
@@ -401,13 +403,13 @@ def create_sensor(
     info_device: DeviceInfo,
     description: ProxmoxSensorEntityDescription,
     config_entry: ConfigEntry,
-    vm_id: str | None = None,
+    resource_id: str | None = None,
 ) -> ProxmoxSensorEntity:
     """Create a sensor based on the given data."""
     return ProxmoxSensorEntity(
         coordinator=coordinator,
         description=description,
-        unique_id=f"{config_entry.entry_id}_{vm_id}_{description.key}",
+        unique_id=f"{config_entry.entry_id}_{resource_id}_{description.key}",
         info_device=info_device,
     )
 
@@ -436,13 +438,16 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
         if (data := self.coordinator.data) is None:
             return None
 
-        if self.entity_description.key not in data:
+        if not getattr(data, self.entity_description.key, False):
             if value := self.entity_description.value_fn:
                 native_value = value(data)
             else:
-                return None
+                if self.entity_description.key is ProxmoxKeyAPIParse.CPU:
+                    return 0
+                else:
+                    return None
         else:
-            native_value = data[self.entity_description.key]
+            native_value = getattr(data, self.entity_description.key)
 
         if (conversion := self.entity_description.conversion_fn) is not None:
             return conversion(native_value)

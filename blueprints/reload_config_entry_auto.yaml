@@ -1,0 +1,50 @@
+blueprint:
+  name: Proxmox - Reload Config Entry
+  description: ""
+  domain: automation
+  source_url: https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/reload_config_entry_auto.yaml
+  input:
+    proxmox_host_status:
+      name: Host status
+      description: Select the Proxmox host connectivity entity ([see details at here](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md#previous-steps))
+      selector:
+          entity:
+            multiple: false
+            filter:
+             integration: ping
+             domain: binary_sensor
+             device_class: connectivity
+    proxmox_node_status:
+      name: Proxmox node status
+      description: Select the Proxmox node status entity
+      selector:
+          entity:
+            multiple: false
+            filter:
+             integration: proxmoxve
+             domain: binary_sensor
+             device_class: running
+trigger:
+  - platform: state
+    entity_id:
+      - !input 'proxmox_host_status'
+    from: "off"
+    to: "on"
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      
+condition:
+  - condition: state
+    entity_id:  !input 'proxmox_node_status'
+    state: unavailable
+    
+action:
+  - service: homeassistant.reload_config_entry
+    data: {}
+    target:
+      entity_id: !input 'proxmox_node_status'
+
+mode: queued
+max_exceeded: silent
