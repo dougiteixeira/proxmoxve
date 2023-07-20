@@ -44,16 +44,8 @@ class ProxmoxSensorEntityDescription(ProxmoxEntityDescription, SensorEntityDescr
     value_fn: Callable[[Any], bool | str] | None = None
     api_category: ProxmoxType | None = None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
 
+
 PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
-    ProxmoxSensorEntityDescription(
-        key=ProxmoxKeyAPIParse.CPU,
-        name="CPU used",
-        icon="mdi:cpu-64-bit",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
-    ),
     ProxmoxSensorEntityDescription(
         key="disk_free",
         name="Disk free",
@@ -306,6 +298,7 @@ PROXMOX_SENSOR_LXC: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     *PROXMOX_SENSOR_SWAP,
     *PROXMOX_SENSOR_UPTIME,
 )
+
 
 async def async_setup_entry(
     hass: HomeAssistant,

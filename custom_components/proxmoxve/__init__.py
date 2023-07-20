@@ -502,7 +502,7 @@ def device_info(
             DOMAIN,
             f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
         )
-        default_model = api_category.upper()
+        model = api_category.upper()
 
     elif api_category is ProxmoxType.Node:
         coordinator = coordinators[node]
@@ -514,7 +514,7 @@ def device_info(
         identifier = f"{config_entry.entry_id}_{api_category.upper()}_{node}"
         url = f"https://{host}:{port}/#v1:0:=node/{node}"
         via_device = ("", "")
-        default_model = model_processor
+        model = model_processor
 
     if create:
         device_registry = dr.async_get(hass)
@@ -523,9 +523,9 @@ def device_info(
             entry_type=dr.DeviceEntryType.SERVICE,
             configuration_url=url,
             identifiers={(DOMAIN, identifier)},
-            default_manufacturer="Proxmox VE",
+            manufacturer="Proxmox VE",
             name=name,
-            default_model=default_model,
+            model=model,
             sw_version=proxmox_version,
             hw_version=None,
             via_device=via_device,
@@ -534,9 +534,9 @@ def device_info(
         entry_type=dr.DeviceEntryType.SERVICE,
         configuration_url=url,
         identifiers={(DOMAIN, identifier)},
-        default_manufacturer="Proxmox VE",
+        manufacturer="Proxmox VE",
         name=name,
-        default_model=default_model,
+        model=model,
         sw_version=proxmox_version,
         hw_version=None,
         via_device=via_device,
