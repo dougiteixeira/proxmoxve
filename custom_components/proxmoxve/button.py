@@ -124,6 +124,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Hibernate",
         api_category=ProxmoxType.QEMU,
         entity_registry_enabled_default=False,
+        translation_key="hibernate",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESET,

@@ -78,6 +78,9 @@
             },
             "suspend": {
                 "name": "Suspend"
+            },
+            "hibernate": {
+                "name": "Hibernate"
             }
         },
         "sensor": {
