@@ -2,8 +2,7 @@
   "config": {
     "step": {
       "host": {
-        "title": "Proxmox host information",
-        "description": "Please fill out the form and then press submit when you're ready",
+        "description": "Proxmox host information",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "port": "[%key:common::config_flow::data::port%]",
@@ -14,8 +13,7 @@
         }
       },
       "expose": {
-        "title": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose.",
-        "description": "Select the virtual machines and containers to expose:",
+        "description": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose",
         "data": {
           "nodes": "Nodes",
           "qemu": "Virtual Machines (QEMU)",
@@ -103,7 +101,6 @@
         }
       },
       "host_auth": {
-        "title": "[%key:component::proxmoxve::config::step::host::title%]",
         "description": "[%key:component::proxmoxve::config::step::host::description%]",
         "data": {
           "username": "[%key:component::proxmoxve::config::step::host::data::username%]",
@@ -113,10 +110,9 @@
         }
       },
       "change_expose": {
-        "title": "[%key:component::proxmoxve::config::step::expose::title%]",
         "description": "[%key:component::proxmoxve::config::step::expose::description%]",
         "data": {
-          "nodes": "[%key:component::proxmoxve::config::step::expose::data::node%]",
+          "nodes": "[%key:component::proxmoxve::config::step::expose::data::nodes%]",
           "qemu": "[%key:component::proxmoxve::config::step::expose::data::qemu%]",
           "lxc": "[%key:component::proxmoxve::config::step::expose::data::lxc%]"
         }
@@ -135,6 +131,107 @@
       "changes_successful": "Changes saved successfully.",
       "no_nodes_to_add": "No nodes to add.",
       "node_already_exists": "The selected node already exists."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "health": {
+        "name": "Health"
+      }
+    },
+    "button": {
+      "start_all": {
+        "name": "Start all"
+      },
+      "stop_all": {
+        "name": "Stop all"
+      },
+      "shutdown": {
+        "name": "Shutdown"
+      },
+      "reboot": {
+        "name": "Reboot"
+      },
+      "start": {
+        "name": "Start"
+      },
+      "stop": {
+        "name": "Stop"
+      },
+      "resume": {
+        "name": "Resume"
+      },
+      "suspend": {
+        "name": "Suspend"
+      },
+      "reset": {
+        "name": "Reset"
+      }
+    },
+    "sensor": {
+      "cpu_used": {
+        "name": "CPU used"
+      },
+      "disk_free": {
+        "name": "Disk free"
+      },
+      "disk_free_perc": {
+        "name": "Disk free percentage"
+      },
+      "disk_total": {
+        "name": "Disk total"
+      },
+      "disk_used": {
+        "name": "Disk used"
+      },
+      "disk_used_perc": {
+        "name": "Disk used percentage"
+      },
+      "memory_free": {
+        "name": "Memory free"
+      },
+      "memory_free_perc": {
+        "name": "Memory free percentage"
+      },
+      "memory_total": {
+        "name": "Memory total"
+      },
+      "memory_used": {
+        "name": "Memory used"
+      },
+      "memory_used_perc": {
+        "name": "Memory used percentage"
+      },
+      "network_in": {
+        "name": "Network in"
+      },
+      "network_out": {
+        "name": "Network out"
+      },
+      "node": {
+        "name": "Node"
+      },
+      "swap_free": {
+        "name": "Swap free"
+      },
+      "swap_free_perc": {
+        "name": "Swap free percentage"
+      },
+      "swap_total": {
+        "name": "Swap total"
+      },
+      "swap_used": {
+        "name": "Swap used"
+      },
+      "swap_used_perc": {
+        "name": "Swap used percentage"
+      },
+      "uptime": {
+        "name": "Uptime"
+      }
     }
   }
 }

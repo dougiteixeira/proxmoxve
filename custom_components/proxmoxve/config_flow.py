@@ -774,7 +774,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._config[CONF_LXC].append(lxc_selection)
 
         return self.async_create_entry(
-            title=(f"{self._config[CONF_HOST]}:" f"{self._config[CONF_PORT]}"),
+            title=(f"{self._config[CONF_HOST]}:{self._config[CONF_PORT]}"),
             data=self._config,
         )
 

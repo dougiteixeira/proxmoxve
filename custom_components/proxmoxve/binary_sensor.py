@@ -38,6 +38,7 @@ PROXMOX_BINARYSENSOR_NODES: Final[tuple[ProxmoxBinarySensorEntityDescription, ..
         name="Status",
         device_class=BinarySensorDeviceClass.RUNNING,
         on_value="online",
+        translation_key="status",
     ),
 )
 
@@ -47,6 +48,7 @@ PROXMOX_BINARYSENSOR_VM: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]]
         name="Status",
         device_class=BinarySensorDeviceClass.RUNNING,
         on_value="running",
+        translation_key="status",
     ),
     ProxmoxBinarySensorEntityDescription(
         key=ProxmoxKeyAPIParse.HEALTH,
@@ -55,6 +57,7 @@ PROXMOX_BINARYSENSOR_VM: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]]
         on_value="running",
         inverted=True,
         api_category=ProxmoxType.QEMU,
+        translation_key="health",
     ),
 )
 

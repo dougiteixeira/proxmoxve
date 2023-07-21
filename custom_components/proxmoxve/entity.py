@@ -4,7 +4,9 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
+
 from .models import ProxmoxEntityDescription
+
 
 class ProxmoxEntity(CoordinatorEntity):
     """Represents any entity created for the Proxmox VE platform."""
