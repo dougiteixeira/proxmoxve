@@ -78,6 +78,9 @@
           },
           "reset": {
             "name": "Resetar"
+          },
+          "hibernate": {
+             "name": "Hibernar"
           }
       },
       "sensor": {
