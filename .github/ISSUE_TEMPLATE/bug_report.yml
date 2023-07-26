@@ -36,6 +36,11 @@ body:
       required: true
     attributes:
       label: What version of Proxmox VE Custom Integration has the issue?
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: What version of Proxmox VE do you have the problem?
   - type: textarea
     attributes:
       label: Additional information
