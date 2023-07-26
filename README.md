@@ -107,3 +107,30 @@ Creating a dedicated user for Home Assistant, limited to only to the access just
 9. Click `Add`
 
 In your Home Assistant configuration, use `homeassistant@pve` for the username and your chosen password for the password.
+
+## Some entities are disabled by default (including control buttons), see below how to enable them.
+
+ <details><summary>A step by step to enable entities</summary>
+  
+   1) Go to the page for the device you want to enable the pushbutton (or sensor).
+
+      ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/4e3f9b7d-e935-4fc5-bdd3-3329ef9b90a8)
+   
+   2) Click +x entities not show
+
+      ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/0240d2ed-efac-4c59-9def-e721a44dde90)
+   
+   3) Click on the entity you want to enable and click on settings (on the gear icon):
+
+      ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/e1bd2fb2-6fb5-4919-88c1-8056b7435f87)
+   
+   4) Click the Enable button at the top of the dialog:
+
+      ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/1a8205e4-a779-4a01-922d-5d147e8e5766)
+   
+   5) Wait a while (approximately 30 seconds) for the entity to be enabled. If you don't want to wait, just reload the configuration entry on the integration page.
+
+      ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/33edd547-8c55-44eb-b0b9-5036317bf077)
+   
+   For the entity to appear enabled on the device page, it may be necessary to refresh the page.
+   </details>
