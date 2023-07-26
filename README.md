@@ -7,7 +7,7 @@ After configuring this integration, the following information is available:
 
  - Binary sensor entities with the status of node and selected virtual machines/containers.
  - Sensor entities of the selected node and virtual machines/containers. Some sensors are created disabled by default, you can enable them by accessing the entity's configuration.
- - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled.
+ - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled, [see how to enable them here](https://github.com/dougiteixeira/proxmoxve/#some-entities-are-disabled-by-default-including-control-buttons-see-below-how-to-enable-them).
 
 ![image](https://user-images.githubusercontent.com/31328123/189549962-1b195b2c-a5b8-40eb-947e-74052543d804.png)
 
@@ -112,7 +112,7 @@ In your Home Assistant configuration, use `homeassistant@pve` for the username a
 
  <details><summary>A step by step to enable entities</summary>
   
-   1) Go to the page for the device you want to enable the pushbutton (or sensor).
+   1) Go to the page for the device you want to enable the button (or sensor).
 
       ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/4e3f9b7d-e935-4fc5-bdd3-3329ef9b90a8)
    
