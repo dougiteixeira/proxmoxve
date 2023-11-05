@@ -77,8 +77,16 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         self._nodes: dict[str, Any] = {}
         self._host: str | None = None
 
-    async def async_step_init(self, user_input: dict[str, Any]) -> FlowResult:
-        """Manage the options."""
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the Proxmox VE options."""
+        return await self.async_step_menu(user_input)
+
+    async def async_step_menu(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the Proxmox VE options - Menu."""
         return self.async_show_menu(
             step_id="menu",
             menu_options=[
