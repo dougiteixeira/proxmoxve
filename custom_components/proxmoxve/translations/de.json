@@ -1,0 +1,240 @@
+{
+        "config": {
+        "abort": {
+            "already_configured": "Das Gerät ist bereits konfiguriert",
+            "no_resources": "Es wurden keine Ressourcen für diese Instanz zurückgegeben.",
+            "reauth_successful": "Die erneute Authentifizierung war erfolgreich"
+        },
+        "error": {
+            "auth_error": "Ungültige Authentifizierung",
+            "cant_connect": "Verbindung fehlgeschlagen",
+            "general_error": "Unerwarteter Fehler",
+            "invalid_port": "Ungültige Portnummer",
+            "ssl_rejection": "SSL-Zertifikat konnte nicht verifiziert werden"
+        },
+        "step": {
+            "expose": {
+            "data": {
+                "lxc": "Linux-Container (LXC)",
+                "nodes": "Nodes",
+                "qemu": "Virtuelle Maschinen (QEMU)"
+            },
+            "description": "Wähle die Proxmox-Instanznodes und virtuellen Maschinen (QEMU) und Container (LXC) aus, die du freigeben möchtest"
+            },
+            "host": {
+            "data": {
+                "host": "Host",
+                "password": "Passwort",
+                "port": "Port",
+                "realm": "Bereich",
+                "username": "Benutzername",
+                "verify_ssl": "SSL-Zertifikat überprüfen"
+            },
+            "description": "Informationen zum Proxmox-Host"
+            },
+            "reauth_confirm": {
+            "data": {
+                "password": "Passwort",
+                "username": "Benutzername"
+            },
+            "description": "Der Benutzername oder das Passwort ist ungültig.",
+            "title": "Integration erneut authentifizieren"
+            }
+        }
+        },
+        "entity": {
+        "binary_sensor": {
+            "health": {
+            "name": "Gesundheit"
+            },
+            "status": {
+            "name": "Status"
+            }
+        },
+        "button": {
+            "reboot": {
+            "name": "Neustart"
+            },
+            "reset": {
+            "name": "Zurücksetzen"
+            },
+            "resume": {
+            "name": "Fortsetzen"
+            },
+            "shutdown": {
+            "name": "Herunterfahren"
+            },
+            "start": {
+            "name": "Starten"
+            },
+            "start_all": {
+            "name": "Alle starten"
+            },
+            "stop": {
+            "name": "Stoppen"
+            },
+            "stop_all": {
+            "name": "Alle stoppen"
+            },
+            "suspend": {
+            "name": "Suspendieren"
+            },
+            "hibernate": {
+            "name": "Ruhezustand"
+            }
+        },
+        "sensor": {
+            "cpu_used": {
+            "name": "CPU-Auslastung"
+            },
+            "disk_free": {
+            "name": "Freier Speicherplatz"
+            },
+            "disk_free_perc": {
+            "name": "Prozentsatz freier Speicherplatz"
+            },
+            "disk_total": {
+            "name": "Gesamtspeicherplatz"
+            },
+            "disk_used": {
+            "name": "Belegter Speicherplatz"
+            },
+            "disk_used_perc": {
+            "name": "Prozentsatz belegter Speicherplatz"
+            },
+            "memory_free": {
+            "name": "Freier Arbeitsspeicher"
+            },
+            "memory_free_perc": {
+            "name": "Prozentsatz freier Arbeitsspeicher"
+            },
+            "memory_total": {
+            "name": "Gesamtarbeitsspeicher"
+            },
+            "memory_used": {
+            "name": "Genutzter Arbeitsspeicher"
+            },
+            "memory_used_perc": {
+            "name": "Prozentsatz genutzter Arbeitsspeicher"
+            },
+            "network_in": {
+            "name": "Netzwerk Eingang"
+            },
+            "network_out": {
+            "name": "Netzwerk Ausgang"
+            },
+            "node": {
+            "name": "Node"
+            },
+            "swap_free": {
+            "name": "Freier Auslagerungsspeicher"
+            },
+            "swap_free_perc": {
+            "name": "Prozentsatz freier Auslagerungsspeicher"
+            },
+            "swap_total": {
+            "name": "Gesamter Auslagerungsspeicher"
+            },
+            "swap_used": {
+            "name": "Genutzter Auslagerungsspeicher"
+            },
+            "swap_used_perc": {
+            "name": "Prozentsatz genutzter Auslagerungsspeicher"
+            },
+            "uptime": {
+            "name": "Betriebszeit"
+            }
+        }
+    },
+    "issues": {
+        "import_already_configured": {
+            "description": "Die YAML-Konfiguration der Instanz {host}:{port} von {integration} (`{platform}`) existiert bereits in der Benutzeroberfläche und wurde beim Import ignoriert.\n\nDu musst diese Konfiguration aus deiner `configuration.yaml`-Datei entfernen und Home Assistant neu starten.",
+            "title": "Die Instanz {host}:{port} existiert bereits in der Benutzeroberfläche und kann entfernt werden"
+        },
+        "import_auth_error": {
+            "description": "Der Import der YAML-Konfiguration von {host}:{port} Instanz von {integration} (`{platform}`) ist aufgrund eines Authentifizierungsfehlers fehlgeschlagen.\n\nDu musst diese Konfiguration aus deiner `configuration.yaml`-Datei entfernen, Home Assistant neu starten und sie manuell konfigurieren.",
+            "title": "Fehler beim Import der YAML-Konfiguration von {host}:{port}"
+        },
+        "import_cant_connect": {
+            "description": "Der Import der YAML-Konfiguration von {host}:{port} Instanz von {integration} (`{platform}`) ist aufgrund eines Verbindungsfehlers fehlgeschlagen.\n\nDu musst diese Konfiguration aus deiner `configuration.yaml`-Datei entfernen, Home Assistant neu starten und sie manuell konfigurieren.",
+            "title": "Fehler beim Import der YAML-Konfiguration von {host}:{port}"
+        },
+        "import_general_error": {
+            "description": "Der Import der YAML-Konfiguration von {host}:{port} Instanz von {integration} (`{platform}`) ist aufgrund eines unbekannten Fehlers fehlgeschlagen.\n\nDu musst diese Konfiguration aus deiner `configuration.yaml`-Datei entfernen, Home Assistant neu starten und sie manuell konfigurieren.",
+            "title": "Fehler beim Import der YAML-Konfiguration von {host}:{port}"
+        },
+        "import_invalid_port": {
+            "description": "Der Import der YAML-Konfiguration von {host}:{port} Instanz von {integration} (`{platform}`) ist aufgrund einer ungültigen Portnummer fehlgeschlagen.\n\nDu musst diese Konfiguration aus deiner `configuration.yaml`-Datei entfernen, Home Assistant neu starten und sie manuell konfigurieren.",
+            "title": "Fehler beim Import der YAML-Konfiguration von {host}:{port}"
+        },
+        "import_node_not_exist": {
+            "description": "Der {node} der Instanz {host}:{port} von {integration} (`{platform}`) in der YAML-Konfiguration existiert nicht in dieser Instanz und wurde beim Import ignoriert.\n\nDu musst diese Konfiguration aus deiner `configuration.yaml`-Datei entfernen und Home Assistant neu starten.",
+            "title": "Node {node} existiert nicht in {host}:{port}"
+        },
+        "import_ssl_rejection": {
+            "description": "Der Import der YAML-Konfiguration von {host}:{port} Instanz von {integration} (`{platform}`) ist aufgrund einer SSL-Verweigerung fehlgeschlagen.\n\nDu musst diese Konfiguration aus deiner `configuration.yaml`-Datei entfernen, Home Assistant neu starten und sie manuell konfigurieren.",
+            "title": "Fehler beim Import der YAML-Konfiguration von {host}:{port}"
+        },
+        "import_success": {
+            "description": "Die YAML-Konfiguration der Instanz {host}:{port} von {integration} (`{platform}`) wurde automatisch in die Benutzeroberfläche importiert.\n\nSie kann sicher aus deiner `configuration.yaml`-Datei entfernt werden.",
+            "title": "{host}:{port} wurde aus der YAML-Konfiguration importiert"
+        },
+        "no_permissions": {
+            "description": "Der Benutzer `{user}` verfügt nicht über die erforderlichen Berechtigungen für alle Funktionen.\n\nDie folgenden Funktionen sind für den Benutzer nicht zugänglich:\n`{errors}`\n\nÜberprüfe die Benutzerberechtigungen gemäß der Dokumentation.",
+            "title": "Der Benutzer `{user}` verfügt nicht über die erforderlichen Berechtigungen"
+        },
+        "resource_exception_forbidden": {
+            "description": "Der Benutzer {user} verfügt nicht über ausreichende Berechtigungen, um auf die Ressource {resource} zuzugreifen.\n\nBitte überprüfe die Dokumentation und die Benutzerberechtigungen.",
+            "title": "Berechtigungsfehler für `{resource}`"
+        },
+        "resource_nonexistent": {
+            "description": "{resource_type} {resource} existiert nicht auf ({host}:{port}), entferne es aus den Integrationsoptionen.\n\nDies kann auch auftreten, wenn der Benutzer nicht genügend Berechtigungen zum Zugriff auf die Ressource hat.",
+            "title": "{resource_type} {resource} existiert nicht"
+        },
+        "yaml_deprecated": {
+            "description": "Die YAML-Konfiguration von {integration} (`{platform}`) ist veraltet und sollte in {version} entfernt werden.\n\nBehebe die Importprobleme und entferne die YAML-Konfiguration aus deiner `configuration.yaml`-Datei.",
+            "title": "Die YAML-Konfiguration von {integration} ist veraltet"
+        }
+    },
+    "options": {
+        "abort": {
+            "changes_successful": "Änderungen wurden erfolgreich gespeichert.",
+            "no_nodes": "Es wurden keine Nodes für den Host zurückgegeben.",
+            "no_nodes_to_add": "Es gibt keine Nodes zum Hinzufügen.",
+            "no_vms": "Es sind keine virtuellen Maschinen oder Container für diesen Node vorhanden. Der Konfigurationseintrag wird für den Node erstellt.",
+            "node_already_exists": "Der ausgewählte Node existiert bereits."
+        },
+        "error": {
+            "auth_error": "Ungültige Authentifizierung",
+            "cant_connect": "Verbindung fehlgeschlagen",
+            "general_error": "Unerwarteter Fehler",
+            "invalid_port": "Ungültige Portnummer",
+            "ssl_rejection": "SSL-Zertifikat konnte nicht verifiziert werden"
+        },
+        "step": {
+            "change_expose": {
+            "data": {
+                "lxc": "Linux-Container (LXC)",
+                "nodes": "Nodes",
+                "qemu": "Virtuelle Maschinen (QEMU)"
+            },
+                "description": "Wähle die Proxmox-Instanznodes und virtuellen Maschinen (QEMU) und Container (LXC) aus, die du freigeben möchtest"
+            },
+            "host_auth": {
+                "data": {
+                    "password": "Passwort",
+                    "realm": "Bereich",
+                    "username": "Benutzername",
+                    "verify_ssl": "SSL-Zertifikat überprüfen"
+                },
+                "description": "Proxmox Host-Informationen"
+            },
+            "menu": {
+                "menu_options": {
+                    "change_expose": "Nodes, VMs oder Container hinzufügen oder entfernen",
+                    "host_auth": "Host-Authentifizierungsinformationen ändern"
+                }
+            }
+        }
+    }
+}
