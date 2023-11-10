@@ -327,7 +327,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             coordinator_node = ProxmoxNodeCoordinator(
                 hass=hass,
                 proxmox=proxmox,
-                host_name=config_entry.data[CONF_HOST],
+                api_category=ProxmoxType.Node,
                 node_name=node,
             )
             await coordinator_node.async_refresh()
@@ -365,7 +365,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             coordinator_qemu = ProxmoxQEMUCoordinator(
                 hass=hass,
                 proxmox=proxmox,
-                host_name=config_entry.data[CONF_HOST],
+                api_category=ProxmoxType.QEMU,
                 qemu_id=vm_id,
             )
             await coordinator_qemu.async_refresh()
@@ -401,7 +401,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             coordinator_lxc = ProxmoxLXCCoordinator(
                 hass=hass,
                 proxmox=proxmox,
-                host_name=config_entry.data[CONF_HOST],
+                api_category=ProxmoxType.LXC,
                 container_id=container_id,
             )
             await coordinator_lxc.async_refresh()

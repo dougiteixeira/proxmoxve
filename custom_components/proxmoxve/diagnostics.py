@@ -24,7 +24,7 @@ TO_REDACT_COORD = []
 
 TO_REDACT_API = []
 
-TO_REDACT_DATA = []
+TO_REDACT_DATA = ["configuration_url"]
 
 
 async def async_get_config_entry_diagnostics(

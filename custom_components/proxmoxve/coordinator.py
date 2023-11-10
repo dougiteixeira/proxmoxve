@@ -37,7 +37,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         self,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
-        host_name: str,
+        api_category: str,
         node_name: str,
     ) -> None:
         """Initialize the Proxmox Node coordinator."""
@@ -45,7 +45,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
-            name=f"proxmox_coordinator_{host_name}_{node_name}",
+            name=f"proxmox_coordinator_{api_category}_{node_name}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
 
@@ -137,7 +137,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         self,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
-        host_name: str,
+        api_category: str,
         qemu_id: int,
     ) -> None:
         """Initialize the Proxmox QEMU coordinator."""
@@ -145,7 +145,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
-            name=f"proxmox_coordinator_{host_name}_{qemu_id}",
+            name=f"proxmox_coordinator_{api_category}_{qemu_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
 
@@ -245,7 +245,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         self,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
-        host_name: str,
+        api_category: str,
         container_id: int,
     ) -> None:
         """Initialize the Proxmox LXC coordinator."""
@@ -253,7 +253,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
-            name=f"proxmox_coordinator_{host_name}_{container_id}",
+            name=f"proxmox_coordinator_{api_category}_{container_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
 
