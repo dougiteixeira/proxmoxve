@@ -8,6 +8,7 @@ body:
       description: Please verify that you've followed these steps
       options:
         - label: I have updated to the latest available Proxmox VE Custom Integration version.
+          description: Confirm that your installed version is the latest version, [see the latest version here](https://github.com/dougiteixeira/proxmoxve/releases/latest).
           required: true
   - type: markdown
     attributes:
@@ -41,6 +42,17 @@ body:
       required: true
     attributes:
       label: What version of Proxmox VE do you have the problem?
+  - type: textarea
+    attributes:
+      label: Diagnostics information
+      placeholder: "drag-and-drop the diagnostics data file here (do not copy-and-paste the content)"
+      description: >-
+        The integration provide the ability to [download diagnostic data](https://www.home-assistant.io/docs/configuration/troubleshooting/#debug-logs-and-diagnostics).
+
+        **It would really help if you could download the diagnostics data for the device you are having issues with,
+        and <ins>drag-and-drop that file into the textbox below.</ins>**
+
+        It generally allows pinpointing defects and thus resolving issues faster.   
   - type: textarea
     attributes:
       label: Additional information
