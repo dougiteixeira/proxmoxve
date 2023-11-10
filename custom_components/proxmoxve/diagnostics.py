@@ -82,8 +82,7 @@ async def async_get_config_entry_diagnostics(
         devices.append({"device": asdict(device), "entities": entities})
 
     return {
-        "source": "config_entry",
-        "timestamp": datetime.datetime.now,
+        "timestamp": datetime.datetime.now(),
         "config_entry": async_redact_data(config_entry.data, TO_REDACT_CONFIG),
         "options": async_redact_data(config_entry.options, TO_REDACT_CONFIG),
         "devices": async_redact_data(devices, TO_REDACT_DATA),
