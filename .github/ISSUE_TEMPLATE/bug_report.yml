@@ -7,8 +7,7 @@ body:
       label: Checklist
       description: Please verify that you've followed these steps
       options:
-        - label: I have updated to the latest available Proxmox VE Custom Integration version.
-          description: Confirm that your installed version is the latest version, [see the latest version here](https://github.com/dougiteixeira/proxmoxve/releases/latest).
+        - label: I have updated to the latest available Proxmox VE Custom Integration version, [see the latest version here](https://github.com/dougiteixeira/proxmoxve/releases/latest).
           required: true
   - type: markdown
     attributes:
