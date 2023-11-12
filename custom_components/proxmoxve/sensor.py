@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Final
+from typing import Any, Final, Mapping
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -43,6 +43,7 @@ class ProxmoxSensorEntityDescription(ProxmoxEntityDescription, SensorEntityDescr
     conversion_fn: Callable | None = None  # conversion factor to be applied to units
     value_fn: Callable[[Any], bool | str] | None = None
     api_category: ProxmoxType | None = None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
+    extra_attrs: list[str] | None = None
 
 
 PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
@@ -282,7 +283,17 @@ PROXMOX_SENSOR_CPU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         translation_key="cpu_used",
     ),
 )
-
+PROXMOX_SENSOR_UPDATE: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key=ProxmoxKeyAPIParse.UPDATE_TOTAL,
+        name="Total updates",
+        icon="mdi:update",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        translation_key="updates_total",
+        extra_attrs=[ProxmoxKeyAPIParse.UPDATE_LIST],
+    ),
+)
 PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     *PROXMOX_SENSOR_CPU,
     *PROXMOX_SENSOR_DISK,
@@ -351,6 +362,22 @@ async def async_setup_entry(
                             hass=hass,
                             config_entry=config_entry,
                             api_category=ProxmoxType.Node,
+                            node=node,
+                        ),
+                        description=description,
+                        resource_id=node,
+                        config_entry=config_entry,
+                    )
+                )
+            coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
+            for description in PROXMOX_SENSOR_UPDATE:
+                sensors.append(
+                    create_sensor(
+                        coordinator=coordinator_updates,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.Update,
                             node=node,
                         ),
                         description=description,
@@ -471,7 +498,7 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
         if not getattr(data, self.entity_description.key, False):
             if value := self.entity_description.value_fn:
                 native_value = value(data)
-            elif self.entity_description.key is ProxmoxKeyAPIParse.CPU:
+            elif self.entity_description.key in (ProxmoxKeyAPIParse.CPU, ProxmoxKeyAPIParse.UPDATE_TOTAL):
                 return 0
             else:
                 return None
@@ -488,3 +515,17 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
         """Return sensor availability."""
 
         return super().available and self.coordinator.data is not None
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Return the extra attributes of the sensor."""
+        if self.entity_description.extra_attrs is None:
+            return None
+
+        if (data := self.coordinator.data) is None:
+            return None
+
+        return {
+            attr: getattr(data, attr, False)
+            for attr in self.entity_description.extra_attrs
+        }
