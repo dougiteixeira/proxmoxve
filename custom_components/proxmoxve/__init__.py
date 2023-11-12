@@ -50,6 +50,7 @@ from .const import (
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
+    INTEGRATION_TITLE,
     LOGGER,
     PROXMOX_CLIENT,
     VERSION_REMOVE_YAML,
@@ -132,7 +133,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             severity=IssueSeverity.WARNING,
             translation_key="yaml_deprecated",
             translation_placeholders={
-                "integration": "Proxmox VE",
+                "integration": INTEGRATION_TITLE,
                 "platform": DOMAIN,
                 "version": VERSION_REMOVE_YAML,
             },
@@ -147,7 +148,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                     severity=IssueSeverity.ERROR,
                     translation_key="import_invalid_port",
                     translation_placeholders={
-                        "integration": "Proxmox VE",
+                        "integration": INTEGRATION_TITLE,
                         "platform": DOMAIN,
                         "host": conf.get[CONF_HOST],
                         "port": conf.get[CONF_PORT],
@@ -364,11 +365,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 severity=IssueSeverity.ERROR,
                 translation_key="resource_nonexistent",
                 translation_placeholders={
-                    "integration": "Proxmox VE",
+                    "integration": INTEGRATION_TITLE,
                     "platform": DOMAIN,
                     "host": config_entry.data[CONF_HOST],
                     "port": config_entry.data[CONF_PORT],
-                    "resource_type": "Node",
+                    "resource_type": ProxmoxType.Node.capitalize(),
                     "resource": node,
                 },
             )
@@ -400,11 +401,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 severity=IssueSeverity.ERROR,
                 translation_key="resource_nonexistent",
                 translation_placeholders={
-                    "integration": "Proxmox VE",
+                    "integration": INTEGRATION_TITLE,
                     "platform": DOMAIN,
                     "host": config_entry.data[CONF_HOST],
                     "port": config_entry.data[CONF_PORT],
-                    "resource_type": ProxmoxType.QEMU,
+                    "resource_type": ProxmoxType.QEMU.upper(),
                     "resource": vm_id,
                 },
             )
@@ -436,11 +437,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 severity=IssueSeverity.ERROR,
                 translation_key="resource_nonexistent",
                 translation_placeholders={
-                    "integration": "Proxmox VE",
+                    "integration": INTEGRATION_TITLE,
                     "platform": DOMAIN,
                     "host": config_entry.data[CONF_HOST],
                     "port": config_entry.data[CONF_PORT],
-                    "resource_type": ProxmoxType.LXC,
+                    "resource_type": ProxmoxType.LXC.upper(),
                     "resource": container_id,
                 },
             )
@@ -472,11 +473,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 severity=IssueSeverity.ERROR,
                 translation_key="resource_nonexistent",
                 translation_placeholders={
-                    "integration": "Proxmox VE",
+                    "integration": INTEGRATION_TITLE,
                     "platform": DOMAIN,
                     "host": config_entry.data[CONF_HOST],
                     "port": config_entry.data[CONF_PORT],
-                    "resource_type": ProxmoxType.Storage,
+                    "resource_type": ProxmoxType.Storage.capitalize(),
                     "resource": storage_id,
                 },
             )
@@ -579,8 +580,8 @@ def device_info(
             model_processor = coordinator_data.model
             proxmox_version = f"Proxmox {coordinator_data.version}"
 
-        name = f"{api_category.capitalize()} {node}"
-        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{node}"
+        name = f"{ProxmoxType.Node.capitalize()} {node}"
+        identifier = f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
         url = f"https://{host}:{port}/#v1:0:=node/{node}"
         via_device = ("", "")
         model = model_processor

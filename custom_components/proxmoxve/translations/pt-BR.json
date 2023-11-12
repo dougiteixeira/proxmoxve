@@ -15,12 +15,12 @@
       "step": {
           "expose": {
               "data": {
-                  "lxc": "Contêiner Linux (LXC)",
-                  "node": "Nó",
-                  "qemu": "Maquina Virtual (QEMU)",
+                  "lxc": "Contêiners Linux (LXC)",
+                  "nodes": "Nós",
+                  "qemu": "Maquinas Virtuais (QEMU)",
                   "storage": "Armazenamentos"
               },
-              "description": "Selecione os nós da instância Proxmox, as máquinas virtuais (QEMU) e contêineres (LXC) que deseja expor"
+              "description": "Selecione os nós da instância Proxmox, as máquinas virtuais (QEMU), contêineres (LXC) e armazenamentos que deseja expor"
           },
           "host": {
               "data": {
@@ -205,12 +205,12 @@
       "step": {
           "change_expose": {
               "data": {
-                  "lxc": "Contêiner Linux (LXC)",
-                  "node": "Nó",
-                  "qemu": "Maquina Virtual (QEMU)",
+                  "lxc": "Contêiners Linux (LXC)",
+                  "nodes": "Nós",
+                  "qemu": "Maquinas Virtuais (QEMU)",
                   "storage": "Armazenamentos"
               },
-              "description": "Selecione os nós da instância Proxmox, as máquinas virtuais (QEMU) e contêineres (LXC) que deseja expor"
+              "description": "Selecione os nós da instância Proxmox, as máquinas virtuais (QEMU), contêineres (LXC) e armazenamentos que deseja expor"
           },
           "host_auth": {
               "data": {
