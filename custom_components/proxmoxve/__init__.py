@@ -383,6 +383,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.Node.capitalize(),
                     "resource": node,
+                    "permission": f"['perm','/nodes/{node}',['Sys.Audit']]",
                 },
             )
 
@@ -419,6 +420,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.QEMU.upper(),
                     "resource": vm_id,
+                    "permission":  f"['perm','/vms/{vm_id}',['VM.Audit']]",
                 },
             )
 
@@ -455,6 +457,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.LXC.upper(),
                     "resource": container_id,
+                    "permission":  f"['perm','/vms/{container_id}',['VM.Audit']]",
                 },
             )
 
@@ -491,6 +494,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.Storage.capitalize(),
                     "resource": storage_id,
+                    "permission":  f"['perm','/storage/{storage_id}',['Datastore.Audit'],'any',1]"
                 },
             )
 
