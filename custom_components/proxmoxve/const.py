@@ -32,6 +32,7 @@ CONF_STORAGE="storage"
 
 PROXMOX_CLIENT = "proxmox_client"
 
+INTEGRATION_TITLE = "Proxmox VE"
 VERSION_REMOVE_YAML = "2023.8"
 
 
