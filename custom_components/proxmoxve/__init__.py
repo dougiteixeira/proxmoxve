@@ -62,6 +62,7 @@ from .coordinator import (
     ProxmoxNodeCoordinator,
     ProxmoxQEMUCoordinator,
     ProxmoxStorageCoordinator,
+    ProxmoxUpdateCoordinator,
 )
 
 PLATFORMS = [
@@ -356,6 +357,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             coordinators[node] = coordinator_node
             if coordinator_node.data is not None:
                 nodes_add_device.append(node)
+
+
+            coordinator_updates = ProxmoxUpdateCoordinator(
+                hass=hass,
+                proxmox=proxmox,
+                api_category=ProxmoxType.Update,
+                node_name=node,
+            )
+            await coordinator_updates.async_refresh()
+            coordinators[f"{ProxmoxType.Update}_{node}"] = coordinator_updates
+
         else:
             async_create_issue(
                 hass,
@@ -574,7 +586,7 @@ def device_info(
         )
         model = api_category.capitalize()
 
-    elif api_category is ProxmoxType.Node:
+    elif api_category in (ProxmoxType.Node, ProxmoxType.Update):
         coordinator = coordinators[node]
         if (coordinator_data := coordinator.data) is not None:
             model_processor = coordinator_data.model
