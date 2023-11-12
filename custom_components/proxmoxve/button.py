@@ -150,7 +150,11 @@ async def async_setup_entry(
     proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
 
     for node in config_entry.data[CONF_NODES]:
-        coordinator = coordinators[node]
+        if node in coordinators:
+            coordinator = coordinators[node]
+        else:
+            continue
+
         # unfound vm case
         if coordinator.data is not None:
             for description in PROXMOX_BUTTON_NODE:
@@ -172,7 +176,11 @@ async def async_setup_entry(
                 )
 
     for vm_id in config_entry.data[CONF_QEMU]:
-        coordinator = coordinators[vm_id]
+        if vm_id in coordinators:
+            coordinator = coordinators[vm_id]
+        else:
+            continue
+
         # unfound vm case
         if coordinator.data is None:
             continue
@@ -196,7 +204,10 @@ async def async_setup_entry(
                 )
 
     for ct_id in config_entry.data[CONF_LXC]:
-        coordinator = coordinators[ct_id]
+        if ct_id in coordinators:
+            coordinator = coordinators[ct_id]
+        else:
+            continue
         # unfound container case
         if coordinator.data is None:
             continue
