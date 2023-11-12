@@ -28,6 +28,7 @@ CONF_NODES = "nodes"
 CONF_QEMU = "qemu"
 CONF_REALM = "realm"
 CONF_VMS = "vms"
+CONF_STORAGE="storage"
 
 PROXMOX_CLIENT = "proxmox_client"
 
@@ -41,6 +42,7 @@ class ProxmoxType(StrEnum):
     Node = "node"
     QEMU = "qemu"
     LXC = "lxc"
+    Storage = "storage"
 
 
 class ProxmoxCommand(StrEnum):

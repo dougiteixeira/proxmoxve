@@ -35,6 +35,7 @@ from .const import (
     CONF_NODES,
     CONF_QEMU,
     CONF_REALM,
+    CONF_STORAGE,
     CONF_VMS,
     DEFAULT_PORT,
     DEFAULT_REALM,
@@ -181,6 +182,11 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             for lxc in self.config_entry.data[CONF_LXC]:
                 old_lxc.append(str(lxc))
 
+            old_storage = []
+
+            for storage in self.config_entry.data[CONF_STORAGE]:
+                old_storage.append(str(storage))
+
             host = self.config_entry.data[CONF_HOST]
             port = self.config_entry.data[CONF_PORT]
             user = self.config_entry.data[CONF_USERNAME]
@@ -217,6 +223,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             LOGGER.debug("Response API - Resources: %s", resources)
             resource_qemu = {}
             resource_lxc = {}
+            resource_storage = {}
             for resource in resources:
                 if ("type" in resource) and (resource["type"] == ProxmoxType.Node):
                     if resource["node"] not in resource_nodes:
@@ -235,6 +242,13 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                         ] = f"{resource['vmid']} {resource['name']}"
                     else:
                         resource_lxc[str(resource["vmid"])] = f"{resource['vmid']}"
+                if ("type" in resource) and (resource["type"] == ProxmoxType.Storage):
+                    if "storage" in resource:
+                        resource_storage[
+                            str(resource["storage"])
+                        ] = f"{resource['storage']} {resource['id']}"
+                    else:
+                        resource_storage[str(resource["storage"])] = f"{resource['storage']}"
 
             return self.async_show_form(
                 step_id="change_expose",
@@ -253,6 +267,12 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                             {
                                 **dict.fromkeys(old_lxc),
                                 **resource_lxc,
+                            }
+                        ),
+                        vol.Optional(CONF_STORAGE, default=old_storage): cv.multi_select(
+                            {
+                                **dict.fromkeys(old_storage),
+                                **resource_storage,
                             }
                         ),
                     }
@@ -313,11 +333,11 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
         lxc_selecition = []
         if (
-            CONF_QEMU in user_input
+            CONF_LXC in user_input
             and (lxc_user := user_input.get(CONF_LXC)) is not None
         ):
-            for qemu in lxc_user:
-                lxc_selecition.append(qemu)
+            for lxc in lxc_user:
+                lxc_selecition.append(lxc)
 
         for lxc_id in self.config_entry.data[CONF_LXC]:
             if lxc_id not in lxc_selecition:
@@ -334,11 +354,37 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     DOMAIN,
                     f"{self.config_entry.entry_id}_{lxc_id}_resource_nonexistent",
                 )
+
+        storage_selecition = []
+        if (
+            CONF_STORAGE in user_input
+            and (storage_user := user_input.get(CONF_STORAGE)) is not None
+        ):
+            for storage in storage_user:
+                storage_selecition.append(storage)
+
+        for storage_id in self.config_entry.data[CONF_STORAGE]:
+            if storage_id not in storage_selecition:
+                # Remove device
+                identifier = (
+                    f"{self.config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage_id}"
+                )
+                await self.async_remove_device(
+                    entry_id=self.config_entry.entry_id,
+                    device_identifier=identifier,
+                )
+                async_delete_issue(
+                    self.hass,
+                    DOMAIN,
+                    f"{self.config_entry.entry_id}_{storage_id}_resource_nonexistent",
+                )
+
         config_data.update(
             {
                 CONF_NODES: node_selecition,
                 CONF_QEMU: qemu_selecition,
                 CONF_LXC: lxc_selecition,
+                CONF_STORAGE: storage_selecition,
             }
         )
 
@@ -372,7 +418,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """ProxmoxVE Config Flow class."""
 
-    VERSION = 3
+    VERSION = 4
     _reauth_entry: config_entries.ConfigEntry | None = None
 
     def __init__(self) -> None:
@@ -722,6 +768,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             resource_nodes = []
             resource_qemu = {}
             resource_lxc = {}
+            resource_storage = {}
             if resources is None:
                 return self.async_abort(reason="no_resources")
             for resource in resources:
@@ -742,6 +789,13 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         ] = f"{resource['vmid']} {resource['name']}"
                     else:
                         resource_lxc[str(resource["vmid"])] = f"{resource['vmid']}"
+                if ("type" in resource) and (resource["type"] == ProxmoxType.Storage):
+                    if "storage" in resource:
+                        resource_storage[
+                            str(resource["storage"])
+                        ] = f"{resource['storage']} {resource['id']}"
+                    else:
+                        resource_lxc[str(resource["storage"])] = f"{resource['storage']}"
 
             return self.async_show_form(
                 step_id="expose",
@@ -750,6 +804,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         vol.Required(CONF_NODES): cv.multi_select(resource_nodes),
                         vol.Optional(CONF_QEMU): cv.multi_select(resource_qemu),
                         vol.Optional(CONF_LXC): cv.multi_select(resource_lxc),
+                        vol.Optional(CONF_STORAGE): cv.multi_select(resource_storage),
                     }
                 ),
             )
@@ -780,6 +835,15 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         ):
             for lxc_selection in lxc_user:
                 self._config[CONF_LXC].append(lxc_selection)
+
+        if CONF_STORAGE not in self._config:
+            self._config[CONF_STORAGE] = []
+        if (
+            CONF_STORAGE in user_input
+            and (storage_user := user_input.get(CONF_STORAGE)) is not None
+        ):
+            for storage_selection in storage_user:
+                self._config[CONF_STORAGE].append(storage_selection)
 
         return self.async_create_entry(
             title=(f"{self._config[CONF_HOST]}:{self._config[CONF_PORT]}"),

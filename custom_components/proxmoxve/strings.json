@@ -17,7 +17,8 @@
         "data": {
           "nodes": "Nodes",
           "qemu": "Virtual Machines (QEMU)",
-          "lxc": "Linux Containers (LXC)"
+          "lxc": "Linux Containers (LXC)",
+          "storage": "Storages"
         }
       },
       "reauth_confirm": {
@@ -97,7 +98,7 @@
       "menu": {
         "menu_options": {
           "host_auth": "Change host authentication information",
-          "change_expose": "Add or remove Nodes, VMs or Containers"
+          "change_expose": "Add or remove Nodes, VMs, Containers or Storages"
         }
       },
       "host_auth": {
@@ -114,7 +115,8 @@
         "data": {
           "nodes": "[%key:component::proxmoxve::config::step::expose::data::nodes%]",
           "qemu": "[%key:component::proxmoxve::config::step::expose::data::qemu%]",
-          "lxc": "[%key:component::proxmoxve::config::step::expose::data::lxc%]"
+          "lxc": "[%key:component::proxmoxve::config::step::expose::data::lxc%]",
+          "storage": "[%key:component::proxmoxve::config::step::expose::data::storage%]"
         }
       }
     },
