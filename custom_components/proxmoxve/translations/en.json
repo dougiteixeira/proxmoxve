@@ -142,6 +142,9 @@
         },
         "health": {
           "name": "Health"
+        },
+        "update_avail": {
+          "name": "Updates packages"
         }
       },
       "button": {
@@ -230,6 +233,14 @@
         },
         "swap_used_perc": {
           "name": "Swap used percentage"
+        },
+        "updates_total": {
+          "name": "Total updates",
+          "state_attributes": {
+            "updates_list": {
+              "name": "Updates list"
+            }
+          }
         },
         "uptime": {
           "name": "Uptime"

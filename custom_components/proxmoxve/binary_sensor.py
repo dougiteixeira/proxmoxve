@@ -42,6 +42,16 @@ PROXMOX_BINARYSENSOR_NODES: Final[tuple[ProxmoxBinarySensorEntityDescription, ..
     ),
 )
 
+PROXMOX_BINARYSENSOR_UPDATES: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
+    ProxmoxBinarySensorEntityDescription(
+        key=ProxmoxKeyAPIParse.UPDATE_AVAIL,
+        name="Updates packages",
+        device_class=BinarySensorDeviceClass.UPDATE,
+        on_value=True,
+        translation_key="update_avail",
+    ),
+)
+
 PROXMOX_BINARYSENSOR_VM: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
     ProxmoxBinarySensorEntityDescription(
         key=ProxmoxKeyAPIParse.STATUS,
@@ -85,6 +95,22 @@ async def async_setup_entry(
                             hass=hass,
                             config_entry=config_entry,
                             api_category=ProxmoxType.Node,
+                            node=node,
+                        ),
+                        description=description,
+                        resource_id=node,
+                    )
+                )
+            coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
+            for description in PROXMOX_BINARYSENSOR_UPDATES:
+                sensors.append(
+                    create_binary_sensor(
+                        coordinator=coordinator_updates,
+                        config_entry=config_entry,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.Update,
                             node=node,
                         ),
                         description=description,
