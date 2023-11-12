@@ -677,6 +677,7 @@ class ProxmoxClient:
 
 
 def call_api_post_status(
+    self,
     proxmox: ProxmoxAPI,
     api_category: ProxmoxType,
     command: str,
@@ -702,14 +703,47 @@ def call_api_post_status(
                 result = proxmox(
                     ["nodes", node, api_category, vm_id, "status", ProxmoxCommand.SUSPEND]
                 ).post(todisk=1)
+
             else:
                 result = proxmox(
                     ["nodes", node, api_category, vm_id, "status", command]
                 ).post()
 
-    except (ResourceException, ConnectTimeout) as err:
+    except ResourceException as error:
+        if error.status_code == 403:
+            if api_category is ProxmoxType.Node:
+                issue_id=f"{self.config_entry.entry_id}_{node}_command_forbiden"
+                resource=f"{api_category.capitalize()} {node}"
+                permission_check = f"['perm','/nodes/{node}',['Sys.PowerMgmt']]"
+            elif api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
+                issue_id=f"{self.config_entry.entry_id}_{vm_id}_command_forbiden"
+                resource=f"{api_category.upper()} {vm_id}"
+                permission_check = f"['perm','/vms/{vm_id}',['VM.PowerMgmt']]"
+            else:
+                raise ValueError(
+                    f"Resource not categorized correctly: Proxmox {api_category.upper()} {command} error - {error}",
+                ) from error
+
+            async_create_issue(
+                self.hass,
+                DOMAIN,
+                issue_id,
+                is_fixable=False,
+                severity=IssueSeverity.ERROR,
+                translation_key="resource_command_forbiden",
+                translation_placeholders={
+                    "resource": resource,
+                    "user": self.config_entry.data[CONF_USERNAME],
+                    "permission": permission_check,
+                    "command": command,
+                },
+            )
+            raise ValueError(
+                f"Proxmox {api_category.upper()} {command} error - {error}",
+            ) from error
+    except ConnectTimeout as error:
         raise ValueError(
-            f"Proxmox {api_category} {command} error - {err}",
-        ) from err
+            f"Proxmox {api_category.upper()} {command} error - {error}",
+        ) from error
 
     return result

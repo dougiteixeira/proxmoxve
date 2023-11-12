@@ -91,6 +91,10 @@
     "resource_exception_forbiden": {
       "description": "User `{user}` does not have sufficient permissions to access resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
       "title": "Permissions error for `{resource}`"
+    },
+    "resource_command_forbiden": {
+      "description": "User `{user}` does not have sufficient permissions to execute command `{command}` on resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
+      "title": "Permission error for `{resource}` command"
     }
   },
   "options": {
