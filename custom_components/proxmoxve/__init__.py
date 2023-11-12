@@ -61,6 +61,7 @@ from .coordinator import (
     ProxmoxNodeCoordinator,
     ProxmoxQEMUCoordinator,
     ProxmoxStorageCoordinator,
+    ProxmoxUpdateCoordinator,
 )
 
 PLATFORMS = [
@@ -355,6 +356,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             coordinators[node] = coordinator_node
             if coordinator_node.data is not None:
                 nodes_add_device.append(node)
+
+
+            coordinator_updates = ProxmoxUpdateCoordinator(
+                hass=hass,
+                proxmox=proxmox,
+                api_category=ProxmoxType.Update,
+                node_name=node,
+            )
+            await coordinator_updates.async_refresh()
+            coordinators[f"{ProxmoxType.Update}_{node}"] = coordinator_updates
+
         else:
             async_create_issue(
                 hass,
@@ -370,6 +382,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": "Node",
                     "resource": node,
+                    "permission": f"['perm','/nodes/{node}',['Sys.Audit']]",
                 },
             )
 
@@ -406,6 +419,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.QEMU,
                     "resource": vm_id,
+                    "permission":  f"['perm','/vms/{vm_id}',['VM.Audit']]",
                 },
             )
 
@@ -442,6 +456,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.LXC,
                     "resource": container_id,
+                    "permission":  f"['perm','/vms/{container_id}',['VM.Audit']]",
                 },
             )
 
@@ -478,6 +493,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.Storage,
                     "resource": storage_id,
+                    "permission":  f"['perm','/storage/{storage_id}',['Datastore.Audit'],'any',1]"
                 },
             )
 
@@ -573,7 +589,7 @@ def device_info(
         )
         model = api_category.capitalize()
 
-    elif api_category is ProxmoxType.Node:
+    elif api_category in (ProxmoxType.Node, ProxmoxType.Update):
         coordinator = coordinators[node]
         if (coordinator_data := coordinator.data) is not None:
             model_processor = coordinator_data.model
