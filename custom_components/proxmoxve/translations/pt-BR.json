@@ -219,6 +219,10 @@
       "resource_exception_forbiden": {
         "description": "O usuário `{user}` não tem permissões suficientes para acessar o recurso `{resource}`.\n\nDica sobre as permissões necessárias:\n* `{permission}`\n\nPor favor, verifique a documentação e as permissões do usuário.",
         "title": "Erro de permissão para `{resource}`"
+      },
+      "resource_command_forbiden": {
+        "description": "O usuário `{user}` não tem permissões suficientes para executar o comando `{command}` no recurso `{resource}`.\n\nDica sobre as permissões necessárias:\n* `{permission}`\n\nPor favor, verifique a documentação e as permissões do usuário .",
+        "title": "Erro de permissão para comando em `{resource}`"
       }
 },
 "options": {

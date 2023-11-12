@@ -275,6 +275,7 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
         super().__init__(coordinator, unique_id, description)
 
         self._attr_device_info = info_device
+        self.config_entry = config_entry
 
         def _button_press():
             """Post start command & tell HA state is on."""
@@ -289,6 +290,7 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
                 vm_id = resource_id
 
             call_api_post_status(
+                self,
                 proxmox=proxmox_client.get_api_client(),
                 node=node,
                 vm_id=vm_id,
