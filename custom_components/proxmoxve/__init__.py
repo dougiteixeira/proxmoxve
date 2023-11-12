@@ -43,6 +43,7 @@ from .const import (
     CONF_NODES,
     CONF_QEMU,
     CONF_REALM,
+    CONF_STORAGE,
     CONF_VMS,
     COORDINATORS,
     DEFAULT_PORT,
@@ -59,6 +60,7 @@ from .coordinator import (
     ProxmoxLXCCoordinator,
     ProxmoxNodeCoordinator,
     ProxmoxQEMUCoordinator,
+    ProxmoxStorageCoordinator,
 )
 
 PLATFORMS = [
@@ -252,6 +254,25 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 remove_config_entry_id=config_entry.entry_id,
             )
 
+
+    if config_entry.version == 3:
+        config_entry.version = 4
+        data_new = {
+            CONF_HOST: config_entry.data.get(CONF_HOST),
+            CONF_PORT: config_entry.data.get(CONF_PORT),
+            CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
+            CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
+            CONF_REALM: config_entry.data.get(CONF_REALM),
+            CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
+            CONF_NODES: config_entry.data.get(CONF_NODES),
+            CONF_QEMU: config_entry.data.get(CONF_QEMU),
+            CONF_LXC: config_entry.data.get(CONF_LXC),
+            CONF_STORAGE: [],
+        }
+        hass.config_entries.async_update_entry(
+            config_entry, data=data_new, options={}
+        )
+
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True
@@ -383,7 +404,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "platform": DOMAIN,
                     "host": config_entry.data[CONF_HOST],
                     "port": config_entry.data[CONF_PORT],
-                    "resource_type": "QEMU",
+                    "resource_type": ProxmoxType.QEMU,
                     "resource": vm_id,
                 },
             )
@@ -419,8 +440,44 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "platform": DOMAIN,
                     "host": config_entry.data[CONF_HOST],
                     "port": config_entry.data[CONF_PORT],
-                    "resource_type": "LXC",
+                    "resource_type": ProxmoxType.LXC,
                     "resource": container_id,
+                },
+            )
+
+    for storage_id in config_entry.data[CONF_STORAGE]:
+        if storage_id in [
+            (resource["storage"] if "storage" in resource else None)
+            for resource in resources
+        ]:
+            async_delete_issue(
+                hass,
+                DOMAIN,
+                f"{config_entry.entry_id}_{storage_id}_resource_nonexistent",
+            )
+            coordinator_storage = ProxmoxStorageCoordinator(
+                hass=hass,
+                proxmox=proxmox,
+                api_category=ProxmoxType.Storage,
+                storage_id=storage_id,
+            )
+            await coordinator_storage.async_refresh()
+            coordinators[storage_id] = coordinator_storage
+        else:
+            async_create_issue(
+                hass,
+                DOMAIN,
+                f"{config_entry.entry_id}_{storage_id}_resource_nonexistent",
+                is_fixable=False,
+                severity=IssueSeverity.ERROR,
+                translation_key="resource_nonexistent",
+                translation_placeholders={
+                    "integration": "Proxmox VE",
+                    "platform": DOMAIN,
+                    "host": config_entry.data[CONF_HOST],
+                    "port": config_entry.data[CONF_PORT],
+                    "resource_type": ProxmoxType.Storage,
+                    "resource": storage_id,
                 },
             )
 
@@ -476,7 +533,7 @@ def device_info(
     config_entry: ConfigEntry,
     api_category: ProxmoxType,
     node: str | None = None,
-    vm_id: int | None = None,
+    resource_id: int | None = None,
     create: bool | None = False,
 ):
     """Return the Device Info."""
@@ -488,19 +545,33 @@ def device_info(
 
     proxmox_version = None
     if api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
-        coordinator = coordinators[vm_id]
+        coordinator = coordinators[resource_id]
         if (coordinator_data := coordinator.data) is not None:
             vm_name = coordinator_data.name
             node = coordinator_data.node
 
-        name = f"{api_category.upper()} {vm_name} ({vm_id})"
-        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{vm_id}"
-        url = f"https://{host}:{port}/#v1:0:={api_category}/{vm_id}"
+        name = f"{api_category.upper()} {vm_name} ({resource_id})"
+        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{resource_id}"
+        url = f"https://{host}:{port}/#v1:0:={api_category}/{resource_id}"
         via_device = (
             DOMAIN,
             f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
         )
         model = api_category.upper()
+
+    elif api_category is ProxmoxType.Storage:
+        coordinator = coordinators[resource_id]
+        if (coordinator_data := coordinator.data) is not None:
+            node = coordinator_data.node
+
+        name = f"{api_category.capitalize()} {resource_id}"
+        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{resource_id}"
+        url = f"https://{host}:{port}/#v1:0:={api_category}/{node}/{resource_id}"
+        via_device = (
+            DOMAIN,
+            f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
+        )
+        model = api_category.capitalize()
 
     elif api_category is ProxmoxType.Node:
         coordinator = coordinators[node]
@@ -508,7 +579,7 @@ def device_info(
             model_processor = coordinator_data.model
             proxmox_version = f"Proxmox {coordinator_data.version}"
 
-        name = f"Node {node}"
+        name = f"{api_category.capitalize()} {node}"
         identifier = f"{config_entry.entry_id}_{api_category.upper()}_{node}"
         url = f"https://{host}:{port}/#v1:0:=node/{node}"
         via_device = ("", "")

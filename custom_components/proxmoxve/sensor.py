@@ -26,6 +26,7 @@ from .const import (
     CONF_LXC,
     CONF_NODES,
     CONF_QEMU,
+    CONF_STORAGE,
     COORDINATORS,
     DOMAIN,
     ProxmoxKeyAPIParse,
@@ -318,6 +319,14 @@ PROXMOX_SENSOR_LXC: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     *PROXMOX_SENSOR_UPTIME,
 )
 
+PROXMOX_SENSOR_STORAGE: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key="node",
+        name="Node",
+        icon="mdi:server",
+    ),
+    *PROXMOX_SENSOR_DISK,
+)
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -364,7 +373,7 @@ async def async_setup_entry(
                             hass=hass,
                             config_entry=config_entry,
                             api_category=ProxmoxType.QEMU,
-                            vm_id=vm_id,
+                            resource_id=vm_id,
                         ),
                         description=description,
                         resource_id=vm_id,
@@ -386,10 +395,32 @@ async def async_setup_entry(
                             hass=hass,
                             config_entry=config_entry,
                             api_category=ProxmoxType.LXC,
-                            vm_id=ct_id,
+                            resource_id=ct_id,
                         ),
                         description=description,
                         resource_id=ct_id,
+                        config_entry=config_entry,
+                    )
+                )
+
+    for storage_id in config_entry.data[CONF_STORAGE]:
+        coordinator = coordinators[storage_id]
+        # unfound container case
+        if coordinator.data is None:
+            continue
+        for description in PROXMOX_SENSOR_STORAGE:
+            if description.api_category in (None, ProxmoxType.Storage):
+                sensors.append(
+                    create_sensor(
+                        coordinator=coordinator,
+                        info_device=device_info(
+                            hass=hass,
+                            config_entry=config_entry,
+                            api_category=ProxmoxType.Storage,
+                            resource_id=storage_id,
+                        ),
+                        description=description,
+                        resource_id=storage_id,
                         config_entry=config_entry,
                     )
                 )

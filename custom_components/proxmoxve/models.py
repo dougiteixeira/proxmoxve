@@ -104,3 +104,16 @@ class ProxmoxLXCData:
     swap_free: float
     swap_used: float
     uptime: int
+
+
+
+@dataclasses.dataclass
+class ProxmoxStorageData:
+    """Data parsed from the Proxmox API for Storage."""
+
+    type: str
+    node: str
+    content: str
+    disk_free: float
+    disk_used: float
+    disk_total: float
