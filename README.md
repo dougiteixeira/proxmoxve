@@ -59,7 +59,26 @@ logger:
 
 ## Proxmox Permissions
 
-To be able to retrieve the status of VMs and containers, the user used to connect must minimally have the `VM.Audit` privilege. To be able to controls the VMs and containers, the user used to connect must have the `PVEVMAdmin` role. Below is a guide to how to configure a new user with the minimum required permissions.
+To be able to obtain each type of integration information, the user used to connect must have the corresponding privilege.
+
+It is not necessary to include all of the permission roles below, this will depend on your use of the integration.
+
+The integration will create a repair for each resource that is exposed in the integration configuration but is not accessible by the user, indicating the path and privilege necessary to access it.
+
+When executing a command, if the user does not have the necessary permission, a repair will be created indicating the path and privilege necessary to execute it.
+
+The repairs created are informative, the responsibility for evaluating the risks involved in assigning the permissions to the user is the sole responsibility of the user.
+
+### Sugestão para criação de papéis de permissões para utilização com a integração.
+
+Below is a summary of the permissions for each integration feature. I suggest you create the roles below to make it easier to assign only the necessary permissions to the user.
+
+|Purpose of Permission|Access Type|Role (name suggestion)|Privilegies|
+|---|---|---|---|
+|Get data from nodes, VM, CT and storages|Read only|HomeAssistant.Audit|VM.Audit, Sys.Audit and Datastore.Audit|
+|Perform commands on the node (shutdown, restart, start all, shutdown all)|Management permission|HomeAssistant.NodePowerMgmt|Sys.PowerMgmt|
+|Get information about available package updates to display on sensors (integration does not trigger the update)|Management permission|HomeAssistant.Update|Sys.Modify|
+|Perform commands on VM/CT (start, shutdown, restart, suspend, resume and hibernate)|Management permission|HomeAssistant.VMPowerMgmt|VM.PowerMgmt|
 
 ### Create Home Assistant Group
 
@@ -74,22 +93,12 @@ Privileges can be either applied to Groups or Roles.
 
 ### Add Group Permissions to all Assets
 
-#### For the group to access the VMs we need to grant it the auditor role
 1. Click `Datacenter`
 2. Click `Permissions`
 3. Open `Add` and click `Group Permission`
-4. Select "/" for the path
+4. Select the path of the resource you want to authorize the user to access. To enable all features select `/`
 5. Select your Home Assistant group (`HomeAssistant`)
-6. Select the Auditor role (`PVEAuditor`)
-7. Make sure `Propagate` is checked
-
-#### For the group to control the VMs, we need to grant the admin role.
-1. Click `Datacenter`
-2. Click `Permissions`
-3. Open `Add` and click `Group Permission`
-4. Select "/" for the path
-5. Select your Home Assistant group (`HomeAssistant`)
-6. Select the VM Admin role (`PVEVMAdmin`)
+6. Select the role according to the table above (you must add a permission for each role in the table).
 7. Make sure `Propagate` is checked
 
 ### Create Home Assistant User
