@@ -219,6 +219,14 @@
       "node": {
         "name": "Node"
       },
+      "status_raw": {
+        "name": "Status",
+        "state": {
+          "paused": "Paused",
+          "stopped": "Stopped",
+          "running": "Running"
+        }
+      },
       "swap_free": {
         "name": "Swap free"
       },

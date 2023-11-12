@@ -135,6 +135,14 @@
           "node": {
               "name": "Nó"
           },
+          "status_raw": {
+            "name": "Status",
+            "state": {
+              "paused": "Pausado",
+              "stopped": "Desligado",
+              "running": "Executando"
+            }
+          },
           "swap_free": {
             "name": "Swap disponível"
           },
