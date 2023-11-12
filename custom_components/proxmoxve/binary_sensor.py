@@ -83,7 +83,11 @@ async def async_setup_entry(
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     for node in config_entry.data[CONF_NODES]:
-        coordinator = coordinators[node]
+        if node in coordinators:
+            coordinator = coordinators[node]
+        else:
+            continue
+
         # unfound node case
         if coordinator.data is not None:
             for description in PROXMOX_BINARYSENSOR_NODES:
@@ -101,25 +105,31 @@ async def async_setup_entry(
                         resource_id=node,
                     )
                 )
-            coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
-            for description in PROXMOX_BINARYSENSOR_UPDATES:
-                sensors.append(
-                    create_binary_sensor(
-                        coordinator=coordinator_updates,
-                        config_entry=config_entry,
-                        info_device=device_info(
-                            hass=hass,
+
+            if f"{ProxmoxType.Update}_{node}" in coordinators:
+                coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
+                for description in PROXMOX_BINARYSENSOR_UPDATES:
+                    sensors.append(
+                        create_binary_sensor(
+                            coordinator=coordinator_updates,
                             config_entry=config_entry,
-                            api_category=ProxmoxType.Update,
-                            node=node,
-                        ),
-                        description=description,
-                        resource_id=node,
+                            info_device=device_info(
+                                hass=hass,
+                                config_entry=config_entry,
+                                api_category=ProxmoxType.Update,
+                                node=node,
+                            ),
+                            description=description,
+                            resource_id=node,
+                        )
                     )
-                )
 
     for vm_id in config_entry.data[CONF_QEMU]:
-        coordinator = coordinators[vm_id]
+        if vm_id in coordinators:
+            coordinator = coordinators[vm_id]
+        else:
+            continue
+
         # unfound vm case
         if coordinator.data is None:
             continue
@@ -141,7 +151,11 @@ async def async_setup_entry(
                 )
 
     for container_id in config_entry.data[CONF_LXC]:
-        coordinator = coordinators[container_id]
+        if container_id in coordinators:
+            coordinator = coordinators[container_id]
+        else:
+            continue
+
         # unfound container case
         if coordinator.data is None:
             continue
