@@ -117,3 +117,14 @@ class ProxmoxStorageData:
     disk_free: float
     disk_used: float
     disk_total: float
+
+
+@dataclasses.dataclass
+class ProxmoxUpdateData:
+    """Data parsed from the Proxmox API for Updates."""
+
+    type: str
+    node: str
+    updates_list: list
+    total: float
+    update: bool

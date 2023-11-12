@@ -50,6 +50,14 @@
           },
           "health": {
             "name": "Integridade"
+          },
+          "update_avail": {
+            "name": "Pacotes de atualizações",
+        "state_attributes": {
+          "updates": {
+            "name": "Updates list"
+          }
+        }
           }
       },
       "button": {
@@ -141,6 +149,14 @@
           },
           "swap_used_perc": {
             "name": "Swap percentual em uso"
+          },
+          "updates_total": {
+            "name": "Total de atualizações",
+            "state_attributes": {
+              "updates_list": {
+                "name": "Lista de atualizações"
+              }
+            }
           },
           "uptime": {
             "name": "Tempo de atividade"

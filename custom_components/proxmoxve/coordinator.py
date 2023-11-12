@@ -21,7 +21,7 @@ from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import CONF_NODE, DOMAIN, LOGGER, UPDATE_INTERVAL, ProxmoxType
-from .models import ProxmoxLXCData, ProxmoxNodeData, ProxmoxStorageData, ProxmoxVMData
+from .models import ProxmoxLXCData, ProxmoxNodeData, ProxmoxStorageData, ProxmoxUpdateData, ProxmoxVMData
 
 
 class ProxmoxCoordinator(
@@ -441,6 +441,8 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
 
         #if api_status is None or "content" not in api_status:
         #    raise UpdateFailed(f"Storage {self.resource_id} unable to be found")
+        if api_status is None or "content" not in api_status:
+           raise UpdateFailed(f"Storage {self.resource_id} unable to be found")
 
         update_device_via(self, ProxmoxType.Storage)
         return ProxmoxStorageData(
@@ -450,6 +452,113 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             disk_used=api_status["used"],
             disk_free=api_status["avail"],
             content=api_status["content"]
+        )
+
+class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
+    """Proxmox VE Update data update coordinator."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        api_category: str,
+        node_name: int,
+    ) -> None:
+        """Initialize the Proxmox LXC coordinator."""
+
+        super().__init__(
+            hass,
+            LOGGER,
+            name=f"proxmox_coordinator_{api_category}_{node_name}",
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = f"{api_category}_{node_name}"
+
+    async def _async_update_data(self) -> ProxmoxLXCData:
+        """Update data  for Proxmox LXC."""
+
+        def poll_api() -> dict[str, Any] | None:
+            """Return data from the Proxmox LXC API."""
+            try:
+                api_status = None
+
+                if self.node_name is not None:
+                    api_status = (
+                        self.proxmox.nodes(self.node_name)
+                        .apt
+                        .update.get()
+                    )
+
+                if self.node_name is None:
+                    raise UpdateFailed(f"{self.resource_id} node not found")
+
+            except (
+                AuthenticationError,
+                SSLError,
+                ConnectTimeout,
+            ) as error:
+                raise UpdateFailed(error) from error
+            except ResourceException as error:
+                if error.status_code == 403:
+                    async_create_issue(
+                        self.hass,
+                        DOMAIN,
+                        f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
+                        is_fixable=False,
+                        severity=IssueSeverity.ERROR,
+                        translation_key="resource_exception_forbiden",
+                        translation_placeholders={
+                            "resource": f"Update {self.node_name}",
+                            "user": self.config_entry.data[CONF_USERNAME],
+                        },
+                    )
+                    raise UpdateFailed(
+                        "User not allowed to access the resource, check user permissions as per the documentation."
+                    ) from error
+
+            async_delete_issue(
+                self.hass,
+                DOMAIN,
+                f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
+            )
+
+            LOGGER.debug("API Response - Update: %s", api_status)
+            return api_status
+
+        api_status = await self.hass.async_add_executor_job(poll_api)
+
+        if api_status is None:
+            return ProxmoxUpdateData(
+                type=ProxmoxType.Update,
+                node=self.node_name,
+                total=0,
+                updates_list=[],
+                update=False,
+            )
+
+        list = []
+        total = 0
+        for update in api_status:
+            list.append(f"{update['Title']} - {update['Version']}")
+            total += 1
+
+        list.sort()
+
+        update_avail=False
+        if total >0:
+            update_avail=True
+
+        return ProxmoxUpdateData(
+            type=ProxmoxType.Update,
+            node=self.node_name,
+            total=total,
+            updates_list=list,
+            update=update_avail,
         )
 
 
@@ -515,6 +624,12 @@ async def verify_permissions_error(
     if resource_type == ProxmoxType.LXC:
         try:
             self.proxmox.nodes(resource_node).lxc(resource).get()
+        except ResourceException as error:
+            if error.status_code == 403:
+                permissions = True
+    if resource_type == ProxmoxType.Update:
+        try:
+            self.proxmox.nodes(resource_node).apt.update.get()
         except ResourceException as error:
             if error.status_code == 403:
                 permissions = True
