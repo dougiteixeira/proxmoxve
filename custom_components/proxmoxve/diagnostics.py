@@ -5,7 +5,7 @@ import datetime
 from typing import Any
 from attr import asdict
 
-from proxmoxer import ProxmoxAPI
+from proxmoxer.core import ResourceException
 
 from homeassistant.components.diagnostics.util import async_redact_data
 from homeassistant.config_entries import ConfigEntry
@@ -16,7 +16,7 @@ from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import COORDINATORS, DOMAIN, LOGGER, PROXMOX_CLIENT
-from .coordinator import ProxmoxNodeCoordinator, ProxmoxQEMUCoordinator, ProxmoxLXCCoordinator
+from .coordinator import ProxmoxNodeCoordinator, ProxmoxQEMUCoordinator, ProxmoxLXCCoordinator, ProxmoxStorageCoordinator, ProxmoxUpdateCoordinator
 
 TO_REDACT_CONFIG = ["host", "username", "password"]
 
@@ -32,21 +32,64 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
 
-    coordinators: dict[str, ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator] = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
+    coordinators: dict[str, ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator | ProxmoxStorageCoordinator | ProxmoxUpdateCoordinator] = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
 
     proxmox = proxmox_client.get_api_client()
 
-    resources = await hass.async_add_executor_job(proxmox.cluster.resources.get)
+    try:
+        resources = await hass.async_add_executor_job(proxmox.cluster.resources.get)
+    except ResourceException as error:
+        if error.status_code == 403:
+            resources = "403 Forbidden: Permission check failed"
+        else:
+            resources = "Error"
+
 
     nodes = {}
-    nodes_api= await hass.async_add_executor_job(proxmox.nodes().get)
+    try:
+        nodes_api= await hass.async_add_executor_job(proxmox.nodes().get)
+    except ResourceException as error:
+        if error.status_code == 403:
+            nodes_api = "403 Forbidden: Permission check failed"
+        else:
+            nodes_api = "Error"
 
     for node in nodes_api:
         nodes[node["node"]] = node
-        nodes[node["node"]]["qemu"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).qemu.get)
-        nodes[node["node"]]["lxc"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).lxc.get)
+
+        try:
+            nodes[node["node"]]["qemu"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).qemu.get)
+        except ResourceException as error:
+            if error.status_code == 403:
+                nodes[node["node"]]["qemu"] = "403 Forbidden: Permission check failed"
+            else:
+                nodes[node["node"]]["qemu"] = "Error"
+
+        try:
+            nodes[node["node"]]["lxc"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).lxc.get)
+        except ResourceException as error:
+            if error.status_code == 403:
+                nodes[node["node"]]["lxc"] = "403 Forbidden: Permission check failed"
+            else:
+                nodes[node["node"]]["lxc"] = "Error"
+
+        try:
+            nodes[node["node"]]["storage"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).storage.get)
+        except ResourceException as error:
+            if error.status_code == 403:
+                nodes[node["node"]]["storage"] = "403 Forbidden: Permission check failed"
+            else:
+                nodes[node["node"]]["storage"] = "Error"
+
+        try:
+            nodes[node["node"]]["updates"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).apt.update.get)
+        except ResourceException as error:
+            if error.status_code == 403:
+                nodes[node["node"]]["updates"] = "403 Forbidden: Permission check failed"
+            else:
+                nodes[node["node"]]["updates"] = "Error"
 
     api_data = {
             "resources": resources,
@@ -90,11 +133,11 @@ async def async_get_config_entry_diagnostics(
             coordinator.name: {
                 "data": async_redact_data(
                     coordinator.data.__dict__, TO_REDACT_COORD
-                ),
+                ) if coordinator.data is not None else {}
             }
-            for i, coordinator in enumerate(coordinators.values())
+            for coordinator in coordinators.values()
         },
-        "api_response": async_redact_data(api_data, TO_REDACT_API),
+        "api_response": async_redact_data(api_data, TO_REDACT_API) if api_data is not None else {},
     }
 
 async def async_get_device_diagnostics(

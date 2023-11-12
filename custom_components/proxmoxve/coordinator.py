@@ -89,6 +89,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                         translation_placeholders={
                             "resource": f"Node {self.resource_id}",
                             "user": self.config_entry.data[CONF_USERNAME],
+                            "permission": f"['perm','/nodes/{self.resource_id}',['Sys.Audit']]"
                         },
                     )
                     raise UpdateFailed(
@@ -200,6 +201,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
                         translation_placeholders={
                             "resource": f"QEMU {self.resource_id}",
                             "user": self.config_entry.data[CONF_USERNAME],
+                            "permission": "['perm','/vms/{self.resource_id}',['VM.Audit']]"
                         },
                     )
                     raise UpdateFailed(
@@ -310,6 +312,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
                         translation_placeholders={
                             "resource": f"LXC {self.resource_id}",
                             "user": self.config_entry.data[CONF_USERNAME],
+                            "permission": "['perm','/vms/{self.resource_id}',['VM.Audit']]"
                         },
                     )
                     raise UpdateFailed(
@@ -422,6 +425,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
                         translation_placeholders={
                             "resource": f"Storage {self.resource_id}",
                             "user": self.config_entry.data[CONF_USERNAME],
+                            "permission": f"['perm','/storage/{self.resource_id}',['Datastore.Audit'],'any',1]"
                         },
                     )
                     raise UpdateFailed(
@@ -439,8 +443,6 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
 
         api_status = await self.hass.async_add_executor_job(poll_api)
 
-        #if api_status is None or "content" not in api_status:
-        #    raise UpdateFailed(f"Storage {self.resource_id} unable to be found")
         if api_status is None or "content" not in api_status:
            raise UpdateFailed(f"Storage {self.resource_id} unable to be found")
 
@@ -515,6 +517,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
                         translation_placeholders={
                             "resource": f"Update {self.node_name}",
                             "user": self.config_entry.data[CONF_USERNAME],
+                            "permission": f"['perm','/nodes/{self.node_name}',['Sys.Modify']]"
                         },
                     )
                     raise UpdateFailed(
@@ -614,25 +617,39 @@ async def verify_permissions_error(
         except ResourceException as error:
             if error.status_code == 403:
                 permissions = True
+                permission_check = "['perm','/nodes/{resource}',['Sys.Audit']]"
+
     if resource_type == ProxmoxType.QEMU:
         try:
-            self.proxmox.nodes(resource_node).qemu(resource).get()
+            self.proxmox.nodes(resource_node).qemu(resource).status.current.get()
         except ResourceException as error:
             if error.status_code == 403:
                 permissions = True
+                permission_check = "['perm','/vms/{resource}',['VM.Audit']]"
 
     if resource_type == ProxmoxType.LXC:
         try:
-            self.proxmox.nodes(resource_node).lxc(resource).get()
+            self.proxmox.nodes(resource_node).lxc(resource).status.current.get()
         except ResourceException as error:
             if error.status_code == 403:
                 permissions = True
+                permission_check = "['perm','/vms/{resource}',['VM.Audit']]"
+
+    if resource_type == ProxmoxType.Storage:
+        try:
+            self.proxmox.nodes(resource_node).storage(resource).get()
+        except ResourceException as error:
+            if error.status_code == 403:
+                permissions = True
+                permission_check = f"['perm','/storage/{resource}',['Datastore.Audit'],'any',1]"
+
     if resource_type == ProxmoxType.Update:
         try:
             self.proxmox.nodes(resource_node).apt.update.get()
         except ResourceException as error:
             if error.status_code == 403:
                 permissions = True
+                permission_check = f"['perm','/nodes/{resource_node}',['Sys.Modify']]"
 
     if permissions:
         async_create_issue(
@@ -645,6 +662,7 @@ async def verify_permissions_error(
             translation_placeholders={
                 "resource": f"{resource_type.upper()} {resource}",
                 "user": self.config_entry.data[CONF_USERNAME],
+                "permission": permission_check,
             },
         )
     return permissions

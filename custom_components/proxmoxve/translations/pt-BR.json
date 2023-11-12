@@ -164,12 +164,20 @@
       }
   },
   "issues": {
-      "import_already_configured": {
-          "description": "A configuração YAML do {node} de {host}:{port} instância de {integration} (`{platform}`) já existe na IU e foi ignorada na importação.\n\nVocê deve remover esta configuração de seu ` arquivo configuration.yaml` e reinicie o Home Assistant.",
-          "title": "O nó {node} de {host}:{port} já existe na IU, pode ser removido"
+      "import_success": {
+          "description": "A configuração YAML do nó {node} de {host}:{port} instância de {integration} (`{platform}`) foi importada para a IU automaticamente.\n\nPode ser removido com segurança de seu `configuration.yaml` arquivo.",
+          "title": "O nó {node} de {host}:{port} foi importado da configuração YAML"
+      },
+      "import_invalid_port": {
+          "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido à porta inválida.\n\nVocê deve remover esta configuração do arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
+          "title": "Erro ao importar configuração YAML de {host}:{port}"
       },
       "import_auth_error": {
           "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido a um erro de autenticação.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
+          "title": "Erro ao importar configuração YAML de {host}:{port}"
+      },
+      "import_ssl_rejection": {
+          "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido à rejeição de SSL.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
           "title": "Erro ao importar configuração YAML de {host}:{port}"
       },
       "import_cant_connect": {
@@ -180,29 +188,29 @@
           "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido a um erro desconhecido.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
           "title": "Erro ao importar configuração YAML de {host}:{port}"
       },
-      "import_invalid_port": {
-          "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido à porta inválida.\n\nVocê deve remover esta configuração do arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
-          "title": "Erro ao importar configuração YAML de {host}:{port}"
+      "import_already_configured": {
+          "description": "A configuração YAML do {node} de {host}:{port} instância de {integration} (`{platform}`) já existe na IU e foi ignorada na importação.\n\nVocê deve remover esta configuração de seu ` arquivo configuration.yaml` e reinicie o Home Assistant.",
+          "title": "O nó {node} de {host}:{port} já existe na IU, pode ser removido"
       },
       "import_node_not_exist": {
           "description": "O {node} da instância {host}:{port} de {integration} (`{platform}`) presente na configuração YAML não existe nesta instância e foi ignorado na importação.\n\nVocê deve remover isso configuração do seu arquivo `configuration.yaml` e reinicie o Home Assistant.",
           "title": "O nó {node} não existe em {host}:{port}"
       },
-      "import_ssl_rejection": {
-          "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido à rejeição de SSL.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
-          "title": "Erro ao importar configuração YAML de {host}:{port}"
-      },
-      "import_success": {
-          "description": "A configuração YAML do nó {node} de {host}:{port} instância de {integration} (`{platform}`) foi importada para a IU automaticamente.\n\nPode ser removido com segurança de seu `configuration.yaml` arquivo.",
-          "title": "O nó {node} de {host}:{port} foi importado da configuração YAML"
-      },
       "yaml_deprecated": {
           "description": "A configuração da {integration} (`{platform}`) em YAML foi descontinuada e deve ser removida. Resolva os problemas de importação e remova a configuração YAML do arquivo `configuration.yaml`.",
           "title": "A configuração de {integration} em YAML está obsoleta"
       },
-      "vm_id_nonexistent": {
-          "description": "VM/container {vm_id} não existe no nó {node} ({host}:{port}), remova-o nas opções da integração.",
-          "title": "A VM/contêiner {vm_id} não existe"
+      "resource_nonexistent": {
+        "description": "{resource_type} {resource} não existe no nó ({host}:{port}), remova-o nas opções da integração.\n\nIsso também pode ocorrer se o usuário não tiver permissão suficiente para acessar o recurso.\n\nDica sobre as permissões necessárias:\n* `{permission}`",
+        "title": "{resource_type} {resource} não existe"
+      },
+      "no_permissions": {
+        "description": "O usuário `{user}` não possui as permissões necessárias para todos os recursos.\n\nOs seguintes recursos não são acessíveis pelo usuário:\n`{errors}`\n\nVerifique as permissões do usuário conforme descrito na documentação.",
+        "title": "O usuário `{user}` não possui as permissões necessárias"
+      },
+      "resource_exception_forbiden": {
+        "description": "O usuário `{user}` não tem permissões suficientes para acessar o recurso `{resource}`.\n\nDica sobre as permissões necessárias:\n* `{permission}`\n\nPor favor, verifique a documentação e as permissões do usuário.",
+        "title": "Erro de permissão para `{resource}`"
       }
 },
 "options": {
