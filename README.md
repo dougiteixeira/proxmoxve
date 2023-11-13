@@ -80,7 +80,7 @@ When executing a command, if the user does not have the necessary permission, a 
 
 The repairs created are informative, the responsibility for evaluating the risks involved in assigning the permissions to the user is the sole responsibility of the user.
 
-### Sugestão para criação de papéis de permissões para utilização com a integração.
+### Suggestion for creating permission roles for use with integration
 
 Below is a summary of the permissions for each integration feature. I suggest you create the roles below to make it easier to assign only the necessary permissions to the user.
 
