@@ -4,12 +4,12 @@
         "host": {
           "description": "Proxmox host information",
           "data": {
-            "host": "[%key:common::config_flow::data::host%]",
-            "port": "[%key:common::config_flow::data::port%]",
-            "username": "[%key:common::config_flow::data::username%]",
-            "password": "[%key:common::config_flow::data::password%]",
+            "host": "Host",
+            "password": "Password",
+            "port": "Port",
             "realm": "Realm",
-            "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
+            "username": "Username",
+            "verify_ssl": "Verify SSL certificate"
           }
         },
         "expose": {
@@ -23,24 +23,24 @@
         },
         "reauth_confirm": {
           "description": "The username or password is invalid.",
-          "title": "[%key:common::config_flow::title::reauth%]",
+          "title": "Reauthenticate Integration",
           "data": {
-            "username": "[%key:common::config_flow::data::username%]",
-            "password": "[%key:common::config_flow::data::password%]"
+            "password": "Password",
+            "username": "Username"
           }
         }
       },
       "error": {
-        "auth_error": "[%key:common::config_flow::error::invalid_auth%]",
-        "ssl_rejection": "Could not verify the SSL certificate",
-        "cant_connect": "[%key:common::config_flow::error::cannot_connect%]",
-        "general_error": "[%key:common::config_flow::error::unknown%]",
-        "invalid_port": "Invalid port number"
+        "auth_error": "Invalid authentication",
+        "cant_connect": "Failed to connect",
+        "general_error": "Unexpected error",
+        "invalid_port": "Invalid port number",
+        "ssl_rejection": "Could not verify the SSL certificate"
       },
       "abort": {
-        "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
-        "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-        "no_resources": "No resources were returned for this instance."
+        "already_configured": "Device is already configured",
+        "no_resources": "No resources were returned for this instance.",
+        "reauth_successful": "Re-authentication was successful"
       }
     },
     "issues": {
@@ -106,30 +106,30 @@
           }
         },
         "host_auth": {
-          "description": "[%key:component::proxmoxve::config::step::host::description%]",
           "data": {
-            "username": "[%key:component::proxmoxve::config::step::host::data::username%]",
-            "password": "[%key:component::proxmoxve::config::step::host::data::password%]",
-            "realm": "[%key:component::proxmoxve::config::step::host::data::realm%]",
-            "verify_ssl": "[%key:component::proxmoxve::config::step::host::data::verify_ssl%]"
-          }
+              "password": "Password",
+              "realm": "Realm",
+              "username": "Username",
+              "verify_ssl": "Verify SSL certificate"
+          },
+          "description": "Proxmox host information"
         },
         "change_expose": {
-          "description": "[%key:component::proxmoxve::config::step::expose::description%]",
+          "description": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose",
           "data": {
-            "nodes": "[%key:component::proxmoxve::config::step::expose::data::nodes%]",
-            "qemu": "[%key:component::proxmoxve::config::step::expose::data::qemu%]",
-            "lxc": "[%key:component::proxmoxve::config::step::expose::data::lxc%]",
-            "storage": "[%key:component::proxmoxve::config::step::expose::data::storage%]"
+            "lxc": "Linux Containers (LXC)",
+            "nodes": "Nodes",
+            "qemu": "Virtual Machines (QEMU)",
+            "storage": "Storages"
           }
         }
       },
       "error": {
-        "auth_error": "[%key:component::proxmoxve::config::error::auth_error%]",
-        "ssl_rejection": "[%key:component::proxmoxve::config::error::ssl_rejection%]",
-        "cant_connect": "[%key:component::proxmoxve::config::error::cant_connect%]",
-        "general_error": "[%key:component::proxmoxve::config::error::general_error%]",
-        "invalid_port": "[%key:component::proxmoxve::config::error::invalid_port%]"
+        "auth_error": "Invalid authentication",
+        "cant_connect": "Failed to connect",
+        "general_error": "Unexpected error",
+        "invalid_port": "Invalid port number",
+        "ssl_rejection": "Could not verify the SSL certificate"
       },
       "abort": {
         "no_nodes": "No nodes were returned for the host.",
