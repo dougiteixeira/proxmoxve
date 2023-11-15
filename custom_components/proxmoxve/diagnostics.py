@@ -1,6 +1,7 @@
 """Support for the Airzone diagnostics."""
 from __future__ import annotations
 import datetime
+import json
 
 from typing import Any
 from attr import asdict
@@ -16,7 +17,7 @@ from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import COORDINATORS, DOMAIN, LOGGER, PROXMOX_CLIENT
-from .coordinator import ProxmoxNodeCoordinator, ProxmoxQEMUCoordinator, ProxmoxLXCCoordinator, ProxmoxStorageCoordinator, ProxmoxUpdateCoordinator
+from .coordinator import ProxmoxDiskCoordinator, ProxmoxNodeCoordinator, ProxmoxQEMUCoordinator, ProxmoxLXCCoordinator, ProxmoxStorageCoordinator, ProxmoxUpdateCoordinator
 
 TO_REDACT_CONFIG = ["host", "username", "password"]
 
@@ -32,7 +33,7 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
 
-    coordinators: dict[str, ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator | ProxmoxStorageCoordinator | ProxmoxUpdateCoordinator] = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
+    coordinators: dict[str, ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator | ProxmoxStorageCoordinator | ProxmoxUpdateCoordinator | ProxmoxDiskCoordinator] = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
 
@@ -91,6 +92,14 @@ async def async_get_config_entry_diagnostics(
             else:
                 nodes[node["node"]]["updates"] = "Error"
 
+        try:
+            nodes[node["node"]]["disks"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).disks.list.get)
+        except ResourceException as error:
+            if error.status_code == 403:
+                nodes[node["node"]]["disks"] = "403 Forbidden: Permission check failed"
+            else:
+                nodes[node["node"]]["disks"] = "Error"
+
     api_data = {
             "resources": resources,
             "nodes":nodes,
@@ -124,19 +133,21 @@ async def async_get_config_entry_diagnostics(
 
         devices.append({"device": asdict(device), "entities": entities})
 
+    proxmox_coordinators={}
+    for coordinator_name, coordinator in coordinators.items():
+        if type(coordinator) in (ProxmoxNodeCoordinator, ProxmoxQEMUCoordinator, ProxmoxLXCCoordinator, ProxmoxStorageCoordinator, ProxmoxUpdateCoordinator, ProxmoxDiskCoordinator) and (coordinator_data := coordinator.data) is not None:
+            proxmox_coordinators[coordinator_name]=coordinator_data.__dict__
+        elif type(coordinator) is list:
+            for coordinator_sub in coordinator:
+                if type(coordinator_sub) in (ProxmoxNodeCoordinator, ProxmoxQEMUCoordinator, ProxmoxLXCCoordinator, ProxmoxStorageCoordinator, ProxmoxUpdateCoordinator, ProxmoxDiskCoordinator) and (coordinator_sub_data := coordinator_sub.data) is not None:
+                    proxmox_coordinators[coordinator_sub.name]=coordinator_sub_data.__dict__
+
     return {
         "timestamp": datetime.datetime.now(),
         "config_entry": async_redact_data(config_entry.data, TO_REDACT_CONFIG),
         "options": async_redact_data(config_entry.options, TO_REDACT_CONFIG),
         "devices": async_redact_data(devices, TO_REDACT_DATA),
-        "proxmox_coordinators": {
-            coordinator.name: {
-                "data": async_redact_data(
-                    coordinator.data.__dict__, TO_REDACT_COORD
-                ) if coordinator.data is not None else {}
-            }
-            for coordinator in coordinators.values()
-        },
+        "proxmox_coordinators": async_redact_data(proxmox_coordinators, TO_REDACT_COORD),
         "api_response": async_redact_data(api_data, TO_REDACT_API) if api_data is not None else {},
     }
 

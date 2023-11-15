@@ -58,6 +58,7 @@ from .const import (
     ProxmoxType,
 )
 from .coordinator import (
+    ProxmoxDiskCoordinator,
     ProxmoxLXCCoordinator,
     ProxmoxNodeCoordinator,
     ProxmoxQEMUCoordinator,
@@ -330,7 +331,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     coordinators: dict[
         str | int,
-        ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator,
+        ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator | ProxmoxStorageCoordinator | ProxmoxUpdateCoordinator | ProxmoxDiskCoordinator,
     ] = {}
     nodes_add_device = []
 
@@ -367,6 +368,23 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             )
             await coordinator_updates.async_refresh()
             coordinators[f"{ProxmoxType.Update}_{node}"] = coordinator_updates
+
+            try:
+                disks = await hass.async_add_executor_job(proxmox.nodes(node).disks.list.get)
+            except ResourceException as error:
+                continue
+
+            coordinators[f"{node}_{ProxmoxType.Disk}"]=[]
+            for disk in disks:
+                coordinator_disk = ProxmoxDiskCoordinator(
+                    hass=hass,
+                    proxmox=proxmox,
+                    api_category=ProxmoxType.Disk,
+                    node_name=node,
+                    disk_id=disk["devpath"],
+                )
+                await coordinator_disk.async_refresh()
+                coordinators[f"{node}_{ProxmoxType.Disk}"].append(coordinator_disk)
 
         else:
             async_create_issue(
@@ -552,6 +570,7 @@ def device_info(
     node: str | None = None,
     resource_id: int | None = None,
     create: bool | None = False,
+    cordinator_resource: dict[str,Any] | None = None,
 ):
     """Return the Device Info."""
 
@@ -561,6 +580,8 @@ def device_info(
     port = config_entry.data[CONF_PORT]
 
     proxmox_version = None
+    manufacturer = None
+    serial_number = None
     if api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
         coordinator = coordinators[resource_id]
         if (coordinator_data := coordinator.data) is not None:
@@ -602,6 +623,18 @@ def device_info(
         via_device = ("", "")
         model = model_processor
 
+    elif api_category is ProxmoxType.Disk:
+        name = f"{api_category.capitalize()} {node}:{resource_id}"
+        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
+        url = f"https://{host}:{port}/#v1:0:=node/{node}::2::::::"
+        via_device = (
+            DOMAIN,
+            f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
+        )
+        model = f"{cordinator_resource.disk_type.upper()} {cordinator_resource.model}"
+        manufacturer = cordinator_resource.vendor
+        serial_number = cordinator_resource.serial
+
     if create:
         device_registry = dr.async_get(hass)
         return device_registry.async_get_or_create(
@@ -609,23 +642,25 @@ def device_info(
             entry_type=dr.DeviceEntryType.SERVICE,
             configuration_url=url,
             identifiers={(DOMAIN, identifier)},
-            manufacturer="Proxmox VE",
+            manufacturer = manufacturer or INTEGRATION_TITLE,
             name=name,
             model=model,
             sw_version=proxmox_version,
             hw_version=None,
             via_device=via_device,
+            serial_number = serial_number or None,
         )
     return DeviceInfo(
         entry_type=dr.DeviceEntryType.SERVICE,
         configuration_url=url,
         identifiers={(DOMAIN, identifier)},
-        manufacturer="Proxmox VE",
+        manufacturer = manufacturer or INTEGRATION_TITLE,
         name=name,
         model=model,
         sw_version=proxmox_version,
         hw_version=None,
         via_device=via_device,
+        serial_number = serial_number or None,
     )
 
 

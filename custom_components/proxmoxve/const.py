@@ -45,6 +45,7 @@ class ProxmoxType(StrEnum):
     LXC = "lxc"
     Storage = "storage"
     Update = "update"
+    Disk = "disk"
 
 
 class ProxmoxCommand(StrEnum):

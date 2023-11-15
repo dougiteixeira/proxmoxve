@@ -190,6 +190,12 @@
         "disk_free_perc": {
           "name": "Disk free percentage"
         },
+        "disk_rpm": {
+          "name": "Disk speed"
+        },
+        "disk_size": {
+          "name": "Size"
+        },
         "disk_total": {
           "name": "Disk total"
         },
