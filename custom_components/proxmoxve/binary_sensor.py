@@ -52,6 +52,17 @@ PROXMOX_BINARYSENSOR_UPDATES: Final[tuple[ProxmoxBinarySensorEntityDescription, 
     ),
 )
 
+PROXMOX_BINARYSENSOR_DISKS: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
+    ProxmoxBinarySensorEntityDescription(
+        key=ProxmoxKeyAPIParse.HEALTH,
+        name="Health",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        on_value="PASSED",
+        inverted=True,
+        translation_key="health",
+    ),
+)
+
 PROXMOX_BINARYSENSOR_VM: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
     ProxmoxBinarySensorEntityDescription(
         key=ProxmoxKeyAPIParse.STATUS,
@@ -123,6 +134,29 @@ async def async_setup_entry(
                             resource_id=node,
                         )
                     )
+
+            if f"{node}_{ProxmoxType.Disk}" in coordinators:
+                for coordinator_disk in coordinators[f"{node}_{ProxmoxType.Disk}"]:
+                    if (coordinator_data := coordinator_disk.data) is None:
+                        continue
+
+                    for description in PROXMOX_BINARYSENSOR_DISKS:
+                        sensors.append(
+                            create_binary_sensor(
+                                coordinator=coordinator_disk,
+                                info_device=device_info(
+                                    hass=hass,
+                                    config_entry=config_entry,
+                                    api_category=ProxmoxType.Disk,
+                                    node=node,
+                                    resource_id=coordinator_data.path,
+                                    cordinator_resource=coordinator_data,
+                                ),
+                                description=description,
+                                resource_id=coordinator_data.path,
+                                config_entry=config_entry,
+                            )
+                        )
 
     for vm_id in config_entry.data[CONF_QEMU]:
         if vm_id in coordinators:

@@ -13,7 +13,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfInformation
+from homeassistant.const import PERCENTAGE, REVOLUTIONS_PER_MINUTE, UnitOfInformation
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -342,8 +342,40 @@ PROXMOX_SENSOR_STORAGE: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key="node",
         name="Node",
         icon="mdi:server",
+        translation_key="node",
     ),
     *PROXMOX_SENSOR_DISK,
+)
+
+
+PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key="node",
+        name="Node",
+        icon="mdi:server",
+        translation_key="node",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="size",
+        name="Size",
+        icon="mdi:harddisk",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        translation_key="disk_size",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="disk_rpm",
+        name="Disk speed",
+        icon="mdi:speedometer",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=REVOLUTIONS_PER_MINUTE,
+        suggested_display_precision=0,
+        translation_key="disk_rpm",
+        entity_registry_enabled_default=False,
+    ),
 )
 
 async def async_setup_entry(
@@ -398,6 +430,29 @@ async def async_setup_entry(
                             config_entry=config_entry,
                         )
                     )
+
+            if f"{node}_{ProxmoxType.Disk}" in coordinators:
+                for coordinator_disk in coordinators[f"{node}_{ProxmoxType.Disk}"]:
+                    if (coordinator_data := coordinator_disk.data) is None:
+                        continue
+
+                    for description in PROXMOX_SENSOR_DISKS:
+                        sensors.append(
+                            create_sensor(
+                                coordinator=coordinator_disk,
+                                info_device=device_info(
+                                    hass=hass,
+                                    config_entry=config_entry,
+                                    api_category=ProxmoxType.Disk,
+                                    node=node,
+                                    resource_id=coordinator_data.path,
+                                    cordinator_resource=coordinator_data,
+                                ),
+                                description=description,
+                                resource_id=coordinator_data.path,
+                                config_entry=config_entry,
+                            )
+                        )
 
     for vm_id in config_entry.data[CONF_QEMU]:
         if vm_id in coordinators:

@@ -37,6 +37,7 @@ from .const import (
     CONF_REALM,
     CONF_STORAGE,
     CONF_VMS,
+    COORDINATORS,
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
@@ -250,6 +251,8 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     else:
                         resource_storage[str(resource["storage"])] = f"{resource['storage']}"
 
+            LOGGER.debug("Response API - Resources: %s", resources)
+
             return self.async_show_form(
                 step_id="change_expose",
                 data_schema=vol.Schema(
@@ -293,7 +296,24 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
         for node in self.config_entry.data[CONF_NODES]:
             if node not in node_selecition:
-                # Remove device
+
+                # Remove device disks
+                dev_reg = dr.async_get(self.hass)
+                coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][COORDINATORS]
+                if f"{node}_{ProxmoxType.Disk}" in coordinators:
+                    for coordinator_disk in coordinators[f"{node}_{ProxmoxType.Disk}"]:
+                        if (coordinator_data := coordinator_disk.data) is None:
+                            continue
+
+                        identifier = (
+                            f"{self.config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{coordinator_data.path}"
+                        )
+                        await self.async_remove_device(
+                            entry_id=self.config_entry.entry_id,
+                            device_identifier=identifier,
+                        )
+
+                # Remove device node
                 identifier = (
                     f"{self.config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
                 )

@@ -102,6 +102,12 @@
           "disk_free_perc": {
             "name": "Disco percentual disponível"
           },
+          "disk_rpm": {
+            "name": "Velocidade do disco"
+          },
+          "disk_size": {
+            "name": "Tamanho"
+          },
           "disk_total": {
             "name": "Disco total"
           },
