@@ -68,6 +68,9 @@ logger:
 * Storage
 ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/fb290802-95d7-4dcc-8538-d31636a2f6f8)
 
+* Physical disks
+![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/036e2060-cd71-486b-b2b7-33835baae10b)
+
 ## Proxmox Permissions
 
 To be able to obtain each type of integration information, the user used to connect must have the corresponding privilege.
