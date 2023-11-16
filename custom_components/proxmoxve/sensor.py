@@ -13,7 +13,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, REVOLUTIONS_PER_MINUTE, UnitOfInformation
+from homeassistant.const import PERCENTAGE, REVOLUTIONS_PER_MINUTE, UnitOfInformation, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -375,6 +375,34 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         suggested_display_precision=0,
         translation_key="disk_rpm",
         entity_registry_enabled_default=False,
+    ),
+    ProxmoxSensorEntityDescription(
+        key="temperature",
+        name="Temperature",
+        icon="mdi:harddisk",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        translation_key="temperature",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="power_cycles",
+        name="Power cycles",
+        icon="mdi:reload",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        translation_key="power_cycles",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="power_hours",
+        name="Time on",
+        icon="mdi:database-clock",
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        device_class=SensorDeviceClass.DURATION,
+        state_class=SensorStateClass.TOTAL,
+        suggested_display_precision=0,
+        translation_key="power_hours",
     ),
 )
 

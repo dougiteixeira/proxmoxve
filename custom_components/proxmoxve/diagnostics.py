@@ -33,6 +33,10 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
 
+    def poll_api_attributes(proxmox, node: str, disk: str) -> dict[str, Any] | None:
+        """Return data from the Proxmox Disk Attributes API."""
+        return  proxmox.nodes(node).disks.smart.get(disk=disk)
+
     coordinators: dict[str, ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator | ProxmoxStorageCoordinator | ProxmoxUpdateCoordinator | ProxmoxDiskCoordinator] = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
@@ -93,12 +97,21 @@ async def async_get_config_entry_diagnostics(
                 nodes[node["node"]]["updates"] = "Error"
 
         try:
-            nodes[node["node"]]["disks"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).disks.list.get)
+            disks = await hass.async_add_executor_job(proxmox.nodes(node["node"]).disks.list.get)
+
+            nodes[node["node"]]["disks"] = {}
+            for disk in disks:
+                disk_attributes = await hass.async_add_executor_job(poll_api_attributes, proxmox, node["node"], disk["devpath"])
+                nodes[node["node"]]["disks"][disk["devpath"]] = {
+                    "data": disk,
+                    "smart": disk_attributes
+                }
+
         except ResourceException as error:
             if error.status_code == 403:
                 nodes[node["node"]]["disks"] = "403 Forbidden: Permission check failed"
             else:
-                nodes[node["node"]]["disks"] = "Error"
+                nodes[node["node"]]["disks"] = error
 
     api_data = {
             "resources": resources,
