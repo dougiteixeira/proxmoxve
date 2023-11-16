@@ -71,7 +71,7 @@ logger:
 ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/fb290802-95d7-4dcc-8538-d31636a2f6f8)
 
 * Physical disks
-![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/eafb4652-63ed-4f2b-a288-30eca3ad26c9)
+![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/f6174806-0ba8-4f60-ada7-cf5f29a1f629)
 
 ## Proxmox Permissions
 

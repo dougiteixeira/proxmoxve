@@ -394,16 +394,6 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         suggested_display_precision=0,
         translation_key="power_cycles",
     ),
-    ProxmoxSensorEntityDescription(
-        key="power_hours",
-        name="Time on",
-        icon="mdi:database-clock",
-        native_unit_of_measurement=UnitOfTime.HOURS,
-        device_class=SensorDeviceClass.DURATION,
-        state_class=SensorStateClass.TOTAL,
-        suggested_display_precision=0,
-        translation_key="power_hours",
-    ),
 )
 
 async def async_setup_entry(
