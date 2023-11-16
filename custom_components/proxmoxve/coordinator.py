@@ -677,7 +677,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                 disk_attributes = {}
                 disk_attributes_api = await self.hass.async_add_executor_job(poll_api_attributes)
                 for disk_attribute in disk_attributes_api["attributes"]:
-                    if disk_attribute["name"] in ("Power_Cycle_Count", "Power_On_Hours"):
+                    if disk_attribute["name"] == "Power_Cycle_Count":
                         disk_attributes[disk_attribute["name"]]=disk_attribute["raw"]
                     elif disk_attribute["name"] == "Temperature_Celsius":
                         disk_attributes[disk_attribute["name"]]=disk_attribute["raw"].split(" ", 1)[0]
@@ -695,7 +695,6 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     disk_type=disk["type"],
                     temperature=disk_attributes["Temperature_Celsius"] if "Temperature_Celsius" in disk_attributes else None,
                     power_cycles=disk_attributes["Power_Cycle_Count"] if "Power_Cycle_Count" in disk_attributes else None,
-                    power_hours=disk_attributes["Power_On_Hours"] if "Power_On_Hours" in disk_attributes else None,
                 )
 
         raise UpdateFailed(f"Disk {self.resource_id} not found on node {self.node_name}.")

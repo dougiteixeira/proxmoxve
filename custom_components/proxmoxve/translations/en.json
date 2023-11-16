@@ -232,9 +232,6 @@
         "power_cycles": {
           "name": "Power cycles"
         },
-        "power_hours": {
-          "name": "Time on"
-        },
         "status_raw": {
           "name": "Status",
           "state": {

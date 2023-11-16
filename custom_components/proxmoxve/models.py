@@ -146,4 +146,3 @@ class ProxmoxDiskData:
     disk_type: str
     temperature: float
     power_cycles: int
-    power_hours: int
