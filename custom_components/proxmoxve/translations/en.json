@@ -229,6 +229,12 @@
         "node": {
           "name": "Node"
         },
+        "power_cycles": {
+          "name": "Power cycles"
+        },
+        "power_hours": {
+          "name": "Time on"
+        },
         "status_raw": {
           "name": "Status",
           "state": {
@@ -251,6 +257,9 @@
         },
         "swap_used_perc": {
           "name": "Swap used percentage"
+        },
+        "temperature": {
+          "name": "Temperature"
         },
         "updates_total": {
           "name": "Total updates",

@@ -591,22 +591,21 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         self.resource_id = disk_id
 
     async def _async_update_data(self) -> ProxmoxLXCData:
-        """Update data  for Proxmox Update."""
+        """Update data  for Proxmox Disk."""
 
         def poll_api() -> dict[str, Any] | None:
-            """Return data from the Proxmox Update API."""
+            """Return data from the Proxmox Disk API."""
             try:
                 api_status = None
 
-                if self.node_name is not None:
-                    api_status = (
-                        self.proxmox.nodes(self.node_name)
-                        .disks
-                        .list.get()
-                    )
-
                 if self.node_name is None:
                     raise UpdateFailed(f"{self.resource_id} node not found")
+
+                api_status = (
+                    self.proxmox.nodes(self.node_name)
+                    .disks
+                    .list.get()
+                )
 
             except (
                 AuthenticationError,
@@ -642,6 +641,32 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
             LOGGER.debug("API Response - Disk: %s", api_status)
             return api_status
 
+
+        def poll_api_attributes() -> dict[str, Any] | None:
+            """Return data from the Proxmox Disk Attributes API."""
+            try:
+                disk_attributes = None
+
+                if self.node_name is None:
+                    raise UpdateFailed(f"{self.resource_id} node not found")
+
+                disk_attributes = (
+                    self.proxmox.nodes(self.node_name)
+                    .disks
+                    .smart.get(disk=self.resource_id)
+                )
+
+            except (
+                AuthenticationError,
+                SSLError,
+                ConnectTimeout,
+                ResourceException,
+            ) as error:
+                raise UpdateFailed(error) from error
+
+            LOGGER.debug("API Response - Disk attributes: %s", disk_attributes)
+            return disk_attributes
+
         api_status = await self.hass.async_add_executor_job(poll_api)
 
         if api_status is None:
@@ -649,6 +674,14 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
 
         for disk in api_status:
             if disk["devpath"] == self.resource_id:
+                disk_attributes = {}
+                disk_attributes_api = await self.hass.async_add_executor_job(poll_api_attributes)
+                for disk_attribute in disk_attributes_api["attributes"]:
+                    if disk_attribute["name"] in ("Power_Cycle_Count", "Power_On_Hours"):
+                        disk_attributes[disk_attribute["name"]]=disk_attribute["raw"]
+                    elif disk_attribute["name"] == "Temperature_Celsius":
+                        disk_attributes[disk_attribute["name"]]=disk_attribute["raw"].split(" ", 1)[0]
+
                 return ProxmoxDiskData(
                     type=ProxmoxType.Disk,
                     node=self.node_name,
@@ -660,6 +693,9 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     model=disk["model"],
                     disk_rpm=disk["rpm"],
                     disk_type=disk["type"],
+                    temperature=disk_attributes["Temperature_Celsius"] if "Temperature_Celsius" in disk_attributes else None,
+                    power_cycles=disk_attributes["Power_Cycle_Count"] if "Power_Cycle_Count" in disk_attributes else None,
+                    power_hours=disk_attributes["Power_On_Hours"] if "Power_On_Hours" in disk_attributes else None,
                 )
 
         raise UpdateFailed(f"Disk {self.resource_id} not found on node {self.node_name}.")
