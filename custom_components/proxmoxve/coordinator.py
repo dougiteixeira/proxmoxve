@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-import json
 from typing import Any
 
 from proxmoxer import AuthenticationError, ProxmoxAPI
