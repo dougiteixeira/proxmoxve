@@ -49,7 +49,7 @@ async def async_get_config_entry_diagnostics(
         if error.status_code == 403:
             resources = "403 Forbidden: Permission check failed"
         else:
-            resources = "Error"
+            resources = error
 
 
     nodes = {}
@@ -59,7 +59,7 @@ async def async_get_config_entry_diagnostics(
         if error.status_code == 403:
             nodes_api = "403 Forbidden: Permission check failed"
         else:
-            nodes_api = "Error"
+            nodes_api = error
 
     for node in nodes_api:
         nodes[node["node"]] = node
@@ -70,7 +70,7 @@ async def async_get_config_entry_diagnostics(
             if error.status_code == 403:
                 nodes[node["node"]]["qemu"] = "403 Forbidden: Permission check failed"
             else:
-                nodes[node["node"]]["qemu"] = "Error"
+                nodes[node["node"]]["qemu"] = error
 
         try:
             nodes[node["node"]]["lxc"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).lxc.get)
@@ -78,7 +78,7 @@ async def async_get_config_entry_diagnostics(
             if error.status_code == 403:
                 nodes[node["node"]]["lxc"] = "403 Forbidden: Permission check failed"
             else:
-                nodes[node["node"]]["lxc"] = "Error"
+                nodes[node["node"]]["lxc"] = error
 
         try:
             nodes[node["node"]]["storage"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).storage.get)
@@ -86,7 +86,7 @@ async def async_get_config_entry_diagnostics(
             if error.status_code == 403:
                 nodes[node["node"]]["storage"] = "403 Forbidden: Permission check failed"
             else:
-                nodes[node["node"]]["storage"] = "Error"
+                nodes[node["node"]]["storage"] = error
 
         try:
             nodes[node["node"]]["updates"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).apt.update.get)
@@ -94,7 +94,12 @@ async def async_get_config_entry_diagnostics(
             if error.status_code == 403:
                 nodes[node["node"]]["updates"] = "403 Forbidden: Permission check failed"
             else:
-                nodes[node["node"]]["updates"] = "Error"
+                nodes[node["node"]]["updates"] = error
+
+        try:
+            nodes[node["node"]]["versions"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).apt.versions.get)
+        except ResourceException as error:
+                nodes[node["node"]]["updates"] = error
 
         try:
             disks = await hass.async_add_executor_job(proxmox.nodes(node["node"]).disks.list.get)
