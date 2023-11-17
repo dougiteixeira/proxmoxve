@@ -676,23 +676,40 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
             if disk["devpath"] == self.resource_id:
                 disk_attributes = {}
                 disk_attributes_api = await self.hass.async_add_executor_job(poll_api_attributes)
-                for disk_attribute in disk_attributes_api["attributes"]:
-                    if disk_attribute["name"] == "Power_Cycle_Count":
-                        disk_attributes[disk_attribute["name"]]=disk_attribute["raw"]
-                    elif disk_attribute["name"] == "Temperature_Celsius":
-                        disk_attributes[disk_attribute["name"]]=disk_attribute["raw"].split(" ", 1)[0]
+
+                attributes_json = []
+                if "attributes" in disk_attributes_api:
+                    attributes_json = disk_attributes_api["attributes"]
+                else:
+                    if "type" in disk_attributes_api and disk_attributes_api["type"] == "text":
+                        attributes_text = disk_attributes_api["text"].split("\n")
+                        for value_text in attributes_text:
+                            value_json = value_text.split(":")
+                            if len(value_json) >= 2:
+                                attributes_json.append(
+                                    {
+                                        "name": value_json[0].strip(),
+                                        "raw": value_json[1].strip(),
+                                    }
+                                )
+
+                for disk_attribute in attributes_json:
+                    if disk_attribute["name"] in ("Power_Cycle_Count", "Power Cycles"):
+                        disk_attributes["Power_Cycle_Count"]=disk_attribute["raw"]
+                    elif disk_attribute["name"] in ("Temperature_Celsius", "Temperature"):
+                        disk_attributes["Temperature_Celsius"]=disk_attribute["raw"].split(" ", 1)[0]
 
                 return ProxmoxDiskData(
                     type=ProxmoxType.Disk,
                     node=self.node_name,
                     path=self.resource_id,
-                    size=disk["size"],
-                    health=disk["health"],
-                    vendor=disk["vendor"],
-                    serial=disk["serial"],
-                    model=disk["model"],
-                    disk_rpm=disk["rpm"],
-                    disk_type=disk["type"],
+                    size=disk["size"] if "size" in disk else None,
+                    health=disk["health"] if "health" in disk else None,
+                    vendor=disk["vendor"] if "vendor" in disk else None,
+                    serial=disk["serial"] if "serial" in disk else None,
+                    model=disk["model"] if "model" in disk else None,
+                    disk_rpm=disk["rpm"] if "rpm" in disk else None,
+                    disk_type=disk["type"] if "type" in disk else None,
                     temperature=disk_attributes["Temperature_Celsius"] if "Temperature_Celsius" in disk_attributes else None,
                     power_cycles=disk_attributes["Power_Cycle_Count"] if "Power_Cycle_Count" in disk_attributes else None,
                 )
