@@ -314,7 +314,7 @@ PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Status",
         icon="mdi:server",
         translation_key="status_raw",
-        value_fn=lambda x: "paused" if x.health == "paused" else x.status,
+        value_fn=lambda x: raw_status_process(x)
     ),
     *PROXMOX_SENSOR_CPU,
     *PROXMOX_SENSOR_DISK,
@@ -395,6 +395,11 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         translation_key="power_cycles",
     ),
 )
+
+def raw_status_process(vm):
+    if vm.health not in ["running", "stopped"]:
+        return vm.health
+    return vm.status
 
 async def async_setup_entry(
     hass: HomeAssistant,
