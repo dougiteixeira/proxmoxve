@@ -22,7 +22,7 @@
                   "disks_enable": "Habilitar informações dos discos físicos"
               },
               "data_description": {
-                  "disks_enable": "Caso você configure a hibernação dos discos, você deve desabilitar essa opção pois ela impedirá que os discos permaneçam em hibernação."
+                  "disks_enable": "Se você trabalha com a hibernação dos discos, você deverá desabilitar esta opção da integração para que não cause a reativação dos discos indevidamente."
               },
               "description": "Selecione os nós da instância Proxmox, as máquinas virtuais (QEMU), contêineres (LXC) e armazenamentos que deseja expor"
           },
@@ -266,7 +266,7 @@
                   "disks_enable": "Habilitar informações dos discos físicos"
               },
               "data_description": {
-                  "disks_enable": "Caso você configure a hibernação dos discos, você deve desabilitar essa opção pois ela impedirá que os discos permaneçam em hibernação."
+                  "disks_enable": "Se você trabalha com a hibernação dos discos, você deverá desabilitar esta opção da integração para que não cause a reativação dos discos indevidamente."
               }
           },
           "host_auth": {
