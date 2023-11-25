@@ -149,6 +149,7 @@
             "state": {
               "paused": "Pausado",
               "stopped": "Desligado",
+              "suspended": "Suspenso",
               "running": "Executando"
             }
           },
