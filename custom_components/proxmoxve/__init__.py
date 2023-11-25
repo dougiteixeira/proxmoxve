@@ -38,6 +38,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     CONF_CONTAINERS,
+    CONF_DISKS_ENABLE,
     CONF_LXC,
     CONF_NODE,
     CONF_NODES,
@@ -369,22 +370,23 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             await coordinator_updates.async_refresh()
             coordinators[f"{ProxmoxType.Update}_{node}"] = coordinator_updates
 
-            try:
-                disks = await hass.async_add_executor_job(proxmox.nodes(node).disks.list.get)
-            except ResourceException as error:
-                continue
+            if config_entry.options.get(CONF_DISKS_ENABLE, True):
+                try:
+                    disks = await hass.async_add_executor_job(proxmox.nodes(node).disks.list.get)
+                except ResourceException as error:
+                    continue
 
-            coordinators[f"{node}_{ProxmoxType.Disk}"]=[]
-            for disk in disks:
-                coordinator_disk = ProxmoxDiskCoordinator(
-                    hass=hass,
-                    proxmox=proxmox,
-                    api_category=ProxmoxType.Disk,
-                    node_name=node,
-                    disk_id=disk["devpath"],
-                )
-                await coordinator_disk.async_refresh()
-                coordinators[f"{node}_{ProxmoxType.Disk}"].append(coordinator_disk)
+                coordinators[f"{node}_{ProxmoxType.Disk}"]=[]
+                for disk in disks:
+                    coordinator_disk = ProxmoxDiskCoordinator(
+                        hass=hass,
+                        proxmox=proxmox,
+                        api_category=ProxmoxType.Disk,
+                        node_name=node,
+                        disk_id=disk["devpath"],
+                    )
+                    await coordinator_disk.async_refresh()
+                    coordinators[f"{node}_{ProxmoxType.Disk}"].append(coordinator_disk)
 
         else:
             async_create_issue(

@@ -18,7 +18,11 @@
           "nodes": "Nodes",
           "qemu": "Virtual Machines (QEMU)",
           "lxc": "Linux Containers (LXC)",
-          "storage": "Storages"
+          "storage": "Storages",
+          "disks_enable": "Enable physical disk information"
+        },
+        "data_description": {
+          "disks_enable": "If you configure disk hibernation, you must disable this option as it will prevent the disks from remaining in hibernation."
         }
       },
       "reauth_confirm": {
@@ -120,7 +124,11 @@
           "nodes": "[%key:component::proxmoxve::config::step::expose::data::nodes%]",
           "qemu": "[%key:component::proxmoxve::config::step::expose::data::qemu%]",
           "lxc": "[%key:component::proxmoxve::config::step::expose::data::lxc%]",
-          "storage": "[%key:component::proxmoxve::config::step::expose::data::storage%]"
+          "storage": "[%key:component::proxmoxve::config::step::expose::data::storage%]",
+          "disks_enable": "[%key:component::proxmoxve::config::step::expose::data::disks_enable%]"
+        },
+        "data_description": {
+          "disks_enable": "[%key:component::proxmoxve::config::step::expose::data_description::disks_enable%]"
         }
       }
     },

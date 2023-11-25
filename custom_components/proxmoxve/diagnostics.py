@@ -16,7 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from .const import COORDINATORS, DOMAIN, LOGGER, PROXMOX_CLIENT
+from .const import CONF_DISKS_ENABLE, COORDINATORS, DOMAIN, LOGGER, PROXMOX_CLIENT
 from .coordinator import ProxmoxDiskCoordinator, ProxmoxNodeCoordinator, ProxmoxQEMUCoordinator, ProxmoxLXCCoordinator, ProxmoxStorageCoordinator, ProxmoxUpdateCoordinator
 
 TO_REDACT_CONFIG = ["host", "username", "password"]
@@ -101,22 +101,25 @@ async def async_get_config_entry_diagnostics(
         except ResourceException as error:
                 nodes[node["node"]]["updates"] = error
 
-        try:
-            disks = await hass.async_add_executor_job(proxmox.nodes(node["node"]).disks.list.get)
+        if config_entry.options.get(CONF_DISKS_ENABLE, True):
+            try:
+                disks = await hass.async_add_executor_job(proxmox.nodes(node["node"]).disks.list.get)
 
-            nodes[node["node"]]["disks"] = {}
-            for disk in disks:
-                disk_attributes = await hass.async_add_executor_job(poll_api_attributes, proxmox, node["node"], disk["devpath"])
-                nodes[node["node"]]["disks"][disk["devpath"]] = {
-                    "data": disk,
-                    "smart": disk_attributes
-                }
+                nodes[node["node"]]["disks"] = {}
+                for disk in disks:
+                    disk_attributes = await hass.async_add_executor_job(poll_api_attributes, proxmox, node["node"], disk["devpath"])
+                    nodes[node["node"]]["disks"][disk["devpath"]] = {
+                        "data": disk,
+                        "smart": disk_attributes
+                    }
 
-        except ResourceException as error:
-            if error.status_code == 403:
-                nodes[node["node"]]["disks"] = "403 Forbidden: Permission check failed"
-            else:
-                nodes[node["node"]]["disks"] = error
+            except ResourceException as error:
+                if error.status_code == 403:
+                    nodes[node["node"]]["disks"] = "403 Forbidden: Permission check failed"
+                else:
+                    nodes[node["node"]]["disks"] = error
+        else:
+            nodes[node["node"]]["disks"] = "Disk information disabled in integration configuration options"
 
     api_data = {
             "resources": resources,

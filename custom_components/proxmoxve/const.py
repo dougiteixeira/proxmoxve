@@ -11,6 +11,7 @@ CONF_NODE = "node"
 CONF_NODES = "nodes"
 CONF_VMS = "vms"
 CONF_CONTAINERS = "containers"
+CONF_DISKS_ENABLE = "disks_enable"
 
 COORDINATORS = "coordinators"
 

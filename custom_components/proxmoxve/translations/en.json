@@ -18,7 +18,11 @@
             "nodes": "Nodes",
             "qemu": "Virtual Machines (QEMU)",
             "lxc": "Linux Containers (LXC)",
-            "storage": "Storages"
+            "storage": "Storages",
+            "disks_enable": "Enable physical disk information"
+          },
+          "data_description": {
+            "disks_enable": "If you configure disk hibernation, you must disable this option as it will prevent the disks from remaining in hibernation."
           }
         },
         "reauth_confirm": {
@@ -120,7 +124,11 @@
             "lxc": "Linux Containers (LXC)",
             "nodes": "Nodes",
             "qemu": "Virtual Machines (QEMU)",
-            "storage": "Storages"
+            "storage": "Storages",
+            "disks_enable": "Enable physical disk information"
+          },
+          "data_description": {
+            "disks_enable": "If you configure disk hibernation, you must disable this option as it will prevent the disks from remaining in hibernation."
           }
         }
       },

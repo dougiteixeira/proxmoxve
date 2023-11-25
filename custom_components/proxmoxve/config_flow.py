@@ -19,7 +19,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, selector
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.issue_registry import (
     IssueSeverity,
@@ -41,6 +41,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
+    CONF_DISKS_ENABLE,
     DOMAIN,
     LOGGER,
     VERSION_REMOVE_YAML,
@@ -278,6 +279,10 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                                 **resource_storage,
                             }
                         ),
+                        vol.Optional(
+                            CONF_DISKS_ENABLE,
+                            default=self.config_entry.options.get(CONF_DISKS_ENABLE, True)
+                        ): selector.BooleanSelector(),
                     }
                 ),
             )
@@ -408,7 +413,11 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             }
         )
 
-        self.hass.config_entries.async_update_entry(self.config_entry, data=config_data)
+        options_data = {
+            CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)
+        }
+
+        self.hass.config_entries.async_update_entry(self.config_entry, data=config_data, options=options_data)
 
         await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
@@ -825,6 +834,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         vol.Optional(CONF_QEMU): cv.multi_select(resource_qemu),
                         vol.Optional(CONF_LXC): cv.multi_select(resource_lxc),
                         vol.Optional(CONF_STORAGE): cv.multi_select(resource_storage),
+                        vol.Optional(
+                            CONF_DISKS_ENABLE,
+                            default=True,
+                        ): selector.BooleanSelector(),
                     }
                 ),
             )
@@ -868,6 +881,9 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title=(f"{self._config[CONF_HOST]}:{self._config[CONF_PORT]}"),
             data=self._config,
+            options={
+                CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)
+            }
         )
 
     @staticmethod
