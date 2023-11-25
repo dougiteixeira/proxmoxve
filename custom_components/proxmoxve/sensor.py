@@ -314,7 +314,7 @@ PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Status",
         icon="mdi:server",
         translation_key="status_raw",
-        value_fn=lambda x: "paused" if x.health == "paused" else x.status,
+        value_fn=lambda x: x.health if x.health not in ["running", "stopped"] else x.status,
     ),
     *PROXMOX_SENSOR_CPU,
     *PROXMOX_SENSOR_DISK,

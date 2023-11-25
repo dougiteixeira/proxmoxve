@@ -245,6 +245,7 @@
         "state": {
           "paused": "Paused",
           "stopped": "Stopped",
+          "suspended": "Suspended",
           "running": "Running"
         }
       },

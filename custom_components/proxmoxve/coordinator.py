@@ -225,7 +225,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         update_device_via(self, ProxmoxType.QEMU)
         return ProxmoxVMData(
             type=ProxmoxType.QEMU,
-            status=api_status["status"],
+            status= api_status["lock"] if ("lock" in api_status and api_status["lock"] == "suspended") else api_status["status"],
             name=api_status["name"],
             node=self.node_name,
             health=api_status["qmpstatus"],
