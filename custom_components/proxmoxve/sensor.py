@@ -300,6 +300,24 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     *PROXMOX_SENSOR_MEMORY,
     *PROXMOX_SENSOR_SWAP,
     *PROXMOX_SENSOR_UPTIME,
+    ProxmoxSensorEntityDescription(
+        key="qemu_on",
+        name="Virtual machines running",
+        icon="mdi:server",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        translation_key="qemu_on",
+        extra_attrs=["qemu_on_list"],
+    ),
+    ProxmoxSensorEntityDescription(
+        key="lxc_on",
+        name="Containers running",
+        icon="mdi:server",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        translation_key="lxc_on",
+        extra_attrs=["lxc_on_list"],
+    ),
 )
 
 PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (

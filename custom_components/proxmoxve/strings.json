@@ -213,6 +213,14 @@
       "disk_used_perc": {
         "name": "Disk used percentage"
       },
+      "lxc_on": {
+        "name": "Containers running",
+        "state_attributes": {
+          "lxc_on_list": {
+            "name": "Containers list"
+          }
+        }
+      },
       "memory_free": {
         "name": "Memory free"
       },
@@ -236,6 +244,14 @@
       },
       "power_cycles": {
         "name": "Power cycles"
+      },
+      "qemu_on": {
+        "name": "Virtual machines running",
+        "state_attributes": {
+          "qemu_on_list": {
+            "name": "Virtual machines list"
+          }
+        }
       },
       "node": {
         "name": "Node"
