@@ -65,7 +65,14 @@ async def async_get_config_entry_diagnostics(
         nodes[node["node"]] = node
 
         try:
-            nodes[node["node"]]["qemu"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).qemu.get)
+            nodes[node["node"]]["qemu"] = {}
+            qemu_node = await hass.async_add_executor_job(proxmox.nodes(node["node"]).qemu.get)
+            for qemu in qemu_node:
+                nodes[node["node"]]["qemu"][qemu["vmid"]] = qemu
+                try:
+                    nodes[node["node"]]["qemu"][qemu["vmid"]]["backups"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).qemu(qemu["vmid"]).snapshot.get)
+                except ResourceException as error:
+                    nodes[node["node"]]["qemu"][qemu["vmid"]]["backups"] = error
         except ResourceException as error:
             if error.status_code == 403:
                 nodes[node["node"]]["qemu"] = "403 Forbidden: Permission check failed"
@@ -73,7 +80,14 @@ async def async_get_config_entry_diagnostics(
                 nodes[node["node"]]["qemu"] = error
 
         try:
-            nodes[node["node"]]["lxc"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).lxc.get)
+            nodes[node["node"]]["lxc"] = {}
+            lxc_node = await hass.async_add_executor_job(proxmox.nodes(node["node"]).lxc.get)
+            for lxc in lxc_node:
+                nodes[node["node"]]["lxc"][lxc["vmid"]] = lxc
+                try:
+                    nodes[node["node"]]["lxc"][lxc["vmid"]]["backups"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).lxc(lxc["vmid"]).snapshot.get)
+                except ResourceException as error:
+                    nodes[node["node"]]["lxc"][lxc["vmid"]]["backups"] = error
         except ResourceException as error:
             if error.status_code == 403:
                 nodes[node["node"]]["lxc"] = "403 Forbidden: Permission check failed"
@@ -123,7 +137,7 @@ async def async_get_config_entry_diagnostics(
 
     api_data = {
             "resources": resources,
-            "nodes":nodes,
+            "nodes": nodes,
         }
 
     device_registry = dr.async_get(hass)
