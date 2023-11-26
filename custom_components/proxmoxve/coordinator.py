@@ -71,6 +71,27 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                             break
                 api_status["version"] = self.proxmox.nodes(self.resource_id).version.get()
 
+                qemu_status = self.proxmox.nodes(self.resource_id).qemu.get()
+                node_qemu={}
+                node_qemu["total"] = 0
+                node_qemu["list"] = []
+                for qemu in qemu_status:
+                    if qemu["status"] == "running":
+                        node_qemu["total"] += 1
+                        node_qemu["list"].append(f"{qemu['name']} ({qemu['vmid']})")
+                api_status["qemu"] = node_qemu
+
+                lxc_status = self.proxmox.nodes(self.resource_id).lxc.get()
+                node_lxc={}
+                node_lxc["total"] = 0
+                node_lxc["list"] = []
+                for lxc in lxc_status:
+                    if lxc["status"] == "running":
+                        node_lxc["total"] += 1
+                        node_lxc["list"].append(f"{lxc['name']} ({lxc['vmid']})")
+                api_status["lxc"] = node_lxc
+
+
             except (
                 AuthenticationError,
                 SSLError,
@@ -127,6 +148,10 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             swap_total=api_status["swap"]["total"],
             swap_free=api_status["swap"]["free"],
             swap_used=api_status["swap"]["used"],
+            qemu_on=api_status["qemu"]["total"],
+            qemu_on_list=api_status["qemu"]["list"],
+            lxc_on=api_status["lxc"]["total"],
+            lxc_on_list=api_status["lxc"]["list"],
         )
 
 
