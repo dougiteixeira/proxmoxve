@@ -276,7 +276,7 @@
         }
       },
       "uptime": {
-        "name": "Uptime"
+        "name": "Last boot"
       }
     }
   }

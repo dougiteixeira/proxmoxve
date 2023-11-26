@@ -142,7 +142,7 @@
             "name": "Prozentsatz genutzter Auslagerungsspeicher"
             },
             "uptime": {
-            "name": "Betriebszeit"
+            "name": "Letzter start"
             }
         }
     },

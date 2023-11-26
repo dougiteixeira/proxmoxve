@@ -236,7 +236,7 @@ PROXMOX_SENSOR_SWAP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
 PROXMOX_SENSOR_UPTIME: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.UPTIME,
-        name="Uptime",
+        name="Last boot",
         icon="mdi:database-clock-outline",
         conversion_fn=lambda x: (
             dt_util.utcnow() - timedelta(seconds=x) if x > 0 else None
