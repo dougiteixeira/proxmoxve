@@ -184,7 +184,7 @@
             }
           },
           "uptime": {
-            "name": "Tempo de atividade"
+            "name": "Última inicialização"
           }
       }
   },

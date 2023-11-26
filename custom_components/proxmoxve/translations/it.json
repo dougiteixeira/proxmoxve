@@ -142,7 +142,7 @@
                 "name": "Percentuale Swap usata"
             },
             "uptime": {
-                "name": "Uptime"
+                "name": "Last avvio"
             }
         }
     },
