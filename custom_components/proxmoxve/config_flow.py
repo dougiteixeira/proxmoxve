@@ -27,7 +27,7 @@ from homeassistant.helpers.issue_registry import (
     async_delete_issue,
 )
 
-from . import ProxmoxClient, ProxmoxType
+from .api import ProxmoxClient, get_api
 from .const import (
     CONF_CONTAINERS,
     CONF_LXC,
@@ -45,6 +45,7 @@ from .const import (
     DOMAIN,
     LOGGER,
     VERSION_REMOVE_YAML,
+    ProxmoxType,
 )
 
 SCHEMA_HOST_BASE: vol.Schema = vol.Schema(
@@ -219,10 +220,8 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
             proxmox = self._proxmox_client.get_api_client()
 
-            resources = await self.hass.async_add_executor_job(
-                proxmox.cluster.resources.get
-            )
-            LOGGER.debug("Response API - Resources: %s", resources)
+            resources = await self.hass.async_add_executor_job(get_api, proxmox, f"cluster/resources")
+
             resource_qemu = {}
             resource_lxc = {}
             resource_storage = {}
@@ -251,8 +250,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                         ] = f"{resource['storage']} {resource['id']}"
                     else:
                         resource_storage[str(resource["storage"])] = f"{resource['storage']}"
-
-            LOGGER.debug("Response API - Resources: %s", resources)
 
             return self.async_show_form(
                 step_id="change_expose",
@@ -577,7 +574,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         proxmox_nodes_host = []
         if proxmox := (proxmox_client.get_api_client()):
-            proxmox_nodes = await self.hass.async_add_executor_job(proxmox.nodes.get)
+            proxmox_nodes = await self.hass.async_add_executor_job(get_api, proxmox, "nodes")
 
             for node in proxmox_nodes:
                 proxmox_nodes_host.append(node[CONF_NODE])
@@ -790,10 +787,8 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if (proxmox_cliente := self._proxmox_client) is not None:
                 proxmox = proxmox_cliente.get_api_client()
 
-            resources = await self.hass.async_add_executor_job(
-                proxmox.cluster.resources.get
-            )
-            LOGGER.debug("Response API - Resources: %s", resources)
+            resources = await self.hass.async_add_executor_job(get_api, proxmox, f"cluster/resources")
+
             resource_nodes = []
             resource_qemu = {}
             resource_lxc = {}

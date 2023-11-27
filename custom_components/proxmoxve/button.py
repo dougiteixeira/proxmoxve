@@ -11,11 +11,8 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from . import (
-    ProxmoxClient,
-    call_api_post_status,
-    device_info,
-)
+from . import device_info
+from .api import ProxmoxClient, post_api_command
 from .const import (
     CONF_LXC,
     CONF_NODES,
@@ -289,9 +286,9 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
                 node = data.node
                 vm_id = resource_id
 
-            call_api_post_status(
+            result = post_api_command(
                 self,
-                proxmox=proxmox_client.get_api_client(),
+                proxmox_client=proxmox_client,
                 node=node,
                 vm_id=vm_id,
                 api_category=api_category,
@@ -299,11 +296,12 @@ class ProxmoxButtonEntity(ProxmoxEntity, ButtonEntity):
             )
 
             LOGGER.debug(
-                "Button press: %s - %s - %s - %s",
+                "Button press: %s - %s - %s - %s: %s",
                 node,
                 vm_id,
                 api_category,
                 description.key,
+                result,
             )
 
         self._button_press_funct = _button_press
