@@ -47,6 +47,7 @@ class ProxmoxType(StrEnum):
     Storage = "storage"
     Update = "update"
     Disk = "disk"
+    Resources = "resources"
 
 
 class ProxmoxCommand(StrEnum):

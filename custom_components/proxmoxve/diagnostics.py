@@ -16,6 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
+from .api import get_api
 from .const import CONF_DISKS_ENABLE, COORDINATORS, DOMAIN, LOGGER, PROXMOX_CLIENT
 from .coordinator import ProxmoxDiskCoordinator, ProxmoxNodeCoordinator, ProxmoxQEMUCoordinator, ProxmoxLXCCoordinator, ProxmoxStorageCoordinator, ProxmoxUpdateCoordinator
 
@@ -33,10 +34,6 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
 
-    def poll_api_attributes(proxmox, node: str, disk: str) -> dict[str, Any] | None:
-        """Return data from the Proxmox Disk Attributes API."""
-        return  proxmox.nodes(node).disks.smart.get(disk=disk)
-
     coordinators: dict[str, ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator | ProxmoxStorageCoordinator | ProxmoxUpdateCoordinator | ProxmoxDiskCoordinator] = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
@@ -44,7 +41,7 @@ async def async_get_config_entry_diagnostics(
     proxmox = proxmox_client.get_api_client()
 
     try:
-        resources = await hass.async_add_executor_job(proxmox.cluster.resources.get)
+        resources = await hass.async_add_executor_job(get_api, proxmox, "cluster/resources")
     except ResourceException as error:
         if error.status_code == 403:
             resources = "403 Forbidden: Permission check failed"
@@ -54,7 +51,7 @@ async def async_get_config_entry_diagnostics(
 
     nodes = {}
     try:
-        nodes_api= await hass.async_add_executor_job(proxmox.nodes().get)
+        nodes_api= await hass.async_add_executor_job(get_api, proxmox, "nodes")
     except ResourceException as error:
         if error.status_code == 403:
             nodes_api = "403 Forbidden: Permission check failed"
@@ -65,7 +62,14 @@ async def async_get_config_entry_diagnostics(
         nodes[node["node"]] = node
 
         try:
-            nodes[node["node"]]["qemu"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).qemu.get)
+            nodes[node["node"]]["qemu"] = {}
+            qemu_node = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node['node']}/qemu")
+            for qemu in qemu_node:
+                nodes[node["node"]]["qemu"][qemu["vmid"]] = qemu
+                try:
+                    nodes[node["node"]]["qemu"][qemu["vmid"]]["backups"] = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node['node']}/qemu/{qemu['vmid']}/snapshot")
+                except ResourceException as error:
+                    nodes[node["node"]]["qemu"][qemu["vmid"]]["backups"] = error
         except ResourceException as error:
             if error.status_code == 403:
                 nodes[node["node"]]["qemu"] = "403 Forbidden: Permission check failed"
@@ -73,7 +77,14 @@ async def async_get_config_entry_diagnostics(
                 nodes[node["node"]]["qemu"] = error
 
         try:
-            nodes[node["node"]]["lxc"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).lxc.get)
+            nodes[node["node"]]["lxc"] = {}
+            lxc_node = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node['node']}/lxc")
+            for lxc in lxc_node:
+                nodes[node["node"]]["lxc"][lxc["vmid"]] = lxc
+                try:
+                    nodes[node["node"]]["lxc"][lxc["vmid"]]["backups"] = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node['node']}/lxc/{lxc['vmid']}/snapshot")
+                except ResourceException as error:
+                    nodes[node["node"]]["lxc"][lxc["vmid"]]["backups"] = error
         except ResourceException as error:
             if error.status_code == 403:
                 nodes[node["node"]]["lxc"] = "403 Forbidden: Permission check failed"
@@ -81,7 +92,7 @@ async def async_get_config_entry_diagnostics(
                 nodes[node["node"]]["lxc"] = error
 
         try:
-            nodes[node["node"]]["storage"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).storage.get)
+            nodes[node["node"]]["storage"] = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node['node']}/storage")
         except ResourceException as error:
             if error.status_code == 403:
                 nodes[node["node"]]["storage"] = "403 Forbidden: Permission check failed"
@@ -89,7 +100,7 @@ async def async_get_config_entry_diagnostics(
                 nodes[node["node"]]["storage"] = error
 
         try:
-            nodes[node["node"]]["updates"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).apt.update.get)
+            nodes[node["node"]]["updates"] = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node['node']}/apt/update")
         except ResourceException as error:
             if error.status_code == 403:
                 nodes[node["node"]]["updates"] = "403 Forbidden: Permission check failed"
@@ -97,17 +108,17 @@ async def async_get_config_entry_diagnostics(
                 nodes[node["node"]]["updates"] = error
 
         try:
-            nodes[node["node"]]["versions"] = await hass.async_add_executor_job(proxmox.nodes(node["node"]).apt.versions.get)
+            nodes[node["node"]]["versions"] = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node['node']}/apt/versions")
         except ResourceException as error:
                 nodes[node["node"]]["updates"] = error
 
         if config_entry.options.get(CONF_DISKS_ENABLE, True):
             try:
-                disks = await hass.async_add_executor_job(proxmox.nodes(node["node"]).disks.list.get)
+                disks = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node['node']}/disks/list")
 
                 nodes[node["node"]]["disks"] = {}
                 for disk in disks:
-                    disk_attributes = await hass.async_add_executor_job(poll_api_attributes, proxmox, node["node"], disk["devpath"])
+                    disk_attributes = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node['node']}/disks/smart/?disk={disk['devpath']}")
                     nodes[node["node"]]["disks"][disk["devpath"]] = {
                         "data": disk,
                         "smart": disk_attributes
@@ -123,7 +134,7 @@ async def async_get_config_entry_diagnostics(
 
     api_data = {
             "resources": resources,
-            "nodes":nodes,
+            "nodes": nodes,
         }
 
     device_registry = dr.async_get(hass)

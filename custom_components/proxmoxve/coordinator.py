@@ -20,6 +20,7 @@ from homeassistant.helpers.issue_registry import (
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .api import get_api
 from .const import CONF_NODE, DOMAIN, LOGGER, UPDATE_INTERVAL, ProxmoxType
 from .models import ProxmoxDiskData, ProxmoxLXCData, ProxmoxNodeData, ProxmoxStorageData, ProxmoxUpdateData, ProxmoxVMData
 
@@ -53,85 +54,52 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         self.config_entry: ConfigEntry = self.config_entry
         self.proxmox = proxmox
         self.resource_id = node_name
+        self.api_category = api_category
 
     async def _async_update_data(self) -> ProxmoxNodeData:
         """Update data  for Proxmox Node."""
 
-        def poll_api() -> dict[str, Any] | None:
-            """Return data from the Proxmox Node API."""
-            try:
-                api_status = self.proxmox.nodes(self.resource_id).status.get()
-                if nodes_api := self.proxmox.nodes.get():
-                    for node_api in nodes_api:
-                        if node_api[CONF_NODE] == self.resource_id:
-                            api_status["status"] = node_api["status"]
-                            api_status["cpu"] = node_api["cpu"]
-                            api_status["disk_max"] = node_api["maxdisk"]
-                            api_status["disk_used"] = node_api["disk"]
-                            break
-                api_status["version"] = self.proxmox.nodes(self.resource_id).version.get()
-
-                qemu_status = self.proxmox.nodes(self.resource_id).qemu.get()
-                node_qemu={}
-                node_qemu["total"] = 0
-                node_qemu["list"] = []
-                for qemu in qemu_status:
-                    if qemu["status"] == "running":
-                        node_qemu["total"] += 1
-                        node_qemu["list"].append(f"{qemu['name']} ({qemu['vmid']})")
-                api_status["qemu"] = node_qemu
-
-                lxc_status = self.proxmox.nodes(self.resource_id).lxc.get()
-                node_lxc={}
-                node_lxc["total"] = 0
-                node_lxc["list"] = []
-                for lxc in lxc_status:
-                    if lxc["status"] == "running":
-                        node_lxc["total"] += 1
-                        node_lxc["list"].append(f"{lxc['name']} ({lxc['vmid']})")
-                api_status["lxc"] = node_lxc
-
-
-            except (
-                AuthenticationError,
-                SSLError,
-                ConnectTimeout,
-            ) as error:
-                raise UpdateFailed(error) from error
-            except ResourceException as error:
-                if error.status_code == 403:
-                    async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-                        is_fixable=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key="resource_exception_forbiden",
-                        translation_placeholders={
-                            "resource": f"Node {self.resource_id}",
-                            "user": self.config_entry.data[CONF_USERNAME],
-                            "permission": f"['perm','/nodes/{self.resource_id}',['Sys.Audit']]"
-                        },
-                    )
-                    raise UpdateFailed(
-                        "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
-                    ) from error
-
-            async_delete_issue(
-                self.hass,
-                DOMAIN,
-                f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-            )
-
-            LOGGER.debug("API Response - Node: %s", api_status)
-            return api_status
-
-        api_status = await self.hass.async_add_executor_job(poll_api)
-
+        api_path = f"nodes/{self.resource_id}/status"
+        api_status = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Node, self.resource_id)
         if api_status is None:
             raise UpdateFailed(
                 f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
             )
+
+        api_path = f"nodes"
+        if nodes_api := await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Node, self.resource_id):
+            for node_api in nodes_api:
+                if node_api[CONF_NODE] == self.resource_id:
+                    api_status["status"] = node_api["status"]
+                    api_status["cpu"] = node_api["cpu"]
+                    api_status["disk_max"] = node_api["maxdisk"]
+                    api_status["disk_used"] = node_api["disk"]
+                    break
+
+        api_path = f"nodes/{self.resource_id}/version"
+        api_status["version"] = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Node, self.resource_id)
+
+        api_path = f"nodes/{self.resource_id}/qemu"
+        qemu_status = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.QEMU, self.resource_id)
+        node_qemu={}
+        node_qemu["total"] = 0
+        node_qemu["list"] = []
+        for qemu in qemu_status:
+            if qemu["status"] == "running":
+                node_qemu["total"] += 1
+                node_qemu["list"].append(f"{qemu['name']} ({qemu['vmid']})")
+        api_status["qemu"] = node_qemu
+
+        api_path = f"nodes/{self.resource_id}/lxc"
+        lxc_status = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.LXC, self.resource_id)
+        node_lxc={}
+        node_lxc["total"] = 0
+        node_lxc["list"] = []
+        for lxc in lxc_status:
+            if lxc["status"] == "running":
+                node_lxc["total"] += 1
+                node_lxc["list"].append(f"{lxc['name']} ({lxc['vmid']})")
+        api_status["lxc"] = node_lxc
 
         return ProxmoxNodeData(
             type=ProxmoxType.Node,
@@ -183,76 +151,32 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
     async def _async_update_data(self) -> ProxmoxVMData:
         """Update data  for Proxmox QEMU."""
 
-        def poll_api() -> dict[str, Any] | None:
-            """Return data from the Proxmox QEMU API."""
-            node_name = None
-            try:
-                api_status = None
+        node_name = None
+        api_status = None
 
-                resources = self.proxmox.cluster.resources.get()
-                LOGGER.debug("API Response - Resources: %s", resources)
+        api_path = f"cluster/resources"
+        resources = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Resources, None)
 
-                for resource in resources:
-                    if "vmid" in resource:
-                        if int(resource["vmid"]) == int(self.resource_id):
-                            node_name = resource["node"]
+        for resource in resources:
+            if "vmid" in resource:
+                if int(resource["vmid"]) == int(self.resource_id):
+                    node_name = resource["node"]
 
-                self.node_name = str(node_name)
-                if self.node_name is not None:
-                    api_status = (
-                        self.proxmox.nodes(self.node_name)
-                        .qemu(self.resource_id)
-                        .status.current.get()
-                    )
-
-                if node_name is None:
-                    raise UpdateFailed(f"{self.resource_id} QEMU node not found")
-
-            except (
-                AuthenticationError,
-                SSLError,
-                ConnectTimeout,
-            ) as error:
-                raise UpdateFailed(error) from error
-            except ResourceException as error:
-                if error.status_code == 403:
-                    async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-                        is_fixable=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key="resource_exception_forbiden",
-                        translation_placeholders={
-                            "resource": f"QEMU {self.resource_id}",
-                            "user": self.config_entry.data[CONF_USERNAME],
-                            "permission": "['perm','/vms/{self.resource_id}',['VM.Audit']]"
-                        },
-                    )
-                    raise UpdateFailed(
-                        "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
-                    ) from error
-
-            async_delete_issue(
-                self.hass,
-                DOMAIN,
-                f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-            )
-
-            LOGGER.debug("API Response - QEMU: %s", api_status)
-            return api_status
-
-        api_status = await self.hass.async_add_executor_job(poll_api)
+        if node_name is not None:
+            api_path = f"nodes/{str(node_name)}/qemu/{self.resource_id}/status/current"
+            api_status = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.QEMU, self.resource_id)
+        else:
+            raise UpdateFailed(f"{self.resource_id} QEMU node not found")
 
         if api_status is None or "status" not in api_status:
-            raise UpdateFailed(f"Vm/Container {self.resource_id} unable to be found")
+            raise UpdateFailed(f"QEMU {self.resource_id} unable to be found")
 
-        update_device_via(self, ProxmoxType.QEMU)
+        update_device_via(self, ProxmoxType.QEMU, node_name)
         return ProxmoxVMData(
             type=ProxmoxType.QEMU,
             status= api_status["lock"] if ("lock" in api_status and api_status["lock"] == "suspended") else api_status["status"],
             name=api_status["name"],
-            node=self.node_name,
+            node=node_name,
             health=api_status["qmpstatus"],
             uptime=api_status["uptime"],
             cpu=api_status["cpu"],
@@ -294,76 +218,32 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
     async def _async_update_data(self) -> ProxmoxLXCData:
         """Update data  for Proxmox LXC."""
 
-        def poll_api() -> dict[str, Any] | None:
-            """Return data from the Proxmox LXC API."""
-            node_name = None
-            try:
-                api_status = None
+        node_name = None
+        api_status = None
 
-                resources = self.proxmox.cluster.resources.get()
-                LOGGER.debug("API Response - Resources: %s", resources)
+        api_path = f"cluster/resources"
+        resources = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Resources, None)
 
-                for resource in resources:
-                    if "vmid" in resource:
-                        if int(resource["vmid"]) == int(self.resource_id):
-                            node_name = resource["node"]
+        for resource in resources:
+            if "vmid" in resource:
+                if int(resource["vmid"]) == int(self.resource_id):
+                    node_name = resource["node"]
 
-                self.node_name = str(node_name)
-                if node_name is not None:
-                    api_status = (
-                        self.proxmox.nodes(self.node_name)
-                        .lxc(self.resource_id)
-                        .status.current.get()
-                    )
-
-                if node_name is None:
-                    raise UpdateFailed(f"{self.resource_id} LXC node not found")
-
-            except (
-                AuthenticationError,
-                SSLError,
-                ConnectTimeout,
-            ) as error:
-                raise UpdateFailed(error) from error
-            except ResourceException as error:
-                if error.status_code == 403:
-                    async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-                        is_fixable=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key="resource_exception_forbiden",
-                        translation_placeholders={
-                            "resource": f"LXC {self.resource_id}",
-                            "user": self.config_entry.data[CONF_USERNAME],
-                            "permission": "['perm','/vms/{self.resource_id}',['VM.Audit']]"
-                        },
-                    )
-                    raise UpdateFailed(
-                        "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
-                    ) from error
-
-            async_delete_issue(
-                self.hass,
-                DOMAIN,
-                f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-            )
-
-            LOGGER.debug("API Response - LXC: %s", api_status)
-            return api_status
-
-        api_status = await self.hass.async_add_executor_job(poll_api)
+        if node_name is not None:
+            api_path = f"nodes/{str(node_name)}/lxc/{self.resource_id}/status/current"
+            api_status = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.LXC, self.resource_id)
+        else:
+            raise UpdateFailed(f"{self.resource_id} LXC node not found")
 
         if api_status is None or "status" not in api_status:
-            raise UpdateFailed(f"Vm/Container {self.resource_id} unable to be found")
+            raise UpdateFailed(f"LXC {self.resource_id} unable to be found")
 
-        update_device_via(self, ProxmoxType.LXC)
+        update_device_via(self, ProxmoxType.LXC, node_name)
         return ProxmoxLXCData(
             type=ProxmoxType.LXC,
             status=api_status["status"],
             name=api_status["name"],
-            node=self.node_name,
+            node=node_name,
             uptime=api_status["uptime"],
             cpu=api_status["cpu"],
             memory_total=api_status["maxmem"],
@@ -389,7 +269,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
         api_category: str,
         storage_id: str,
     ) -> None:
-        """Initialize the Proxmox LXC coordinator."""
+        """Initialize the Proxmox Storage coordinator."""
 
         super().__init__(
             hass,
@@ -407,79 +287,36 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
     async def _async_update_data(self) -> ProxmoxLXCData:
         """Update data  for Proxmox Update."""
 
-        def poll_api() -> dict[str, Any] | None:
-            """Return data from the Proxmox Update API."""
-            node_name = None
-            try:
-                api_status = None
+        node_name = None
+        api_status = None
 
-                resources = self.proxmox.cluster.resources.get()
-                LOGGER.debug("API Response - Resources: %s", resources)
+        api_path = f"cluster/resources"
+        resources = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Resources, None)
 
-                for resource in resources:
-                    if "storage" in resource:
-                        if resource["storage"] == self.resource_id:
-                            node_name = resource["node"]
+        for resource in resources:
+            if "storage" in resource:
+                if resource["storage"] == self.resource_id:
+                    node_name = resource["node"]
 
-                self.node_name = str(node_name)
-                if node_name is not None:
-                    api_status = (
-                        self.proxmox.nodes(self.node_name)
-                        .storage(self.resource_id)
-                        .status.get()
-                    )
-
-                if node_name is None:
-                    raise UpdateFailed(f"{self.resource_id} storage node not found")
-
-            except (
-                AuthenticationError,
-                SSLError,
-                ConnectTimeout,
-            ) as error:
-                raise UpdateFailed(error) from error
-            except ResourceException as error:
-                if error.status_code == 403:
-                    async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-                        is_fixable=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key="resource_exception_forbiden",
-                        translation_placeholders={
-                            "resource": f"Storage {self.resource_id}",
-                            "user": self.config_entry.data[CONF_USERNAME],
-                            "permission": f"['perm','/storage/{self.resource_id}',['Datastore.Audit'],'any',1]"
-                        },
-                    )
-                    raise UpdateFailed(
-                        "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
-                    ) from error
-
-            async_delete_issue(
-                self.hass,
-                DOMAIN,
-                f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-            )
-
-            LOGGER.debug("API Response - Storage: %s", api_status)
-            return api_status
-
-        api_status = await self.hass.async_add_executor_job(poll_api)
+        if node_name is not None:
+            api_path = f"nodes/{str(node_name)}/storage/{self.resource_id}/status"
+            api_status = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Storage, self.resource_id)
+        else:
+            raise UpdateFailed(f"{self.resource_id} storage node not found")
 
         if api_status is None or "content" not in api_status:
            raise UpdateFailed(f"Storage {self.resource_id} unable to be found")
 
-        update_device_via(self, ProxmoxType.Storage)
+        update_device_via(self, ProxmoxType.Storage, node_name)
         return ProxmoxStorageData(
             type=ProxmoxType.Storage,
-            node=self.node_name,
+            node=node_name,
             disk_total=api_status["total"],
             disk_used=api_status["used"],
             disk_free=api_status["avail"],
             content=api_status["content"]
         )
+
 
 class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
     """Proxmox VE Update data update coordinator."""
@@ -491,7 +328,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
         api_category: str,
         node_name: int,
     ) -> None:
-        """Initialize the Proxmox LXC coordinator."""
+        """Initialize the Proxmox Update coordinator."""
 
         super().__init__(
             hass,
@@ -504,61 +341,18 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
         self.config_entry: ConfigEntry = self.config_entry
         self.proxmox = proxmox
         self.node_name = node_name
-        self.resource_id = f"{api_category}_{node_name}"
+        self.resource_id = f"{api_category.capitalize()} {node_name}"
 
-    async def _async_update_data(self) -> ProxmoxLXCData:
-        """Update data  for Proxmox LXC."""
+    async def _async_update_data(self) -> ProxmoxUpdateData:
+        """Update data  for Proxmox Update."""
 
-        def poll_api() -> dict[str, Any] | None:
-            """Return data from the Proxmox LXC API."""
-            try:
-                api_status = None
+        api_status = None
 
-                if self.node_name is not None:
-                    api_status = (
-                        self.proxmox.nodes(self.node_name)
-                        .apt
-                        .update.get()
-                    )
-
-                if self.node_name is None:
-                    raise UpdateFailed(f"{self.resource_id} node not found")
-
-            except (
-                AuthenticationError,
-                SSLError,
-                ConnectTimeout,
-            ) as error:
-                raise UpdateFailed(error) from error
-            except ResourceException as error:
-                if error.status_code == 403:
-                    async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-                        is_fixable=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key="resource_exception_forbiden",
-                        translation_placeholders={
-                            "resource": f"Update {self.node_name}",
-                            "user": self.config_entry.data[CONF_USERNAME],
-                            "permission": f"['perm','/nodes/{self.node_name}',['Sys.Modify']]"
-                        },
-                    )
-                    raise UpdateFailed(
-                        "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
-                    ) from error
-
-            async_delete_issue(
-                self.hass,
-                DOMAIN,
-                f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-            )
-
-            LOGGER.debug("API Response - Update: %s", api_status)
-            return api_status
-
-        api_status = await self.hass.async_add_executor_job(poll_api)
+        if self.node_name is not None:
+            api_path = f"nodes/{str(self.node_name)}/apt/update"
+            api_status = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Update, self.resource_id)
+        else:
+            raise UpdateFailed(f"{self.resource_id} node not found")
 
         if api_status is None:
             return ProxmoxUpdateData(
@@ -589,8 +383,9 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
             update=update_avail,
         )
 
+
 class ProxmoxDiskCoordinator(ProxmoxCoordinator):
-    """Proxmox VE Update data disk coordinator."""
+    """Proxmox VE Disk data update coordinator."""
 
     def __init__(
         self,
@@ -615,84 +410,14 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         self.node_name = node_name
         self.resource_id = disk_id
 
-    async def _async_update_data(self) -> ProxmoxLXCData:
+    async def _async_update_data(self) -> ProxmoxDiskData:
         """Update data  for Proxmox Disk."""
 
-        def poll_api() -> dict[str, Any] | None:
-            """Return data from the Proxmox Disk API."""
-            try:
-                api_status = None
-
-                if self.node_name is None:
-                    raise UpdateFailed(f"{self.resource_id} node not found")
-
-                api_status = (
-                    self.proxmox.nodes(self.node_name)
-                    .disks
-                    .list.get()
-                )
-
-            except (
-                AuthenticationError,
-                SSLError,
-                ConnectTimeout,
-            ) as error:
-                raise UpdateFailed(error) from error
-            except ResourceException as error:
-                if error.status_code == 403:
-                    async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-                        is_fixable=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key="resource_exception_forbiden",
-                        translation_placeholders={
-                            "resource": f"Disk {self.node_name}/{self.resource_id}",
-                            "user": self.config_entry.data[CONF_USERNAME],
-                            "permission": f"['perm','/nodes/{self.node_name}',['Sys.Modify']]"
-                        },
-                    )
-                    raise UpdateFailed(
-                        "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
-                    ) from error
-
-            async_delete_issue(
-                self.hass,
-                DOMAIN,
-                f"{self.config_entry.entry_id}_{self.resource_id}_forbiden",
-            )
-
-            LOGGER.debug("API Response - Disk: %s", api_status)
-            return api_status
-
-
-        def poll_api_attributes() -> dict[str, Any] | None:
-            """Return data from the Proxmox Disk Attributes API."""
-            try:
-                disk_attributes = None
-
-                if self.node_name is None:
-                    raise UpdateFailed(f"{self.resource_id} node not found")
-
-                disk_attributes = (
-                    self.proxmox.nodes(self.node_name)
-                    .disks
-                    .smart.get(disk=self.resource_id)
-                )
-
-            except (
-                AuthenticationError,
-                SSLError,
-                ConnectTimeout,
-                ResourceException,
-            ) as error:
-                raise UpdateFailed(error) from error
-
-            LOGGER.debug("API Response - Disk attributes: %s", disk_attributes)
-            return disk_attributes
-
-        api_status = await self.hass.async_add_executor_job(poll_api)
+        if self.node_name is not None:
+            api_path = f"nodes/{str(self.node_name)}/disks/list"
+            api_status = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Disk, self.resource_id)
+        else:
+            raise UpdateFailed(f"{self.resource_id} node not found")
 
         if api_status is None:
             raise UpdateFailed("No data returned.")
@@ -700,7 +425,8 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         for disk in api_status:
             if disk["devpath"] == self.resource_id:
                 disk_attributes = {}
-                disk_attributes_api = await self.hass.async_add_executor_job(poll_api_attributes)
+                api_path = f"nodes/{self.node_name}/disks/smart?disk={self.resource_id}"
+                disk_attributes_api = await self.hass.async_add_executor_job(poll_api, self.hass, self.config_entry, self.proxmox, api_path, ProxmoxType.Disk, self.resource_id)
 
                 attributes_json = []
                 if "attributes" in disk_attributes_api:
@@ -720,9 +446,9 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
 
                 for disk_attribute in attributes_json:
                     if disk_attribute["name"] in ("Power_Cycle_Count", "Power Cycles"):
-                        disk_attributes["Power_Cycle_Count"]=disk_attribute["raw"]
+                        disk_attributes["power_cycles"]=disk_attribute["raw"]
                     elif disk_attribute["name"] in ("Temperature_Celsius", "Temperature"):
-                        disk_attributes["Temperature_Celsius"]=disk_attribute["raw"].split(" ", 1)[0]
+                        disk_attributes["temperature"]=disk_attribute["raw"].split(" ", 1)[0]
 
                 return ProxmoxDiskData(
                     type=ProxmoxType.Disk,
@@ -735,8 +461,8 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     model=disk["model"] if "model" in disk else None,
                     disk_rpm=disk["rpm"] if "rpm" in disk else None,
                     disk_type=disk["type"] if "type" in disk else None,
-                    temperature=disk_attributes["Temperature_Celsius"] if "Temperature_Celsius" in disk_attributes else None,
-                    power_cycles=disk_attributes["Power_Cycle_Count"] if "Power_Cycle_Count" in disk_attributes else None,
+                    temperature=disk_attributes["temperature"] if "temperature" in disk_attributes else None,
+                    power_cycles=disk_attributes["power_cycles"] if "power_cycles" in disk_attributes else None,
                 )
 
         raise UpdateFailed(f"Disk {self.resource_id} not found on node {self.node_name}.")
@@ -745,6 +471,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
 def update_device_via(
     self,
     api_category: ProxmoxType,
+    node_name: str,
 ) -> None:
     """Return the Device Info."""
     dev_reg = dr.async_get(self.hass)
@@ -761,7 +488,7 @@ def update_device_via(
         {
             (
                 DOMAIN,
-                f"{self.config_entry.entry_id}_{ProxmoxType.Node.upper()}_{self.node_name}",
+                f"{self.config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node_name}",
             )
         }
     )
@@ -780,66 +507,65 @@ def update_device_via(
         )
 
 
-async def verify_permissions_error(
-    self,
-    resource_type: ProxmoxType,
-    resource: str,
-    resource_node: str | None = None,
-) -> bool:
-    """Check the minimum permissions for the user."""
-    permissions: bool = False
-    if resource_type == ProxmoxType.Node:
-        try:
-            self.proxmox.nodes(resource).status.get()
-        except ResourceException as error:
-            if error.status_code == 403:
-                permissions = True
-                permission_check = "['perm','/nodes/{resource}',['Sys.Audit']]"
+def poll_api(
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        proxmox: ProxmoxAPI,
+        api_path: str,
+        api_category: ProxmoxType,
+        resource_id: str | int | None = None,
+        issue_crete_permissions: bool | None = True,
+    ) -> dict[str, Any] | None:
+    """Return data from the Proxmox Node API."""
 
-    if resource_type == ProxmoxType.QEMU:
-        try:
-            self.proxmox.nodes(resource_node).qemu(resource).status.current.get()
-        except ResourceException as error:
-            if error.status_code == 403:
-                permissions = True
-                permission_check = "['perm','/vms/{resource}',['VM.Audit']]"
+    def perssion_to_resource(
+        api_category: ProxmoxType,
+        resource_id: int | str,
+    ):
+        """Return the permissions required for the resource."""
+        match api_category:
+            case ProxmoxType.Node:
+                return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
+            case ProxmoxType.QEMU | ProxmoxType.LXC:
+                return f"['perm','/vms/{resource_id}',['VM.Audit']]"
+            case ProxmoxType.Storage:
+                return f"['perm','/storage/{resource_id}',['Datastore.Audit'],'any',1]"
+            case ProxmoxType.Update:
+                return f"['perm','/nodes/{resource_id}',['Sys.Modify']]"
+            case ProxmoxType.Disks:
+                return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
+            case _:
+                return "Unmapped"
 
-    if resource_type == ProxmoxType.LXC:
-        try:
-            self.proxmox.nodes(resource_node).lxc(resource).status.current.get()
-        except ResourceException as error:
-            if error.status_code == 403:
-                permissions = True
-                permission_check = "['perm','/vms/{resource}',['VM.Audit']]"
+    try:
+        return get_api(proxmox, api_path)
+    except (
+        AuthenticationError,
+        SSLError,
+        ConnectTimeout,
+    ) as error:
+        raise UpdateFailed(error) from error
+    except ResourceException as error:
+        if error.status_code == 403 and issue_crete_permissions:
+            async_create_issue(
+                hass,
+                DOMAIN,
+                f"{config_entry.entry_id}_{resource_id}_forbiden",
+                is_fixable=False,
+                severity=IssueSeverity.ERROR,
+                translation_key="resource_exception_forbiden",
+                translation_placeholders={
+                    "resource": f"{api_category.capitalize()} {resource_id}",
+                    "user": config_entry.data[CONF_USERNAME],
+                    "permission": perssion_to_resource(api_category, resource_id)
+                },
+            )
+            raise UpdateFailed(
+                "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
+            ) from error
 
-    if resource_type == ProxmoxType.Storage:
-        try:
-            self.proxmox.nodes(resource_node).storage(resource).get()
-        except ResourceException as error:
-            if error.status_code == 403:
-                permissions = True
-                permission_check = f"['perm','/storage/{resource}',['Datastore.Audit'],'any',1]"
-
-    if resource_type == ProxmoxType.Update:
-        try:
-            self.proxmox.nodes(resource_node).apt.update.get()
-        except ResourceException as error:
-            if error.status_code == 403:
-                permissions = True
-                permission_check = f"['perm','/nodes/{resource_node}',['Sys.Modify']]"
-
-    if permissions:
-        async_create_issue(
-            self.hass,
-            DOMAIN,
-            f"{self.config_entry.entry_id}_{resource}_forbiden",
-            is_fixable=False,
-            severity=IssueSeverity.ERROR,
-            translation_key="resource_exception_forbiden",
-            translation_placeholders={
-                "resource": f"{resource_type.upper()} {resource}",
-                "user": self.config_entry.data[CONF_USERNAME],
-                "permission": permission_check,
-            },
-        )
-    return permissions
+    async_delete_issue(
+        hass,
+        DOMAIN,
+        f"{config_entry.entry_id}_{resource_id}_forbiden",
+    )

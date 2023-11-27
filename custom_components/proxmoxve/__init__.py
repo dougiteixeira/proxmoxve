@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any
 import warnings
 
-from proxmoxer import AuthenticationError, ProxmoxAPI
+from proxmoxer import AuthenticationError
 from proxmoxer.core import ResourceException
 from requests.exceptions import (
     ConnectionError as connError,
@@ -36,6 +36,7 @@ from homeassistant.helpers.issue_registry import (
 )
 from homeassistant.helpers.typing import ConfigType
 
+from .api import ProxmoxClient, get_api, post_api
 from .const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
@@ -336,13 +337,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     ] = {}
     nodes_add_device = []
 
-    resources = await hass.async_add_executor_job(proxmox.cluster.resources.get)
-    LOGGER.debug("API Response - Resources: %s", resources)
+    resources = await hass.async_add_executor_job(get_api, proxmox, f"cluster/resources")
 
     for node in config_entry.data[CONF_NODES]:
         if node in [
             node_proxmox["node"]
-            for node_proxmox in await hass.async_add_executor_job(proxmox.nodes().get)
+            for node_proxmox in await hass.async_add_executor_job(get_api, proxmox, "nodes")
         ]:
             async_delete_issue(
                 hass,
@@ -372,7 +372,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
             if config_entry.options.get(CONF_DISKS_ENABLE, True):
                 try:
-                    disks = await hass.async_add_executor_job(proxmox.nodes(node).disks.list.get)
+                    disks = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node}/disks/list")
                 except ResourceException as error:
                     continue
 
@@ -664,123 +664,3 @@ def device_info(
         via_device=via_device,
         serial_number = serial_number or None,
     )
-
-
-class ProxmoxClient:
-    """A wrapper for the proxmoxer ProxmoxAPI client."""
-
-    _proxmox: ProxmoxAPI
-
-    def __init__(
-        self,
-        host: str,
-        user: str,
-        password: str,
-        port: int | None = DEFAULT_PORT,
-        realm: str | None = DEFAULT_REALM,
-        verify_ssl: bool | None = DEFAULT_VERIFY_SSL,
-    ) -> None:
-        """Initialize the ProxmoxClient."""
-
-        self._host = host
-        self._port = port
-        self._user = user
-        self._realm = realm
-        self._password = password
-        self._verify_ssl = verify_ssl
-
-    def build_client(self) -> None:
-        """Construct the ProxmoxAPI client.
-
-        Allows inserting the realm within the `user` value.
-        """
-
-        if "@" in self._user:
-            user_id = self._user
-        else:
-            user_id = f"{self._user}@{self._realm}"
-
-        self._proxmox = ProxmoxAPI(
-            self._host,
-            port=self._port,
-            user=user_id,
-            password=self._password,
-            verify_ssl=self._verify_ssl,
-        )
-
-    def get_api_client(self) -> ProxmoxAPI:
-        """Return the ProxmoxAPI client."""
-        return self._proxmox
-
-
-def call_api_post_status(
-    self,
-    proxmox: ProxmoxAPI,
-    api_category: ProxmoxType,
-    command: str,
-    node: str,
-    vm_id: int | None = None,
-) -> Any:
-    """Make proper api post status calls to set state."""
-    result = None
-    if command not in ProxmoxCommand:
-        raise ValueError("Invalid Command")
-
-    try:
-        # Only the START_ALL and STOP_ALL are not part of status API
-        if api_category is ProxmoxType.Node and command in [
-            ProxmoxCommand.START_ALL,
-            ProxmoxCommand.STOP_ALL,
-        ]:
-            result = proxmox.nodes(node).post(command)
-        elif api_category is ProxmoxType.Node:
-            result = proxmox(["nodes", node, "status"]).post(command=command)
-        else:
-            if command == ProxmoxCommand.HIBERNATE:
-                result = proxmox(
-                    ["nodes", node, api_category, vm_id, "status", ProxmoxCommand.SUSPEND]
-                ).post(todisk=1)
-
-            else:
-                result = proxmox(
-                    ["nodes", node, api_category, vm_id, "status", command]
-                ).post()
-
-    except ResourceException as error:
-        if error.status_code == 403:
-            if api_category is ProxmoxType.Node:
-                issue_id=f"{self.config_entry.entry_id}_{node}_command_forbiden"
-                resource=f"{api_category.capitalize()} {node}"
-                permission_check = f"['perm','/nodes/{node}',['Sys.PowerMgmt']]"
-            elif api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
-                issue_id=f"{self.config_entry.entry_id}_{vm_id}_command_forbiden"
-                resource=f"{api_category.upper()} {vm_id}"
-                permission_check = f"['perm','/vms/{vm_id}',['VM.PowerMgmt']]"
-            else:
-                raise ValueError(
-                    f"Resource not categorized correctly: Proxmox {api_category.upper()} {command} error - {error}",
-                ) from error
-
-            async_create_issue(
-                self.hass,
-                DOMAIN,
-                issue_id,
-                is_fixable=False,
-                severity=IssueSeverity.ERROR,
-                translation_key="resource_command_forbiden",
-                translation_placeholders={
-                    "resource": resource,
-                    "user": self.config_entry.data[CONF_USERNAME],
-                    "permission": permission_check,
-                    "command": command,
-                },
-            )
-            raise ValueError(
-                f"Proxmox {api_category.upper()} {command} error - {error}",
-            ) from error
-    except ConnectTimeout as error:
-        raise ValueError(
-            f"Proxmox {api_category.upper()} {command} error - {error}",
-        ) from error
-
-    return result
