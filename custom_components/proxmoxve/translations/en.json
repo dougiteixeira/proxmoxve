@@ -259,6 +259,8 @@
         "status_raw": {
           "name": "Status",
           "state": {
+            "internal-error": "Internal error",
+            "prelaunch": "Pre launch",
             "paused": "Paused",
             "stopped": "Stopped",
             "suspended": "Suspended",
