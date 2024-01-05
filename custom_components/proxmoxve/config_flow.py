@@ -210,13 +210,14 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 await self.hass.async_add_executor_job(
                     self._proxmox_client.build_client
                 )
-
-            except (
-                proxmoxer.AuthenticationError,
-                SSLError,
-                ConnectTimeout,
-            ) as err:
-                raise (err)
+            except proxmoxer.backends.https.AuthenticationError:
+                return self.async_abort(reason="auth_error")
+            except SSLError:
+                return self.async_abort(reason="ssl_rejection")
+            except ConnectTimeout:
+                return self.async_abort(reason="cant_connect")
+            except Exception:  # pylint: disable=broad-except
+                return self.async_abort(reason="general_error")
 
             proxmox = self._proxmox_client.get_api_client()
 

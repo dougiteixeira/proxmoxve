@@ -202,7 +202,12 @@
             "no_nodes": "Es wurden keine Nodes für den Host zurückgegeben.",
             "no_nodes_to_add": "Es gibt keine Nodes zum Hinzufügen.",
             "no_vms": "Es sind keine virtuellen Maschinen oder Container für diesen Node vorhanden. Der Konfigurationseintrag wird für den Node erstellt.",
-            "node_already_exists": "Der ausgewählte Node existiert bereits."
+            "node_already_exists": "Der ausgewählte Node existiert bereits.",
+            "auth_error": "Ungültige Authentifizierung",
+            "cant_connect": "Verbindung fehlgeschlagen",
+            "general_error": "Unerwarteter Fehler",
+            "invalid_port": "Ungültige Portnummer",
+            "ssl_rejection": "SSL-Zertifikat konnte nicht verifiziert werden"
         },
         "error": {
             "auth_error": "Ungültige Authentifizierung",

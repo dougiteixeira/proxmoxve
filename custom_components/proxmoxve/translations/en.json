@@ -144,7 +144,12 @@
         "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
         "changes_successful": "Changes saved successfully.",
         "no_nodes_to_add": "No nodes to add.",
-        "node_already_exists": "The selected node already exists."
+        "node_already_exists": "The selected node already exists.",
+        "auth_error": "Invalid authentication",
+        "cant_connect": "Failed to connect",
+        "general_error": "Unexpected error",
+        "invalid_port": "Invalid port number",
+        "ssl_rejection": "Could not verify the SSL certificate"
       }
     },
     "entity": {
