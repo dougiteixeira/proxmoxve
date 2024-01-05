@@ -552,21 +552,20 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                 attributes_json = []
                 if "attributes" in disk_attributes_api:
                     attributes_json = disk_attributes_api["attributes"]
-                else:
-                    if (
-                        "type" in disk_attributes_api
-                        and disk_attributes_api["type"] == "text"
-                    ):
-                        attributes_text = disk_attributes_api["text"].split("\n")
-                        for value_text in attributes_text:
-                            value_json = value_text.split(":")
-                            if len(value_json) >= 2:
-                                attributes_json.append(
-                                    {
-                                        "name": value_json[0].strip(),
-                                        "raw": value_json[1].strip(),
-                                    }
-                                )
+                elif (
+                    "type" in disk_attributes_api
+                    and disk_attributes_api["type"] == "text"
+                ):
+                    attributes_text = disk_attributes_api["text"].split("\n")
+                    for value_text in attributes_text:
+                        value_json = value_text.split(":")
+                        if len(value_json) >= 2:
+                            attributes_json.append(
+                                {
+                                    "name": value_json[0].strip(),
+                                    "raw": value_json[1].strip(),
+                                }
+                            )
 
                 for disk_attribute in attributes_json:
                     if disk_attribute["name"] in ("Power_Cycle_Count", "Power Cycles"):

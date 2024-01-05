@@ -229,7 +229,7 @@ async def async_get_config_entry_diagnostics(
             and (coordinator_data := coordinator.data) is not None
         ):
             proxmox_coordinators[coordinator_name] = coordinator_data.__dict__
-        elif type(coordinator) is list:
+        elif isinstance(coordinator, list):
             for coordinator_sub in coordinator:
                 if (
                     type(coordinator_sub)

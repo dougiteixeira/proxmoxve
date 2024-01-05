@@ -124,16 +124,15 @@ def post_api_command(
             result = post_api(proxmox, f"nodes/{node}/{command}")
         elif api_category is ProxmoxType.Node:
             result = post_api(proxmox, f"nodes/{node}/status?command={command}")
+        elif command == ProxmoxCommand.HIBERNATE:
+            result = post_api(
+                proxmox,
+                f"nodes/{node}/{api_category}/{vm_id}/status/{ProxmoxCommand.SUSPEND}?todisk=1",
+            )
         else:
-            if command == ProxmoxCommand.HIBERNATE:
-                result = post_api(
-                    proxmox,
-                    f"nodes/{node}/{api_category}/{vm_id}/status/{ProxmoxCommand.SUSPEND}?todisk=1",
-                )
-            else:
-                result = post_api(
-                    proxmox, f"nodes/{node}/{api_category}/{vm_id}/status/{command}"
-                )
+            result = post_api(
+                proxmox, f"nodes/{node}/{api_category}/{vm_id}/status/{command}"
+            )
 
     except ResourceException as error:
         if error.status_code == 403:

@@ -307,7 +307,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         for node in self.config_entry.data[CONF_NODES]:
             if node not in node_selecition:
                 # Remove device disks
-                dev_reg = dr.async_get(self.hass)
                 coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][
                     COORDINATORS
                 ]
