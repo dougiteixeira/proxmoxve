@@ -144,7 +144,12 @@
       "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
       "changes_successful": "Changes saved successfully.",
       "no_nodes_to_add": "No nodes to add.",
-      "node_already_exists": "The selected node already exists."
+      "node_already_exists": "The selected node already exists.",
+      "auth_error": "[%key:component::proxmoxve::config::error::auth_error%]",
+      "ssl_rejection": "[%key:component::proxmoxve::config::error::ssl_rejection%]",
+      "cant_connect": "[%key:component::proxmoxve::config::error::cant_connect%]",
+      "general_error": "[%key:component::proxmoxve::config::error::general_error%]",
+      "invalid_port": "[%key:component::proxmoxve::config::error::invalid_port%]"
     }
   },
   "entity": {

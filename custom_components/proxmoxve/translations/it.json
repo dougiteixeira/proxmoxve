@@ -202,7 +202,12 @@
             "no_nodes": "Nessun nodo è stato restituito per l'host.",
             "no_nodes_to_add": "Nessun nodo da aggiungere.",
             "no_vms": "Non ci sono macchine virtuali o container per questo nodo, verrà creata un'entry di configurazione per il nodo.",
-            "node_already_exists": "Il nodo selezionato esiste già."
+            "node_already_exists": "Il nodo selezionato esiste già.",
+            "auth_error": "Autenticazione non valida",
+            "cant_connect": "Connessione non riuscita",
+            "general_error": "Errore imprevisto",
+            "invalid_port": "Numero di porta non valido",
+            "ssl_rejection": "Impossibile verificare il certificato SSL"
         },
         "error": {
             "auth_error": "Autenticazione non valida",

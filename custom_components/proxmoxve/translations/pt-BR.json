@@ -264,7 +264,14 @@
       "abort": {
           "changes_successful": "Alterações salvas com sucesso.",
           "no_nodes": "Nenhum nó foi retornado para o host.",
-          "no_vms": "Não há máquinas virtuais ou contêineres para este nó, a entrada de configuração será criada para o nó."
+          "no_vms": "Não há máquinas virtuais ou contêineres para este nó, a entrada de configuração será criada para o nó.",
+          "no_nodes_to_add": "Não há nós para adicionar.",
+          "node_already_exists": "O nó selecionado já existe.",
+          "auth_error": "Autenticação inválida",
+          "cant_connect": "Falha ao conectar",
+          "general_error": "Erro inesperado",
+          "invalid_port": "Número da porta inválida",
+          "ssl_rejection": "Não foi possível verificar o certificado SSL"
       },
       "error": {
           "auth_error": "Autenticação inválida",
