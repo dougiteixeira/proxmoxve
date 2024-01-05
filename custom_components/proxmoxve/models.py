@@ -4,7 +4,6 @@ from __future__ import annotations
 from collections.abc import Callable
 import dataclasses
 from dataclasses import dataclass
-from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
@@ -109,7 +108,6 @@ class ProxmoxLXCData:
     swap_free: float
     swap_used: float
     uptime: int
-
 
 
 @dataclasses.dataclass

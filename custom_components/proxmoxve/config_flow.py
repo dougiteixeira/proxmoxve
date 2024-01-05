@@ -30,6 +30,7 @@ from homeassistant.helpers.issue_registry import (
 from .api import ProxmoxClient, get_api
 from .const import (
     CONF_CONTAINERS,
+    CONF_DISKS_ENABLE,
     CONF_LXC,
     CONF_NODE,
     CONF_NODES,
@@ -41,7 +42,6 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
-    CONF_DISKS_ENABLE,
     DOMAIN,
     LOGGER,
     VERSION_REMOVE_YAML,
@@ -220,7 +220,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
             proxmox = self._proxmox_client.get_api_client()
 
-            resources = await self.hass.async_add_executor_job(get_api, proxmox, f"cluster/resources")
+            resources = await self.hass.async_add_executor_job(
+                get_api, proxmox, "cluster/resources"
+            )
 
             resource_qemu = {}
             resource_lxc = {}
@@ -249,7 +251,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                             str(resource["storage"])
                         ] = f"{resource['storage']} {resource['id']}"
                     else:
-                        resource_storage[str(resource["storage"])] = f"{resource['storage']}"
+                        resource_storage[
+                            str(resource["storage"])
+                        ] = f"{resource['storage']}"
 
             return self.async_show_form(
                 step_id="change_expose",
@@ -270,7 +274,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                                 **resource_lxc,
                             }
                         ),
-                        vol.Optional(CONF_STORAGE, default=old_storage): cv.multi_select(
+                        vol.Optional(
+                            CONF_STORAGE, default=old_storage
+                        ): cv.multi_select(
                             {
                                 **dict.fromkeys(old_storage),
                                 **resource_storage,
@@ -278,7 +284,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                         ),
                         vol.Optional(
                             CONF_DISKS_ENABLE,
-                            default=self.config_entry.options.get(CONF_DISKS_ENABLE, True)
+                            default=self.config_entry.options.get(
+                                CONF_DISKS_ENABLE, True
+                            ),
                         ): selector.BooleanSelector(),
                     }
                 ),
@@ -298,18 +306,17 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
         for node in self.config_entry.data[CONF_NODES]:
             if node not in node_selecition:
-
                 # Remove device disks
                 dev_reg = dr.async_get(self.hass)
-                coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][COORDINATORS]
+                coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][
+                    COORDINATORS
+                ]
                 if f"{node}_{ProxmoxType.Disk}" in coordinators:
                     for coordinator_disk in coordinators[f"{node}_{ProxmoxType.Disk}"]:
                         if (coordinator_data := coordinator_disk.data) is None:
                             continue
 
-                        identifier = (
-                            f"{self.config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{coordinator_data.path}"
-                        )
+                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{coordinator_data.path}"
                         await self.async_remove_device(
                             entry_id=self.config_entry.entry_id,
                             device_identifier=identifier,
@@ -388,9 +395,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         for storage_id in self.config_entry.data[CONF_STORAGE]:
             if storage_id not in storage_selecition:
                 # Remove device
-                identifier = (
-                    f"{self.config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage_id}"
-                )
+                identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage_id}"
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
@@ -410,11 +415,11 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             }
         )
 
-        options_data = {
-            CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)
-        }
+        options_data = {CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)}
 
-        self.hass.config_entries.async_update_entry(self.config_entry, data=config_data, options=options_data)
+        self.hass.config_entries.async_update_entry(
+            self.config_entry, data=config_data, options=options_data
+        )
 
         await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
@@ -574,7 +579,9 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         proxmox_nodes_host = []
         if proxmox := (proxmox_client.get_api_client()):
-            proxmox_nodes = await self.hass.async_add_executor_job(get_api, proxmox, "nodes")
+            proxmox_nodes = await self.hass.async_add_executor_job(
+                get_api, proxmox, "nodes"
+            )
 
             for node in proxmox_nodes:
                 proxmox_nodes_host.append(node[CONF_NODE])
@@ -787,7 +794,9 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if (proxmox_cliente := self._proxmox_client) is not None:
                 proxmox = proxmox_cliente.get_api_client()
 
-            resources = await self.hass.async_add_executor_job(get_api, proxmox, f"cluster/resources")
+            resources = await self.hass.async_add_executor_job(
+                get_api, proxmox, "cluster/resources"
+            )
 
             resource_nodes = []
             resource_qemu = {}
@@ -819,7 +828,9 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             str(resource["storage"])
                         ] = f"{resource['storage']} {resource['id']}"
                     else:
-                        resource_lxc[str(resource["storage"])] = f"{resource['storage']}"
+                        resource_lxc[
+                            str(resource["storage"])
+                        ] = f"{resource['storage']}"
 
             return self.async_show_form(
                 step_id="expose",
@@ -876,9 +887,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title=(f"{self._config[CONF_HOST]}:{self._config[CONF_PORT]}"),
             data=self._config,
-            options={
-                CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)
-            }
+            options={CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)},
         )
 
     @staticmethod
