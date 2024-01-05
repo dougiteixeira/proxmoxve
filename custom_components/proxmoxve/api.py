@@ -1,16 +1,29 @@
 """Handle API for Proxmox VE."""
 
 from typing import Any
-from proxmoxer import ProxmoxAPI
 
+from proxmoxer import ProxmoxAPI
 from proxmoxer.core import ResourceException
 from requests.exceptions import ConnectTimeout
+
 from homeassistant.const import CONF_USERNAME
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.issue_registry import (
+    IssueSeverity,
+    async_create_issue,
+    async_delete_issue,
+)
 
-from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue, async_delete_issue
+from .const import (
+    DEFAULT_PORT,
+    DEFAULT_REALM,
+    DEFAULT_VERIFY_SSL,
+    DOMAIN,
+    LOGGER,
+    ProxmoxCommand,
+    ProxmoxType,
+)
 
-from .const import DEFAULT_PORT, DEFAULT_REALM, DEFAULT_VERIFY_SSL, DOMAIN, LOGGER, ProxmoxCommand, ProxmoxType
 
 class ProxmoxClient:
     """A wrapper for the proxmoxer ProxmoxAPI client."""
@@ -60,9 +73,9 @@ class ProxmoxClient:
 
 
 def get_api(
-        proxmox: ProxmoxAPI,
-        api_path: str,
-    ) -> dict[str, Any] | None:
+    proxmox: ProxmoxAPI,
+    api_path: str,
+) -> dict[str, Any] | None:
     """Return data from the Proxmox API."""
 
     api_result = proxmox.get(api_path)
@@ -71,9 +84,9 @@ def get_api(
 
 
 def post_api(
-        proxmox: ProxmoxAPI,
-        api_path: str,
-    ) -> dict[str, Any] | None:
+    proxmox: ProxmoxAPI,
+    api_path: str,
+) -> dict[str, Any] | None:
     """Post data to Proxmox API."""
 
     api_result = proxmox.post(api_path)
@@ -98,9 +111,9 @@ def post_api_command(
         raise ValueError("Invalid Command")
 
     if api_category is ProxmoxType.Node:
-        issue_id=f"{self.config_entry.entry_id}_{node}_command_forbiden"
+        issue_id = f"{self.config_entry.entry_id}_{node}_command_forbiden"
     elif api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
-        issue_id=f"{self.config_entry.entry_id}_{vm_id}_command_forbiden"
+        issue_id = f"{self.config_entry.entry_id}_{vm_id}_command_forbiden"
 
     try:
         # Only the START_ALL and STOP_ALL are not part of status API
@@ -113,18 +126,25 @@ def post_api_command(
             result = post_api(proxmox, f"nodes/{node}/status?command={command}")
         else:
             if command == ProxmoxCommand.HIBERNATE:
-                result = post_api(proxmox, f"nodes/{node}/{api_category}/{vm_id}/status/{ProxmoxCommand.SUSPEND}?todisk=1")
+                result = post_api(
+                    proxmox,
+                    f"nodes/{node}/{api_category}/{vm_id}/status/{ProxmoxCommand.SUSPEND}?todisk=1",
+                )
             else:
-                result = post_api(proxmox, f"nodes/{node}/{api_category}/{vm_id}/status/{command}")
+                result = post_api(
+                    proxmox, f"nodes/{node}/{api_category}/{vm_id}/status/{command}"
+                )
 
     except ResourceException as error:
         if error.status_code == 403:
             permissions = str(error).split("(")[1].split(",")
-            permission_check = f"['perm','{permissions[0]}',[{permissions[1].strip().strip(')')}]]"
+            permission_check = (
+                f"['perm','{permissions[0]}',[{permissions[1].strip().strip(')')}]]"
+            )
             if api_category is ProxmoxType.Node:
-                resource=f"{api_category.capitalize()} {node}"
+                resource = f"{api_category.capitalize()} {node}"
             elif api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
-                resource=f"{api_category.upper()} {vm_id}"
+                resource = f"{api_category.upper()} {vm_id}"
             async_create_issue(
                 self.hass,
                 DOMAIN,

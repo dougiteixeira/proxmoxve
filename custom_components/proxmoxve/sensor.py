@@ -1,10 +1,10 @@
 """Sensor to read Proxmox VE data."""
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Final, Mapping
+from typing import Any, Final
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -13,7 +13,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, REVOLUTIONS_PER_MINUTE, UnitOfInformation, UnitOfTemperature, UnitOfTime
+from homeassistant.const import (
+    PERCENTAGE,
+    REVOLUTIONS_PER_MINUTE,
+    UnitOfInformation,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -332,7 +337,9 @@ PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Status",
         icon="mdi:server",
         translation_key="status_raw",
-        value_fn=lambda x: x.health if x.health not in ["running", "stopped"] else x.status,
+        value_fn=lambda x: x.health
+        if x.health not in ["running", "stopped"]
+        else x.status,
     ),
     *PROXMOX_SENSOR_CPU,
     *PROXMOX_SENSOR_DISK,
@@ -413,6 +420,7 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         translation_key="power_cycles",
     ),
 )
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -614,7 +622,10 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
         if not getattr(data, self.entity_description.key, False):
             if value := self.entity_description.value_fn:
                 native_value = value(data)
-            elif self.entity_description.key in (ProxmoxKeyAPIParse.CPU, ProxmoxKeyAPIParse.UPDATE_TOTAL):
+            elif self.entity_description.key in (
+                ProxmoxKeyAPIParse.CPU,
+                ProxmoxKeyAPIParse.UPDATE_TOTAL,
+            ):
                 return 0
             else:
                 return None

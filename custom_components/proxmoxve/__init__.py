@@ -36,7 +36,7 @@ from homeassistant.helpers.issue_registry import (
 )
 from homeassistant.helpers.typing import ConfigType
 
-from .api import ProxmoxClient, get_api, post_api
+from .api import ProxmoxClient, get_api
 from .const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
@@ -56,7 +56,6 @@ from .const import (
     LOGGER,
     PROXMOX_CLIENT,
     VERSION_REMOVE_YAML,
-    ProxmoxCommand,
     ProxmoxType,
 )
 from .coordinator import (
@@ -259,7 +258,6 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 remove_config_entry_id=config_entry.entry_id,
             )
 
-
     if config_entry.version == 3:
         config_entry.version = 4
         data_new = {
@@ -274,9 +272,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             CONF_LXC: config_entry.data.get(CONF_LXC),
             CONF_STORAGE: [],
         }
-        hass.config_entries.async_update_entry(
-            config_entry, data=data_new, options={}
-        )
+        hass.config_entries.async_update_entry(config_entry, data=data_new, options={})
 
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
@@ -333,16 +329,23 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     coordinators: dict[
         str | int,
-        ProxmoxNodeCoordinator | ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator | ProxmoxStorageCoordinator | ProxmoxUpdateCoordinator | ProxmoxDiskCoordinator,
+        ProxmoxNodeCoordinator
+        | ProxmoxQEMUCoordinator
+        | ProxmoxLXCCoordinator
+        | ProxmoxStorageCoordinator
+        | ProxmoxUpdateCoordinator
+        | ProxmoxDiskCoordinator,
     ] = {}
     nodes_add_device = []
 
-    resources = await hass.async_add_executor_job(get_api, proxmox, f"cluster/resources")
+    resources = await hass.async_add_executor_job(get_api, proxmox, "cluster/resources")
 
     for node in config_entry.data[CONF_NODES]:
         if node in [
             node_proxmox["node"]
-            for node_proxmox in await hass.async_add_executor_job(get_api, proxmox, "nodes")
+            for node_proxmox in await hass.async_add_executor_job(
+                get_api, proxmox, "nodes"
+            )
         ]:
             async_delete_issue(
                 hass,
@@ -360,7 +363,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             if coordinator_node.data is not None:
                 nodes_add_device.append(node)
 
-
             coordinator_updates = ProxmoxUpdateCoordinator(
                 hass=hass,
                 proxmox=proxmox,
@@ -372,11 +374,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
             if config_entry.options.get(CONF_DISKS_ENABLE, True):
                 try:
-                    disks = await hass.async_add_executor_job(get_api, proxmox, f"nodes/{node}/disks/list")
-                except ResourceException as error:
+                    disks = await hass.async_add_executor_job(
+                        get_api, proxmox, f"nodes/{node}/disks/list"
+                    )
+                except ResourceException:
                     continue
 
-                coordinators[f"{node}_{ProxmoxType.Disk}"]=[]
+                coordinators[f"{node}_{ProxmoxType.Disk}"] = []
                 for disk in disks:
                     coordinator_disk = ProxmoxDiskCoordinator(
                         hass=hass,
@@ -440,7 +444,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.QEMU.upper(),
                     "resource": vm_id,
-                    "permission":  f"['perm','/vms/{vm_id}',['VM.Audit']]",
+                    "permission": f"['perm','/vms/{vm_id}',['VM.Audit']]",
                 },
             )
 
@@ -477,7 +481,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.LXC.upper(),
                     "resource": container_id,
-                    "permission":  f"['perm','/vms/{container_id}',['VM.Audit']]",
+                    "permission": f"['perm','/vms/{container_id}',['VM.Audit']]",
                 },
             )
 
@@ -514,7 +518,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.Storage.capitalize(),
                     "resource": storage_id,
-                    "permission":  f"['perm','/storage/{storage_id}',['Datastore.Audit'],'any',1]"
+                    "permission": f"['perm','/storage/{storage_id}',['Datastore.Audit'],'any',1]",
                 },
             )
 
@@ -572,7 +576,7 @@ def device_info(
     node: str | None = None,
     resource_id: int | None = None,
     create: bool | None = False,
-    cordinator_resource: dict[str,Any] | None = None,
+    cordinator_resource: dict[str, Any] | None = None,
 ):
     """Return the Device Info."""
 
@@ -627,7 +631,9 @@ def device_info(
 
     elif api_category is ProxmoxType.Disk:
         name = f"{api_category.capitalize()} {node}:{resource_id}"
-        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
+        identifier = (
+            f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
+        )
         url = f"https://{host}:{port}/#v1:0:=node/{node}::2::::::"
         via_device = (
             DOMAIN,
@@ -644,23 +650,23 @@ def device_info(
             entry_type=dr.DeviceEntryType.SERVICE,
             configuration_url=url,
             identifiers={(DOMAIN, identifier)},
-            manufacturer = manufacturer or INTEGRATION_TITLE,
+            manufacturer=manufacturer or INTEGRATION_TITLE,
             name=name,
             model=model,
             sw_version=proxmox_version,
             hw_version=None,
             via_device=via_device,
-            serial_number = serial_number or None,
+            serial_number=serial_number or None,
         )
     return DeviceInfo(
         entry_type=dr.DeviceEntryType.SERVICE,
         configuration_url=url,
         identifiers={(DOMAIN, identifier)},
-        manufacturer = manufacturer or INTEGRATION_TITLE,
+        manufacturer=manufacturer or INTEGRATION_TITLE,
         name=name,
         model=model,
         sw_version=proxmox_version,
         hw_version=None,
         via_device=via_device,
-        serial_number = serial_number or None,
+        serial_number=serial_number or None,
     )

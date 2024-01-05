@@ -42,7 +42,9 @@ PROXMOX_BINARYSENSOR_NODES: Final[tuple[ProxmoxBinarySensorEntityDescription, ..
     ),
 )
 
-PROXMOX_BINARYSENSOR_UPDATES: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
+PROXMOX_BINARYSENSOR_UPDATES: Final[
+    tuple[ProxmoxBinarySensorEntityDescription, ...]
+] = (
     ProxmoxBinarySensorEntityDescription(
         key=ProxmoxKeyAPIParse.UPDATE_AVAIL,
         name="Updates packages",

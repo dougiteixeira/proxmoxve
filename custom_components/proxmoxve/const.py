@@ -29,7 +29,7 @@ CONF_NODES = "nodes"
 CONF_QEMU = "qemu"
 CONF_REALM = "realm"
 CONF_VMS = "vms"
-CONF_STORAGE="storage"
+CONF_STORAGE = "storage"
 
 PROXMOX_CLIENT = "proxmox_client"
 
