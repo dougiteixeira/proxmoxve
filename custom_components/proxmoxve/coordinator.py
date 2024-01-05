@@ -468,13 +468,13 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
                 update=False,
             )
 
-        list = []
+        updates_list = []
         total = 0
         for update in api_status:
-            list.append(f"{update['Title']} - {update['Version']}")
+            updates_list.append(f"{update['Title']} - {update['Version']}")
             total += 1
 
-        list.sort()
+        updates_list.sort()
 
         update_avail = False
         if total > 0:
@@ -484,7 +484,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
             type=ProxmoxType.Update,
             node=self.node_name,
             total=total,
-            updates_list=list,
+            updates_list=updates_list,
             update=update_avail,
         )
 
