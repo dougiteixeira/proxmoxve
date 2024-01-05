@@ -1,6 +1,7 @@
 """Support for the Airzone diagnostics."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 import datetime
 from typing import Any
 
@@ -263,7 +264,7 @@ async def async_get_config_entry_diagnostics(
 
 async def async_get_device_diagnostics(
     hass: HomeAssistant, config_entry: ConfigEntry, device: DeviceEntry
-) -> dict:
+) -> Mapping[str, Any]:
     """Return diagnostics for a device entry."""
 
     config_entry_diagnostics = await async_get_config_entry_diagnostics(
