@@ -96,8 +96,8 @@ async def async_setup_entry(
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     for node in config_entry.data[CONF_NODES]:
-        if node in coordinators:
-            coordinator = coordinators[node]
+        if f"{ProxmoxType.Node}_{node}" in coordinators:
+            coordinator = coordinators[f"{ProxmoxType.Node}_{node}"]
         else:
             continue
 
@@ -164,8 +164,8 @@ async def async_setup_entry(
                     )
 
     for vm_id in config_entry.data[CONF_QEMU]:
-        if vm_id in coordinators:
-            coordinator = coordinators[vm_id]
+        if f"{ProxmoxType.QEMU}_{vm_id}" in coordinators:
+            coordinator = coordinators[f"{ProxmoxType.QEMU}_{vm_id}"]
         else:
             continue
 
@@ -190,8 +190,8 @@ async def async_setup_entry(
                 )
 
     for container_id in config_entry.data[CONF_LXC]:
-        if container_id in coordinators:
-            coordinator = coordinators[container_id]
+        if f"{ProxmoxType.LXC}_{container_id}" in coordinators:
+            coordinator = coordinators[f"{ProxmoxType.LXC}_{container_id}"]
         else:
             continue
 

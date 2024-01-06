@@ -359,7 +359,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 node_name=node,
             )
             await coordinator_node.async_refresh()
-            coordinators[node] = coordinator_node
+            coordinators[f"{ProxmoxType.Node}_{node}"] = coordinator_node
             if coordinator_node.data is not None:
                 nodes_add_device.append(node)
 
@@ -428,7 +428,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 qemu_id=vm_id,
             )
             await coordinator_qemu.async_refresh()
-            coordinators[vm_id] = coordinator_qemu
+            coordinators[f"{ProxmoxType.QEMU}_{vm_id}"] = coordinator_qemu
         else:
             async_create_issue(
                 hass,
@@ -465,7 +465,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 container_id=container_id,
             )
             await coordinator_lxc.async_refresh()
-            coordinators[container_id] = coordinator_lxc
+            coordinators[f"{ProxmoxType.LXC}_{container_id}"] = coordinator_lxc
         else:
             async_create_issue(
                 hass,
@@ -502,7 +502,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 storage_id=storage_id,
             )
             await coordinator_storage.async_refresh()
-            coordinators[storage_id] = coordinator_storage
+            coordinators[f"{ProxmoxType.Storage}_{storage_id}"] = coordinator_storage
         else:
             async_create_issue(
                 hass,
@@ -589,7 +589,7 @@ def device_info(
     manufacturer = None
     serial_number = None
     if api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
-        coordinator = coordinators[resource_id]
+        coordinator = coordinators[f"{api_category}_{resource_id}"]
         if (coordinator_data := coordinator.data) is not None:
             vm_name = coordinator_data.name
             node = coordinator_data.node
@@ -604,7 +604,7 @@ def device_info(
         model = api_category.upper()
 
     elif api_category is ProxmoxType.Storage:
-        coordinator = coordinators[resource_id]
+        coordinator = coordinators[f"{api_category}_{resource_id}"]
         if (coordinator_data := coordinator.data) is not None:
             node = coordinator_data.node
 
@@ -618,7 +618,7 @@ def device_info(
         model = api_category.capitalize()
 
     elif api_category in (ProxmoxType.Node, ProxmoxType.Update):
-        coordinator = coordinators[node]
+        coordinator = coordinators[f"{ProxmoxType.Node}_{node}"]
         if (coordinator_data := coordinator.data) is not None:
             model_processor = coordinator_data.model
             proxmox_version = f"Proxmox {coordinator_data.version}"
