@@ -27,9 +27,9 @@ from .coordinator import (
 
 TO_REDACT_CONFIG = ["host", "username", "password"]
 
-TO_REDACT_COORD = []
+TO_REDACT_COORD = [""]
 
-TO_REDACT_API = []
+TO_REDACT_API = [""]
 
 TO_REDACT_DATA = ["configuration_url"]
 
@@ -98,9 +98,7 @@ async def async_get_api_data_diagnostics(
             for lxc in lxc_node if lxc_node is not None else []:
                 nodes[node["node"]]["lxc"][lxc["vmid"]] = lxc
                 try:
-                    nodes[node["node"]]["lxc"][lxc["vmid"]]["backups"][
-                        "error"
-                    ] = await hass.async_add_executor_job(
+                    nodes[node["node"]]["lxc"][lxc["vmid"]]["backups"] = await hass.async_add_executor_job(
                         get_api,
                         proxmox,
                         f"nodes/{node['node']}/lxc/{lxc['vmid']}/snapshot",
