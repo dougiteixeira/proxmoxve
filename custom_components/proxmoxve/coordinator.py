@@ -33,7 +33,14 @@ from .models import (
 
 
 class ProxmoxCoordinator(
-    DataUpdateCoordinator[ProxmoxNodeData | ProxmoxVMData | ProxmoxLXCData]
+    DataUpdateCoordinator[
+        ProxmoxDiskData
+        | ProxmoxLXCData
+        | ProxmoxNodeData
+        | ProxmoxStorageData
+        | ProxmoxUpdateData
+        | ProxmoxVMData
+    ]
 ):
     """Proxmox VE data update coordinator."""
 

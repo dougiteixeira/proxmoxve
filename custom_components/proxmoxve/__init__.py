@@ -380,7 +380,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 except ResourceException:
                     continue
 
-                coordinators[f"{node}_{ProxmoxType.Disk}"] = []
+                coordinators[f"{ProxmoxType.Disk}_{node}"] = []
                 for disk in disks:
                     coordinator_disk = ProxmoxDiskCoordinator(
                         hass=hass,
@@ -390,7 +390,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         disk_id=disk["devpath"],
                     )
                     await coordinator_disk.async_refresh()
-                    coordinators[f"{node}_{ProxmoxType.Disk}"].append(coordinator_disk)
+                    coordinators[f"{ProxmoxType.Disk}_{node}"].append(coordinator_disk)
 
         else:
             async_create_issue(
