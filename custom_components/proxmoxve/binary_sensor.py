@@ -137,8 +137,8 @@ async def async_setup_entry(
                         )
                     )
 
-            if f"{node}_{ProxmoxType.Disk}" in coordinators:
-                for coordinator_disk in coordinators[f"{node}_{ProxmoxType.Disk}"]:
+            if f"{ProxmoxType.Disk}_{node}" in coordinators:
+                for coordinator_disk in coordinators[f"{ProxmoxType.Disk}_{node}"]:
                     if (coordinator_data := coordinator_disk.data) is None:
                         continue
 
