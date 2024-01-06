@@ -34,20 +34,10 @@ TO_REDACT_API = []
 TO_REDACT_DATA = ["configuration_url"]
 
 
-async def async_get_config_entry_diagnostics(
+async def async_get_api_data_diagnostics(
     hass: HomeAssistant, config_entry: ConfigEntry
 ) -> dict[str, Any]:
-    """Return diagnostics for a config entry."""
-
-    coordinators: dict[
-        str,
-        ProxmoxNodeCoordinator
-        | ProxmoxQEMUCoordinator
-        | ProxmoxLXCCoordinator
-        | ProxmoxStorageCoordinator
-        | ProxmoxUpdateCoordinator
-        | ProxmoxDiskCoordinator,
-    ] = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
+    """Get API info for diagnostics."""
 
     proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
 
@@ -182,10 +172,28 @@ async def async_get_config_entry_diagnostics(
                 "disks"
             ] = "Disk information disabled in integration configuration options"
 
-    api_data = {
+    return {
         "resources": resources,
         "nodes": nodes,
     }
+
+
+async def async_get_config_entry_diagnostics(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> dict[str, Any]:
+    """Return diagnostics for a config entry."""
+
+    coordinators: dict[
+        str,
+        ProxmoxNodeCoordinator
+        | ProxmoxQEMUCoordinator
+        | ProxmoxLXCCoordinator
+        | ProxmoxStorageCoordinator
+        | ProxmoxUpdateCoordinator
+        | ProxmoxDiskCoordinator,
+    ] = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
+
+    api_data = await async_get_api_data_diagnostics(hass, config_entry)
 
     device_registry = dr.async_get(hass)
     entity_registry = er.async_get(hass)
