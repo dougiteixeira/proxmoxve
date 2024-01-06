@@ -228,6 +228,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             resource_qemu = {}
             resource_lxc = {}
             resource_storage = {}
+            resource: dict[str, Any]
             for resource in resources if resources is not None else []:
                 if ("type" in resource) and (resource["type"] == ProxmoxType.Node):
                     if resource["node"] not in resource_nodes:
