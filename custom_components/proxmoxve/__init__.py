@@ -158,6 +158,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                     },
                 )
             else:
+                conf[CONF_STORAGE] = []
                 hass.async_create_task(
                     hass.config_entries.flow.async_init(
                         DOMAIN,
