@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Final
 
@@ -41,12 +40,11 @@ from .entity import ProxmoxEntity
 from .models import ProxmoxEntityDescription
 
 
-@dataclass
 class ProxmoxSensorEntityDescription(ProxmoxEntityDescription, SensorEntityDescription):
     """Class describing Proxmox sensor entities."""
 
     conversion_fn: Callable | None = None  # conversion factor to be applied to units
-    value_fn: Callable[[Any], bool | str] | None = None
+    value_fn: Callable[[Any], Any | str] | None = None
     api_category: ProxmoxType | None = None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
     extra_attrs: list[str] | None = None
 

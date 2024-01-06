@@ -71,7 +71,6 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         key=ProxmoxCommand.REBOOT,
         icon="mdi:restart",
         name="Reboot",
-        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
         translation_key="reboot",
     ),
@@ -79,7 +78,6 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         key=ProxmoxCommand.START,
         icon="mdi:server",
         name="Start",
-        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
         translation_key="start",
     ),
@@ -87,7 +85,6 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         key=ProxmoxCommand.SHUTDOWN,
         icon="mdi:server-off",
         name="Shutdown",
-        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
         translation_key="shutdown",
     ),
@@ -95,7 +92,6 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         key=ProxmoxCommand.STOP,
         icon="mdi:stop",
         name="Stop",
-        api_category=[ProxmoxType.QEMU, ProxmoxType.LXC],
         entity_registry_enabled_default=False,
         translation_key="stop",
     ),
@@ -182,7 +178,9 @@ async def async_setup_entry(
         if coordinator.data is None:
             continue
         for description in PROXMOX_BUTTON_VM:
-            if ProxmoxType.QEMU in description.api_category:
+            if (
+                api_category := description.api_category
+            ) and ProxmoxType.QEMU in api_category:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
@@ -209,7 +207,9 @@ async def async_setup_entry(
         if coordinator.data is None:
             continue
         for description in PROXMOX_BUTTON_VM:
-            if ProxmoxType.LXC in description.api_category:
+            if (
+                api_category := description.api_category
+            ) and ProxmoxType.LXC in api_category:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
