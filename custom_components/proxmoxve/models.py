@@ -137,15 +137,15 @@ class ProxmoxUpdateData:
 class ProxmoxDiskData:
     """Data parsed from the Proxmox API for Disks."""
 
-    type: str
-    node: str
-    size: float
-    health: str
-    serial: str
-    model: str
-    vendor: str
-    path: str
-    disk_rpm: float
-    disk_type: str
-    temperature: float
-    power_cycles: int
+    type: str | None
+    node: str | None
+    size: float | None
+    health: str | None
+    serial: str | None
+    model: str | None
+    vendor: str | None
+    path: str | None
+    disk_rpm: float | None
+    disk_type: str | None
+    temperature: float | None
+    power_cycles: int | None

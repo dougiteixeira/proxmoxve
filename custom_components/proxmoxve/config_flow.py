@@ -228,7 +228,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             resource_qemu = {}
             resource_lxc = {}
             resource_storage = {}
-            for resource in resources:
+            for resource in resources if resources is not None else []:
                 if ("type" in resource) and (resource["type"] == ProxmoxType.Node):
                     if resource["node"] not in resource_nodes:
                         resource_nodes.append(resource["node"])
@@ -340,7 +340,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_process_selection_changes(
         self,
-        user_input: dict[str, Any] | None = None,
+        user_input: dict[str, Any],
     ) -> dict[str, Any]:
         """Process resource selection changes."""
 
@@ -373,7 +373,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     f"{self.config_entry.entry_id}_{node}_resource_nonexistent",
                 )
 
-            if node not in node_selecition or not user_input.get(CONF_DISKS_ENABLE):
+            if node not in (
+                node_selecition if node_selecition is not None else []
+            ) or not user_input.get(CONF_DISKS_ENABLE):
                 coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][
                     COORDINATORS
                 ]
@@ -603,11 +605,12 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 get_api, proxmox, "nodes"
             )
 
-            for node in proxmox_nodes:
+            for node in proxmox_nodes if proxmox_nodes is not None else []:
                 proxmox_nodes_host.append(node[CONF_NODE])
 
         if (
-            CONF_NODES in import_config
+            import_config is not None
+            and CONF_NODES in import_config
             and (import_nodes := import_config.get(CONF_NODES)) is not None
         ):
             import_config[CONF_NODES] = []

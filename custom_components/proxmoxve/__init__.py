@@ -642,8 +642,11 @@ def device_info(
         if cordinator_resource is None:
             model = api_category.capitalize()
         else:
+            disk_type = cordinator_resource.disk_type
             model = (
-                f"{cordinator_resource.disk_type.upper()} {cordinator_resource.model}"
+                f"{disk_type.upper()} {cordinator_resource.model} "
+                if disk_type is not None
+                else f"{disk_type}{cordinator_resource.model}"
             )
             manufacturer = cordinator_resource.vendor
             serial_number = cordinator_resource.serial
