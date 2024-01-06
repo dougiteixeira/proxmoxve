@@ -137,28 +137,31 @@ async def async_setup_entry(
                         )
                     )
 
-            if f"{ProxmoxType.Disk}_{node}" in coordinators:
-                for coordinator_disk in coordinators[f"{ProxmoxType.Disk}_{node}"]:
-                    if (coordinator_data := coordinator_disk.data) is None:
-                        continue
+            for coordinator_disk in (
+                coordinators[f"{ProxmoxType.Disk}_{node}"]
+                if f"{ProxmoxType.Disk}_{node}" in coordinators
+                else []
+            ):
+                if (coordinator_data := coordinator_disk.data) is None:
+                    continue
 
-                    for description in PROXMOX_BINARYSENSOR_DISKS:
-                        sensors.append(
-                            create_binary_sensor(
-                                coordinator=coordinator_disk,
-                                info_device=device_info(
-                                    hass=hass,
-                                    config_entry=config_entry,
-                                    api_category=ProxmoxType.Disk,
-                                    node=node,
-                                    resource_id=coordinator_data.path,
-                                    cordinator_resource=coordinator_data,
-                                ),
-                                description=description,
-                                resource_id=coordinator_data.path,
+                for description in PROXMOX_BINARYSENSOR_DISKS:
+                    sensors.append(
+                        create_binary_sensor(
+                            coordinator=coordinator_disk,
+                            info_device=device_info(
+                                hass=hass,
                                 config_entry=config_entry,
-                            )
+                                api_category=ProxmoxType.Disk,
+                                node=node,
+                                resource_id=coordinator_data.path,
+                                cordinator_resource=coordinator_data,
+                            ),
+                            description=description,
+                            resource_id=coordinator_data.path,
+                            config_entry=config_entry,
                         )
+                    )
 
     for vm_id in config_entry.data[CONF_QEMU]:
         if vm_id in coordinators:
