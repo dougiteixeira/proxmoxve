@@ -29,7 +29,7 @@ from .entity import ProxmoxEntity
 from .models import ProxmoxEntityDescription
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class ProxmoxBinarySensorEntityDescription(
     ProxmoxEntityDescription, BinarySensorEntityDescription
 ):
