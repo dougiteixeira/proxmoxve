@@ -49,20 +49,20 @@ async def async_get_api_data_diagnostics(
         )
     except ResourceException as error:
         if error.status_code == 403:
-            resources = "403 Forbidden: Permission check failed"
+            resources["error"] = "403 Forbidden: Permission check failed"
         else:
-            resources = error
+            resources["error"] = error
 
     nodes = {}
     try:
         nodes_api = await hass.async_add_executor_job(get_api, proxmox, "nodes")
     except ResourceException as error:
         if error.status_code == 403:
-            nodes_api = "403 Forbidden: Permission check failed"
+            nodes_api["error"] = "403 Forbidden: Permission check failed"
         else:
-            nodes_api = error
+            nodes_api["error"] = error
 
-    for node in nodes_api:
+    for node in nodes_api if nodes_api is not None else []:
         nodes[node["node"]] = node
 
         try:
@@ -70,7 +70,7 @@ async def async_get_api_data_diagnostics(
             qemu_node = await hass.async_add_executor_job(
                 get_api, proxmox, f"nodes/{node['node']}/qemu"
             )
-            for qemu in qemu_node:
+            for qemu in qemu_node if qemu_node is not None else []:
                 nodes[node["node"]]["qemu"][qemu["vmid"]] = qemu
                 try:
                     nodes[node["node"]]["qemu"][qemu["vmid"]][
@@ -84,32 +84,36 @@ async def async_get_api_data_diagnostics(
                     nodes[node["node"]]["qemu"][qemu["vmid"]]["backups"] = error
         except ResourceException as error:
             if error.status_code == 403:
-                nodes[node["node"]]["qemu"] = "403 Forbidden: Permission check failed"
+                nodes[node["node"]]["qemu"][
+                    "error"
+                ] = "403 Forbidden: Permission check failed"
             else:
-                nodes[node["node"]]["qemu"] = error
+                nodes[node["node"]]["qemu"]["error"] = error
 
         try:
             nodes[node["node"]]["lxc"] = {}
             lxc_node = await hass.async_add_executor_job(
                 get_api, proxmox, f"nodes/{node['node']}/lxc"
             )
-            for lxc in lxc_node:
+            for lxc in lxc_node if lxc_node is not None else []:
                 nodes[node["node"]]["lxc"][lxc["vmid"]] = lxc
                 try:
-                    nodes[node["node"]]["lxc"][lxc["vmid"]][
-                        "backups"
+                    nodes[node["node"]]["lxc"][lxc["vmid"]]["backups"][
+                        "error"
                     ] = await hass.async_add_executor_job(
                         get_api,
                         proxmox,
                         f"nodes/{node['node']}/lxc/{lxc['vmid']}/snapshot",
                     )
                 except ResourceException as error:
-                    nodes[node["node"]]["lxc"][lxc["vmid"]]["backups"] = error
+                    nodes[node["node"]]["lxc"][lxc["vmid"]]["backups"]["error"] = error
         except ResourceException as error:
             if error.status_code == 403:
-                nodes[node["node"]]["lxc"] = "403 Forbidden: Permission check failed"
+                nodes[node["node"]]["lxc"][
+                    "error"
+                ] = "403 Forbidden: Permission check failed"
             else:
-                nodes[node["node"]]["lxc"] = error
+                nodes[node["node"]]["lxc"]["error"] = error
 
         try:
             nodes[node["node"]]["storage"] = await hass.async_add_executor_job(
@@ -117,11 +121,11 @@ async def async_get_api_data_diagnostics(
             )
         except ResourceException as error:
             if error.status_code == 403:
-                nodes[node["node"]][
-                    "storage"
+                nodes[node["node"]]["storage"][
+                    "error"
                 ] = "403 Forbidden: Permission check failed"
             else:
-                nodes[node["node"]]["storage"] = error
+                nodes[node["node"]]["storage"]["error"] = error
 
         try:
             nodes[node["node"]]["updates"] = await hass.async_add_executor_job(
@@ -129,18 +133,18 @@ async def async_get_api_data_diagnostics(
             )
         except ResourceException as error:
             if error.status_code == 403:
-                nodes[node["node"]][
-                    "updates"
+                nodes[node["node"]]["updates"][
+                    "error"
                 ] = "403 Forbidden: Permission check failed"
             else:
-                nodes[node["node"]]["updates"] = error
+                nodes[node["node"]]["updates"]["error"] = error
 
         try:
             nodes[node["node"]]["versions"] = await hass.async_add_executor_job(
                 get_api, proxmox, f"nodes/{node['node']}/apt/versions"
             )
         except ResourceException as error:
-            nodes[node["node"]]["updates"] = error
+            nodes[node["node"]]["updates"]["error"] = error
 
         if config_entry.options.get(CONF_DISKS_ENABLE, True):
             try:
@@ -149,7 +153,7 @@ async def async_get_api_data_diagnostics(
                 )
 
                 nodes[node["node"]]["disks"] = {}
-                for disk in disks:
+                for disk in disks if disks is not None else []:
                     disk_attributes = await hass.async_add_executor_job(
                         get_api,
                         proxmox,
@@ -162,14 +166,14 @@ async def async_get_api_data_diagnostics(
 
             except ResourceException as error:
                 if error.status_code == 403:
-                    nodes[node["node"]][
-                        "disks"
+                    nodes[node["node"]]["disks"][
+                        "error"
                     ] = "403 Forbidden: Permission check failed"
                 else:
-                    nodes[node["node"]]["disks"] = error
+                    nodes[node["node"]]["disks"]["error"] = error
         else:
-            nodes[node["node"]][
-                "disks"
+            nodes[node["node"]]["disks"][
+                "info"
             ] = "Disk information disabled in integration configuration options"
 
     return {

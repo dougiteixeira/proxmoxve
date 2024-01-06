@@ -127,13 +127,15 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             ProxmoxType.QEMU,
             self.resource_id,
         )
-        node_qemu = {}
-        node_qemu["total"] = 0
-        node_qemu["list"] = []
-        for qemu in qemu_status:
-            if qemu["status"] == "running":
-                node_qemu["total"] += 1
-                node_qemu["list"].append(f"{qemu['name']} ({qemu['vmid']})")
+        node_qemu: dict[str, Any] = {}
+        node_qemu_on: int = 0
+        node_qemu_on_list: list[str] = []
+        for qemu in qemu_status if qemu_status is not None else []:
+            if "status" in qemu and qemu["status"] == "running":
+                node_qemu_on += 1
+                node_qemu_on_list.append(f"{qemu['name']} ({qemu['vmid']})")
+        node_qemu["total"] = node_qemu_on
+        node_qemu["list"] = node_qemu_on_list
         api_status["qemu"] = node_qemu
 
         api_path = f"nodes/{self.resource_id}/lxc"
@@ -146,13 +148,15 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             ProxmoxType.LXC,
             self.resource_id,
         )
-        node_lxc = {}
-        node_lxc["total"] = 0
-        node_lxc["list"] = []
-        for lxc in lxc_status:
+        node_lxc: dict[str, Any] = {}
+        node_lxc_on: int = 0
+        node_lxc_on_list: list[str] = []
+        for lxc in lxc_status if lxc_status is not None else []:
             if lxc["status"] == "running":
-                node_lxc["total"] += 1
-                node_lxc["list"].append(f"{lxc['name']} ({lxc['vmid']})")
+                node_lxc_on += 1
+                node_lxc_on_list.append(f"{lxc['name']} ({lxc['vmid']})")
+        node_lxc["total"] = node_lxc_on
+        node_lxc["list"] = node_lxc_on_list
         api_status["lxc"] = node_lxc
 
         return ProxmoxNodeData(
@@ -219,7 +223,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             None,
         )
 
-        for resource in resources:
+        for resource in resources if resources is not None else []:
             if "vmid" in resource:
                 if int(resource["vmid"]) == int(self.resource_id):
                     node_name = resource["node"]
@@ -304,7 +308,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             None,
         )
 
-        for resource in resources:
+        for resource in resources if resources is not None else []:
             if "vmid" in resource:
                 if int(resource["vmid"]) == int(self.resource_id):
                     node_name = resource["node"]
@@ -372,7 +376,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
         self.node_name: str
         self.resource_id = storage_id
 
-    async def _async_update_data(self) -> ProxmoxLXCData:
+    async def _async_update_data(self) -> ProxmoxStorageData:
         """Update data  for Proxmox Update."""
 
         node_name = None
@@ -389,7 +393,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             None,
         )
 
-        for resource in resources:
+        for resource in resources if resources is not None else []:
             if "storage" in resource:
                 if resource["storage"] == self.resource_id:
                     node_name = resource["node"]
@@ -430,7 +434,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
         api_category: str,
-        node_name: int,
+        node_name: str,
     ) -> None:
         """Initialize the Proxmox Update coordinator."""
 
@@ -557,10 +561,14 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                 )
 
                 attributes_json = []
-                if "attributes" in disk_attributes_api:
+                if (
+                    disk_attributes_api is not None
+                    and "attributes" in disk_attributes_api
+                ):
                     attributes_json = disk_attributes_api["attributes"]
                 elif (
-                    "type" in disk_attributes_api
+                    disk_attributes_api is not None
+                    and "type" in disk_attributes_api
                     and disk_attributes_api["type"] == "text"
                 ):
                     attributes_text = disk_attributes_api["text"].split("\n")
@@ -589,12 +597,12 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     type=ProxmoxType.Disk,
                     node=self.node_name,
                     path=self.resource_id,
-                    size=disk["size"] if "size" in disk else None,
+                    size=float(disk["size"]) if "size" in disk else None,
                     health=disk["health"] if "health" in disk else None,
                     vendor=disk["vendor"] if "vendor" in disk else None,
                     serial=disk["serial"] if "serial" in disk else None,
                     model=disk["model"] if "model" in disk else None,
-                    disk_rpm=disk["rpm"] if "rpm" in disk else None,
+                    disk_rpm=float(disk["rpm"]) if "rpm" in disk else None,
                     disk_type=disk["type"] if "type" in disk else None,
                     temperature=disk_attributes["temperature"]
                     if "temperature" in disk_attributes
@@ -659,9 +667,9 @@ def poll_api(
 ) -> dict[str, Any] | None:
     """Return data from the Proxmox Node API."""
 
-    def perssion_to_resource(
+    def permission_to_resource(
         api_category: ProxmoxType,
-        resource_id: int | str,
+        resource_id: int | str | None = None,
     ):
         """Return the permissions required for the resource."""
         match api_category:
@@ -673,7 +681,7 @@ def poll_api(
                 return f"['perm','/storage/{resource_id}',['Datastore.Audit'],'any',1]"
             case ProxmoxType.Update:
                 return f"['perm','/nodes/{resource_id}',['Sys.Modify']]"
-            case ProxmoxType.Disks:
+            case ProxmoxType.Disk:
                 return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
             case _:
                 return "Unmapped"
@@ -698,12 +706,13 @@ def poll_api(
                 translation_placeholders={
                     "resource": f"{api_category.capitalize()} {resource_id}",
                     "user": config_entry.data[CONF_USERNAME],
-                    "permission": perssion_to_resource(api_category, resource_id),
+                    "permission": permission_to_resource(api_category, resource_id),
                 },
             )
             raise UpdateFailed(
                 "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
             ) from error
+        raise UpdateFailed from error
 
     async_delete_issue(
         hass,
