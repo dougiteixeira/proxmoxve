@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Final
 
@@ -40,6 +41,7 @@ from .entity import ProxmoxEntity
 from .models import ProxmoxEntityDescription
 
 
+@dataclass
 class ProxmoxSensorEntityDescription(ProxmoxEntityDescription, SensorEntityDescription):
     """Class describing Proxmox sensor entities."""
 
