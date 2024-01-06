@@ -1,8 +1,7 @@
 """Constants for ProxmoxVE."""
 
+from enum import StrEnum
 import logging
-
-from homeassistant.backports.enum import StrEnum
 
 DOMAIN = "proxmoxve"
 PROXMOX_CLIENTS = "proxmox_clients"
