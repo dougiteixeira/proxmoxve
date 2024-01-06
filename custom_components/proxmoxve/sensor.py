@@ -20,6 +20,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
@@ -34,6 +35,7 @@ from .const import (
     CONF_STORAGE,
     COORDINATORS,
     DOMAIN,
+    LOGGER,
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
@@ -430,6 +432,7 @@ async def async_setup_entry(
     """Set up sensor."""
 
     sensors = []
+    migrate_unique_id_disks = []
 
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
@@ -496,9 +499,15 @@ async def async_setup_entry(
                                 cordinator_resource=coordinator_data,
                             ),
                             description=description,
-                            resource_id=coordinator_data.path,
+                            resource_id=f"{node}_{coordinator_data.path}",
                             config_entry=config_entry,
                         )
+                    )
+                    migrate_unique_id_disks.append(
+                        {
+                            "old_unique_id": f"{config_entry.entry_id}_{coordinator_data.path}_{description.key}",
+                            "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.path}_{description.key}",
+                        }
                     )
 
     for vm_id in config_entry.data[CONF_QEMU]:
@@ -579,7 +588,27 @@ async def async_setup_entry(
                     )
                 )
 
+    await _async_migrate_old_unique_ids(hass, migrate_unique_id_disks)
     async_add_entities(sensors)
+
+
+async def _async_migrate_old_unique_ids(hass, entities):
+    """Migration of the unique id of disk entities."""
+    registry = er.async_get(hass)
+    for entity in entities:
+        entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, entity["old_unique_id"]
+        )
+        if entity_id is not None:
+            LOGGER.debug(
+                "Migrating unique_id %s: from [%s] to [%s]",
+                entity_id,
+                entity["old_unique_id"],
+                entity["new_unique_id"],
+            )
+            registry.async_update_entity(
+                entity_id, new_unique_id=entity["new_unique_id"]
+            )
 
 
 def create_sensor(
