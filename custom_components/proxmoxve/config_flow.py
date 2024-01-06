@@ -297,6 +297,53 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             self.config_entry.data.copy() if self.config_entry.data is not None else {}
         )
 
+        new_selection = await self.async_process_selection_changes(user_input)
+
+        config_data.update(
+            {
+                CONF_NODES: new_selection[CONF_NODES],
+                CONF_QEMU: new_selection[CONF_QEMU],
+                CONF_LXC: new_selection[CONF_LXC],
+                CONF_STORAGE: new_selection[CONF_STORAGE],
+            }
+        )
+
+        options_data = {CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)}
+
+        self.hass.config_entries.async_update_entry(
+            self.config_entry, data=config_data, options=options_data
+        )
+
+        await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+        return self.async_abort(reason="changes_successful")
+
+    async def async_remove_device(
+        self,
+        entry_id: str,
+        device_identifier: str,
+    ) -> bool:
+        """Remove device."""
+        device_identifiers = {(DOMAIN, device_identifier)}
+        dev_reg = dr.async_get(self.hass)
+        device = dev_reg.async_get_or_create(
+            config_entry_id=entry_id,
+            identifiers=device_identifiers,
+        )
+
+        dev_reg.async_update_device(
+            device_id=device.id,
+            remove_config_entry_id=entry_id,
+        )
+        LOGGER.debug("Device %s (%s) removed", device.name, device.id)
+        return True
+
+    async def async_process_selection_changes(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Process resource selection changes."""
+
         node_selecition = []
         if (
             CONF_NODES in user_input
@@ -406,44 +453,12 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     f"{self.config_entry.entry_id}_{storage_id}_resource_nonexistent",
                 )
 
-        config_data.update(
-            {
-                CONF_NODES: node_selecition,
-                CONF_QEMU: qemu_selecition,
-                CONF_LXC: lxc_selecition,
-                CONF_STORAGE: storage_selecition,
-            }
-        )
-
-        options_data = {CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)}
-
-        self.hass.config_entries.async_update_entry(
-            self.config_entry, data=config_data, options=options_data
-        )
-
-        await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-
-        return self.async_abort(reason="changes_successful")
-
-    async def async_remove_device(
-        self,
-        entry_id: str,
-        device_identifier: str,
-    ) -> bool:
-        """Remove device."""
-        device_identifiers = {(DOMAIN, device_identifier)}
-        dev_reg = dr.async_get(self.hass)
-        device = dev_reg.async_get_or_create(
-            config_entry_id=entry_id,
-            identifiers=device_identifiers,
-        )
-
-        dev_reg.async_update_device(
-            device_id=device.id,
-            remove_config_entry_id=entry_id,
-        )
-        LOGGER.debug("Device %s (%s) removed", device.name, device.id)
-        return True
+        return {
+            CONF_NODES: node_selecition,
+            CONF_QEMU: qemu_selecition,
+            CONF_LXC: lxc_selecition,
+            CONF_STORAGE: storage_selecition,
+        }
 
 
 class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
