@@ -358,16 +358,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][
                     COORDINATORS
                 ]
-                if f"{ProxmoxType.Disk}_{node}" in coordinators:
-                    for coordinator_disk in coordinators[f"{ProxmoxType.Disk}_{node}"]:
-                        if (coordinator_data := coordinator_disk.data) is None:
-                            continue
-
-                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{coordinator_data.path}"
-                        await self.async_remove_device(
-                            entry_id=self.config_entry.entry_id,
-                            device_identifier=identifier,
-                        )
 
                 # Remove device node
                 identifier = (
@@ -382,6 +372,21 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     DOMAIN,
                     f"{self.config_entry.entry_id}_{node}_resource_nonexistent",
                 )
+
+            if node not in node_selecition or not user_input.get(CONF_DISKS_ENABLE):
+                coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][
+                    COORDINATORS
+                ]
+                if f"{ProxmoxType.Disk}_{node}" in coordinators:
+                    for coordinator_disk in coordinators[f"{ProxmoxType.Disk}_{node}"]:
+                        if (coordinator_data := coordinator_disk.data) is None:
+                            continue
+
+                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{coordinator_data.path}"
+                        await self.async_remove_device(
+                            entry_id=self.config_entry.entry_id,
+                            device_identifier=identifier,
+                        )
 
         qemu_selecition = []
         if (
