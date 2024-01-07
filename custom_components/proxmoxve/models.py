@@ -116,4 +116,5 @@ class ProxmoxDiskData:
     disk_rpm: float | None
     disk_type: str | None
     temperature: float | None
+    temperature_air: float | None
     power_cycles: int | None

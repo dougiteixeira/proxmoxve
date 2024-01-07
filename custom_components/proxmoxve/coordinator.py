@@ -579,19 +579,25 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                                 {
                                     "name": value_json[0].strip(),
                                     "raw": value_json[1].strip(),
+                                    "id": 194
+                                    if value_json[0].strip() == "Temperature"
+                                    else None,
                                 }
                             )
 
                 for disk_attribute in attributes_json:
-                    if disk_attribute["name"] in ("Power_Cycle_Count", "Power Cycles"):
+                    if disk_attribute["id"] == 12:
                         disk_attributes["power_cycles"] = disk_attribute["raw"]
-                    elif disk_attribute["name"] in (
-                        "Temperature_Celsius",
-                        "Temperature",
-                    ):
-                        disk_attributes["temperature"] = disk_attribute["raw"].split(
-                            " ", 1
-                        )[0]
+
+                    if disk_attribute["id"] == 194:
+                        disk_attributes["temperature"] = (
+                            disk_attribute["raw"].strip().split(" ", 1)[0]
+                        )
+
+                    if disk_attribute["id"] == 190:
+                        disk_attributes["temperature_air"] = (
+                            disk_attribute["raw"].strip().split(" ", 1)[0]
+                        )
 
                 return ProxmoxDiskData(
                     type=ProxmoxType.Disk,
@@ -604,6 +610,9 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     model=disk["model"] if "model" in disk else None,
                     disk_rpm=float(disk["rpm"]) if "rpm" in disk else None,
                     disk_type=disk["type"] if "type" in disk else None,
+                    temperature_air=disk_attributes["temperature_air"]
+                    if "temperature_air" in disk_attributes
+                    else None,
                     temperature=disk_attributes["temperature"]
                     if "temperature" in disk_attributes
                     else None,
