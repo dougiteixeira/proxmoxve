@@ -594,19 +594,22 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     type=ProxmoxType.Disk,
                     node=self.node_name,
                     path=self.resource_id,
-                    size=float(disk["size"]) if "size" in disk else None,
-                    health=disk["health"] if "health" in disk else None,
                     vendor=disk["vendor"] if "vendor" in disk else None,
                     serial=disk["serial"] if "serial" in disk else None,
                     model=disk["model"] if "model" in disk else None,
-                    disk_rpm=float(disk["rpm"]) if "rpm" in disk else None,
                     disk_type=disk["type"] if "type" in disk else None,
+                    size=float(disk["size"]) if "size" in disk else UNDEFINED,
+                    health=disk["health"] if "health" in disk else UNDEFINED,
+                    disk_rpm=float(disk["rpm"]) if "rpm" in disk else UNDEFINED,
+                    temperature_air=disk_attributes["temperature_air"]
+                    if "temperature_air" in disk_attributes
+                    else UNDEFINED,
                     temperature=disk_attributes["temperature"]
                     if "temperature" in disk_attributes
-                    else None,
+                    else UNDEFINED,
                     power_cycles=disk_attributes["power_cycles"]
                     if "power_cycles" in disk_attributes
-                    else None,
+                    else UNDEFINED,
                 )
 
         raise UpdateFailed(

@@ -5,6 +5,7 @@ import dataclasses
 from dataclasses import dataclass
 
 from homeassistant.helpers.entity import EntityDescription
+from homeassistant.helpers.typing import UNDEFINED
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -105,15 +106,17 @@ class ProxmoxUpdateData:
 class ProxmoxDiskData:
     """Data parsed from the Proxmox API for Disks."""
 
-    type: str | None
-    node: str | None
-    size: float | None
-    health: str | None
+    type: str
+    node: str
+    path: str
     serial: str | None
     model: str | None
     vendor: str | None
-    path: str | None
-    disk_rpm: float | None
     disk_type: str | None
-    temperature: float | None
-    power_cycles: int | None
+    power_cycles: int | UNDEFINED
+    size: float | UNDEFINED
+    health: str | UNDEFINED
+    disk_rpm: float | UNDEFINED
+    temperature: float | UNDEFINED
+    temperature_air: float | UNDEFINED
+    power_cycles: int | UNDEFINED
