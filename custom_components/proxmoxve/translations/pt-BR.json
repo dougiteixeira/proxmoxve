@@ -193,6 +193,9 @@
           "temperature": {
             "name": "Temperatura"
           },
+          "temperature_air": {
+            "name": "Temperatura do fluxo de ar"
+          },
           "updates_total": {
             "name": "Total de atualizações",
             "state_attributes": {

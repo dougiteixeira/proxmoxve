@@ -587,8 +587,13 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     if disk_attribute["id"] == 12:
                         disk_attributes["power_cycles"] = disk_attribute["raw"]
 
-                    if disk_attribute["id"] == 194 or disk_attribute["id"] == 190:
+                    if disk_attribute["id"] == 194:
                         disk_attributes["temperature"] = disk_attribute["raw"].strip().split(
+                                " ", 1
+                            )[0]
+
+                    if disk_attribute["id"] == 190:
+                        disk_attributes["temperature_air"] = disk_attribute["raw"].strip().split(
                                 " ", 1
                             )[0]
 
@@ -604,6 +609,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     disk_rpm=float(disk["rpm"]) if "rpm" in disk else None,
                     disk_type=disk["type"] if "type" in disk else None,
                     temperature=disk_attributes["temperature"]
+                    temperature_air=disk_attributes["temperature_air"]
                     if "temperature" in disk_attributes
                     else None,
                     power_cycles=disk_attributes["power_cycles"]

@@ -414,6 +414,16 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         translation_key="temperature",
     ),
     ProxmoxSensorEntityDescription(
+        key="temperature_air",
+        name="Airflow Temperature",
+        icon="mdi:harddisk",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        translation_key="temperature_air",
+    ),
+    ProxmoxSensorEntityDescription(
         key="power_cycles",
         name="Power cycles",
         icon="mdi:reload",
