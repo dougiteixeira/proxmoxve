@@ -579,19 +579,18 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                                 {
                                     "name": value_json[0].strip(),
                                     "raw": value_json[1].strip(),
+                                    "id": 194 if value_json[0].strip() == "Temperature" else None,
                                 }
                             )
 
                 for disk_attribute in attributes_json:
-                    if disk_attribute["name"] in ("Power_Cycle_Count", "Power Cycles"):
+                    if disk_attribute["id"] == 12:
                         disk_attributes["power_cycles"] = disk_attribute["raw"]
-                    elif disk_attribute["name"] in (
-                        "Temperature_Celsius",
-                        "Temperature",
-                    ):
-                        disk_attributes["temperature"] = disk_attribute["raw"].split(
-                            " ", 1
-                        )[0]
+
+                    if disk_attribute["id"] == 194 or disk_attribute["id"] == 190:
+                        disk_attributes["temperature"] = disk_attribute["raw"].strip().split(
+                                " ", 1
+                            )[0]
 
                 return ProxmoxDiskData(
                     type=ProxmoxType.Disk,
