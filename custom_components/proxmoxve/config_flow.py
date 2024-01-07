@@ -43,6 +43,7 @@ from .const import (
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
+    INTEGRATION_TITLE,
     LOGGER,
     VERSION_REMOVE_YAML,
     ProxmoxType,
@@ -502,7 +503,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 severity=IssueSeverity.WARNING,
                 translation_key="import_already_configured",
                 translation_placeholders={
-                    "integration": "Proxmox VE",
+                    "integration": INTEGRATION_TITLE,
                     "platform": DOMAIN,
                     "host": str(import_config.get(CONF_HOST)),
                     "port": str(import_config.get(CONF_PORT)),
@@ -539,7 +540,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 severity=IssueSeverity.ERROR,
                 translation_key="import_auth_error",
                 translation_placeholders={
-                    "integration": "Proxmox VE",
+                    "integration": INTEGRATION_TITLE,
                     "platform": DOMAIN,
                     "host": str(import_config.get(CONF_HOST)),
                     "port": str(import_config.get(CONF_PORT)),
@@ -556,7 +557,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 severity=IssueSeverity.ERROR,
                 translation_key="import_ssl_rejection",
                 translation_placeholders={
-                    "integration": "Proxmox VE",
+                    "integration": INTEGRATION_TITLE,
                     "platform": DOMAIN,
                     "host": str(import_config.get(CONF_HOST)),
                     "port": str(import_config.get(CONF_PORT)),
@@ -573,7 +574,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 severity=IssueSeverity.ERROR,
                 translation_key="import_cant_connect",
                 translation_placeholders={
-                    "integration": "Proxmox VE",
+                    "integration": INTEGRATION_TITLE,
                     "platform": DOMAIN,
                     "host": str(import_config.get(CONF_HOST)),
                     "port": str(import_config.get(CONF_PORT)),
@@ -590,7 +591,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 severity=IssueSeverity.ERROR,
                 translation_key="import_general_error",
                 translation_placeholders={
-                    "integration": "Proxmox VE",
+                    "integration": INTEGRATION_TITLE,
                     "platform": DOMAIN,
                     "host": str(import_config.get(CONF_HOST)),
                     "port": str(import_config.get(CONF_PORT)),
@@ -631,7 +632,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         severity=IssueSeverity.WARNING,
                         translation_key="import_node_not_exist",
                         translation_placeholders={
-                            "integration": "Proxmox VE",
+                            "integration": INTEGRATION_TITLE,
                             "platform": DOMAIN,
                             "host": str(import_config.get(CONF_HOST)),
                             "port": str(import_config.get(CONF_PORT)),
@@ -648,7 +649,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             severity=IssueSeverity.WARNING,
             translation_key="import_success",
             translation_placeholders={
-                "integration": "Proxmox VE",
+                "integration": INTEGRATION_TITLE,
                 "platform": DOMAIN,
                 "host": str(import_config.get(CONF_HOST)),
                 "port": str(import_config.get(CONF_PORT)),
