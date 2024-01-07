@@ -11,6 +11,7 @@ from requests.exceptions import ConnectTimeout, SSLError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_USERNAME
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.issue_registry import (
     IssueSeverity,
@@ -161,19 +162,39 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
 
         return ProxmoxNodeData(
             type=ProxmoxType.Node,
-            model=api_status["cpuinfo"]["model"],
-            status=api_status["status"],
-            version=api_status["version"]["version"],
-            uptime=api_status["uptime"],
-            cpu=api_status["cpu"],
-            disk_total=api_status["disk_max"],
-            disk_used=api_status["disk_used"],
-            memory_total=api_status["memory"]["total"],
-            memory_used=api_status["memory"]["used"],
-            memory_free=api_status["memory"]["free"],
-            swap_total=api_status["swap"]["total"],
-            swap_free=api_status["swap"]["free"],
-            swap_used=api_status["swap"]["used"],
+            model=api_status["cpuinfo"]["model"]
+            if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
+            else UNDEFINED,
+            status=api_status["status"] if "status" in api_status else UNDEFINED,
+            version=api_status["version"]["version"]
+            if "version" in api_status["version"]
+            else UNDEFINED,
+            uptime=api_status["uptime"] if "uptime" in api_status else UNDEFINED,
+            cpu=api_status["cpu"] if "cpu" in api_status else UNDEFINED,
+            disk_total=api_status["disk_max"]
+            if "disk_max" in api_status
+            else UNDEFINED,
+            disk_used=api_status["disk_used"]
+            if "disk_used" in api_status
+            else UNDEFINED,
+            memory_total=api_status["memory"]["total"]
+            if (("memory" in api_status) and "total" in api_status["memory"])
+            else UNDEFINED,
+            memory_used=api_status["memory"]["used"]
+            if (("memory" in api_status) and "used" in api_status["memory"])
+            else UNDEFINED,
+            memory_free=api_status["memory"]["free"]
+            if (("memory" in api_status) and "free" in api_status["memory"])
+            else UNDEFINED,
+            swap_total=api_status["swap"]["total"]
+            if (("swap" in api_status) and "total" in api_status["swap"])
+            else UNDEFINED,
+            swap_free=api_status["swap"]["free"]
+            if (("swap" in api_status) and "free" in api_status["swap"])
+            else UNDEFINED,
+            swap_used=api_status["swap"]["used"]
+            if (("swap" in api_status) and "used" in api_status["swap"])
+            else UNDEFINED,
             qemu_on=api_status["qemu"]["total"],
             qemu_on_list=api_status["qemu"]["list"],
             lxc_on=api_status["lxc"]["total"],
@@ -248,21 +269,23 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         update_device_via(self, ProxmoxType.QEMU, node_name)
         return ProxmoxVMData(
             type=ProxmoxType.QEMU,
+            node=node_name,
             status=api_status["lock"]
             if ("lock" in api_status and api_status["lock"] == "suspended")
-            else api_status["status"],
-            name=api_status["name"],
-            node=node_name,
-            health=api_status["qmpstatus"],
-            uptime=api_status["uptime"],
-            cpu=api_status["cpu"],
-            memory_total=api_status["maxmem"],
-            memory_used=api_status["mem"],
-            memory_free=api_status["maxmem"] - api_status["mem"],
-            network_in=api_status["netin"],
-            network_out=api_status["netout"],
-            disk_total=api_status["maxdisk"],
-            disk_used=api_status["disk"],
+            else (api_status["status"] if "status" in api_status else UNDEFINED),
+            name=api_status["name"] if "name" in api_status else UNDEFINED,
+            health=api_status["qmpstatus"] if "qmpstatus" in api_status else UNDEFINED,
+            uptime=api_status["uptime"] if "uptime" in api_status else UNDEFINED,
+            cpu=api_status["cpu"] if "cpu" in api_status else UNDEFINED,
+            memory_total=api_status["maxmem"] if "maxmem" in api_status else UNDEFINED,
+            memory_used=api_status["mem"] if "mem" in api_status else UNDEFINED,
+            memory_free=(api_status["maxmem"] - api_status["mem"])
+            if ("maxmem" in api_status and "mem" in api_status)
+            else UNDEFINED,
+            network_in=api_status["netin"] if "netin" in api_status else UNDEFINED,
+            network_out=api_status["netout"] if "netout" in api_status else UNDEFINED,
+            disk_total=api_status["maxdisk"] if "maxdisk" in api_status else UNDEFINED,
+            disk_used=api_status["disk"] if "disk" in api_status else UNDEFINED,
         )
 
 
@@ -331,23 +354,28 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             raise UpdateFailed(f"LXC {self.resource_id} unable to be found")
 
         update_device_via(self, ProxmoxType.LXC, node_name)
+
         return ProxmoxLXCData(
             type=ProxmoxType.LXC,
-            status=api_status["status"],
-            name=api_status["name"],
             node=node_name,
-            uptime=api_status["uptime"],
-            cpu=api_status["cpu"],
-            memory_total=api_status["maxmem"],
-            memory_used=api_status["mem"],
-            memory_free=api_status["maxmem"] - api_status["mem"],
-            network_in=api_status["netin"],
-            network_out=api_status["netout"],
-            disk_total=api_status["maxdisk"],
-            disk_used=api_status["disk"],
-            swap_total=api_status["maxswap"],
-            swap_used=api_status["swap"],
-            swap_free=api_status["maxswap"] - api_status["swap"],
+            status=api_status["status"] if "status" in api_status else UNDEFINED,
+            name=api_status["name"] if "name" in api_status else UNDEFINED,
+            uptime=api_status["uptime"] if "uptime" in api_status else UNDEFINED,
+            cpu=api_status["cpu"] if "cpu" in api_status else UNDEFINED,
+            memory_total=api_status["maxmem"] if "maxmem" in api_status else UNDEFINED,
+            memory_used=api_status["mem"] if "mem" in api_status else UNDEFINED,
+            memory_free=(api_status["maxmem"] - api_status["mem"])
+            if ("maxmem" in api_status and "mem" in api_status)
+            else UNDEFINED,
+            network_in=api_status["netin"] if "netin" in api_status else UNDEFINED,
+            network_out=api_status["netout"] if "netout" in api_status else UNDEFINED,
+            disk_total=api_status["maxdisk"] if "maxdisk" in api_status else UNDEFINED,
+            disk_used=api_status["disk"] if "disk" in api_status else UNDEFINED,
+            swap_total=api_status["maxswap"] if "maxswap" in api_status else UNDEFINED,
+            swap_used=api_status["swap"] if "swap" in api_status else UNDEFINED,
+            swap_free=(api_status["maxswap"] - api_status["swap"])
+            if ("maxswap" in api_status and "swap" in api_status)
+            else UNDEFINED,
         )
 
 
@@ -419,10 +447,10 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
         return ProxmoxStorageData(
             type=ProxmoxType.Storage,
             node=node_name,
-            disk_total=api_status["total"],
-            disk_used=api_status["used"],
-            disk_free=api_status["avail"],
-            content=api_status["content"],
+            disk_total=api_status["total"] if "total" in api_status else UNDEFINED,
+            disk_used=api_status["used"] if "used" in api_status else UNDEFINED,
+            disk_free=api_status["avail"] if "avail" in api_status else UNDEFINED,
+            content=api_status["content"] if "content" in api_status else UNDEFINED,
         )
 
 
@@ -474,9 +502,9 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
             return ProxmoxUpdateData(
                 type=ProxmoxType.Update,
                 node=self.node_name,
-                total=0,
-                updates_list=[],
-                update=False,
+                total=UNDEFINED,
+                updates_list=UNDEFINED,
+                update=UNDEFINED,
             )
 
         updates_list = []
@@ -544,7 +572,21 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
             raise UpdateFailed(f"{self.resource_id} node not found")
 
         if api_status is None:
-            raise UpdateFailed("No data returned.")
+            return ProxmoxDiskData(
+                type=ProxmoxType.Disk,
+                node=self.node_name,
+                path=self.resource_id,
+                vendor=None,
+                serial=None,
+                model=None,
+                disk_type=None,
+                size=UNDEFINED,
+                health=UNDEFINED,
+                disk_rpm=UNDEFINED,
+                temperature_air=UNDEFINED,
+                temperature=UNDEFINED,
+                power_cycles=UNDEFINED,
+            )
 
         for disk in api_status:
             if disk["devpath"] == self.resource_id:
@@ -586,15 +628,15 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                             )
 
                 for disk_attribute in attributes_json:
-                    if disk_attribute["id"] == 12:
+                    if int(disk_attribute["id"].strip()) == 12:
                         disk_attributes["power_cycles"] = disk_attribute["raw"]
 
-                    if disk_attribute["id"] == 194:
+                    if int(disk_attribute["id"].strip()) == 194:
                         disk_attributes["temperature"] = (
                             disk_attribute["raw"].strip().split(" ", 1)[0]
                         )
 
-                    if disk_attribute["id"] == 190:
+                    if int(disk_attribute["id"].strip()) == 190:
                         disk_attributes["temperature_air"] = (
                             disk_attribute["raw"].strip().split(" ", 1)[0]
                         )
@@ -603,22 +645,22 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     type=ProxmoxType.Disk,
                     node=self.node_name,
                     path=self.resource_id,
-                    size=float(disk["size"]) if "size" in disk else None,
-                    health=disk["health"] if "health" in disk else None,
                     vendor=disk["vendor"] if "vendor" in disk else None,
                     serial=disk["serial"] if "serial" in disk else None,
                     model=disk["model"] if "model" in disk else None,
-                    disk_rpm=float(disk["rpm"]) if "rpm" in disk else None,
                     disk_type=disk["type"] if "type" in disk else None,
+                    size=float(disk["size"]) if "size" in disk else UNDEFINED,
+                    health=disk["health"] if "health" in disk else UNDEFINED,
+                    disk_rpm=float(disk["rpm"]) if "rpm" in disk else UNDEFINED,
                     temperature_air=disk_attributes["temperature_air"]
                     if "temperature_air" in disk_attributes
-                    else None,
+                    else UNDEFINED,
                     temperature=disk_attributes["temperature"]
                     if "temperature" in disk_attributes
-                    else None,
-                    power_cycles=disk_attributes["power_cycles"]
+                    else UNDEFINED,
+                    power_cycles=int(disk_attributes["power_cycles"])
                     if "power_cycles" in disk_attributes
-                    else None,
+                    else UNDEFINED,
                 )
 
         raise UpdateFailed(
@@ -697,8 +739,9 @@ def poll_api(
 
     try:
         return get_api(proxmox, api_path)
+    except AuthenticationError as error:
+        raise ConfigEntryAuthFailed from error
     except (
-        AuthenticationError,
         SSLError,
         ConnectTimeout,
     ) as error:
@@ -718,9 +761,10 @@ def poll_api(
                     "permission": permission_to_resource(api_category, resource_id),
                 },
             )
-            raise UpdateFailed(
-                "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
-            ) from error
+            LOGGER.debug(
+                f"Error get API path {api_path}: User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
+            )
+            return None
         raise UpdateFailed from error
 
     async_delete_issue(

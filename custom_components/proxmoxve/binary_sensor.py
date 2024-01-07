@@ -10,21 +10,14 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from . import COORDINATORS, DOMAIN, device_info
-from .const import (
-    CONF_LXC,
-    CONF_NODES,
-    CONF_QEMU,
-    LOGGER,
-    ProxmoxKeyAPIParse,
-    ProxmoxType,
-)
+from . import COORDINATORS, DOMAIN, async_migrate_old_unique_ids, device_info
+from .const import CONF_LXC, CONF_NODES, CONF_QEMU, ProxmoxKeyAPIParse, ProxmoxType
 from .entity import ProxmoxEntity
 from .models import ProxmoxEntityDescription
 
@@ -100,6 +93,17 @@ async def async_setup_entry(
 ) -> None:
     """Set up binary sensors."""
 
+    async_add_entities(await async_setup_binary_sensors_nodes(hass, config_entry))
+    async_add_entities(await async_setup_binary_sensors_qemu(hass, config_entry))
+    async_add_entities(await async_setup_binary_sensors_lxc(hass, config_entry))
+
+
+async def async_setup_binary_sensors_nodes(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up binary sensors."""
+
     sensors = []
     migrate_unique_id_disks = []
 
@@ -114,38 +118,40 @@ async def async_setup_entry(
         # unfound node case
         if coordinator.data is not None:
             for description in PROXMOX_BINARYSENSOR_NODES:
-                sensors.append(
-                    create_binary_sensor(
-                        coordinator=coordinator,
-                        config_entry=config_entry,
-                        info_device=device_info(
-                            hass=hass,
-                            config_entry=config_entry,
-                            api_category=ProxmoxType.Node,
-                            node=node,
-                        ),
-                        description=description,
-                        resource_id=node,
-                    )
-                )
-
-            if f"{ProxmoxType.Update}_{node}" in coordinators:
-                coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
-                for description in PROXMOX_BINARYSENSOR_UPDATES:
+                if getattr(coordinator.data, description.key, False):
                     sensors.append(
                         create_binary_sensor(
-                            coordinator=coordinator_updates,
+                            coordinator=coordinator,
                             config_entry=config_entry,
                             info_device=device_info(
                                 hass=hass,
                                 config_entry=config_entry,
-                                api_category=ProxmoxType.Update,
+                                api_category=ProxmoxType.Node,
                                 node=node,
                             ),
                             description=description,
                             resource_id=node,
                         )
                     )
+
+            if f"{ProxmoxType.Update}_{node}" in coordinators:
+                coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
+                for description in PROXMOX_BINARYSENSOR_UPDATES:
+                    if getattr(coordinator_updates.data, description.key, False):
+                        sensors.append(
+                            create_binary_sensor(
+                                coordinator=coordinator_updates,
+                                config_entry=config_entry,
+                                info_device=device_info(
+                                    hass=hass,
+                                    config_entry=config_entry,
+                                    api_category=ProxmoxType.Update,
+                                    node=node,
+                                ),
+                                description=description,
+                                resource_id=node,
+                            )
+                        )
 
             for coordinator_disk in (
                 coordinators[f"{ProxmoxType.Disk}_{node}"]
@@ -156,28 +162,45 @@ async def async_setup_entry(
                     continue
 
                 for description in PROXMOX_BINARYSENSOR_DISKS:
-                    sensors.append(
-                        create_binary_sensor(
-                            coordinator=coordinator_disk,
-                            info_device=device_info(
-                                hass=hass,
+                    if getattr(coordinator_disk.data, description.key, False):
+                        sensors.append(
+                            create_binary_sensor(
+                                coordinator=coordinator_disk,
+                                info_device=device_info(
+                                    hass=hass,
+                                    config_entry=config_entry,
+                                    api_category=ProxmoxType.Disk,
+                                    node=node,
+                                    resource_id=coordinator_data.path,
+                                    cordinator_resource=coordinator_data,
+                                ),
+                                description=description,
+                                resource_id=f"{node}_{coordinator_data.path}",
                                 config_entry=config_entry,
-                                api_category=ProxmoxType.Disk,
-                                node=node,
-                                resource_id=coordinator_data.path,
-                                cordinator_resource=coordinator_data,
-                            ),
-                            description=description,
-                            resource_id=f"{node}_{coordinator_data.path}",
-                            config_entry=config_entry,
+                            )
                         )
-                    )
-                    migrate_unique_id_disks.append(
-                        {
-                            "old_unique_id": f"{config_entry.entry_id}_{coordinator_data.path}_{description.key}",
-                            "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.path}_{description.key}",
-                        }
-                    )
+                        migrate_unique_id_disks.append(
+                            {
+                                "old_unique_id": f"{config_entry.entry_id}_{coordinator_data.path}_{description.key}",
+                                "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.path}_{description.key}",
+                            }
+                        )
+
+    await async_migrate_old_unique_ids(
+        hass, Platform.BINARY_SENSOR, migrate_unique_id_disks
+    )
+    return sensors
+
+
+async def async_setup_binary_sensors_qemu(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up binary sensors."""
+
+    sensors = []
+
+    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     for vm_id in config_entry.data[CONF_QEMU]:
         if f"{ProxmoxType.QEMU}_{vm_id}" in coordinators:
@@ -190,20 +213,34 @@ async def async_setup_entry(
             continue
         for description in PROXMOX_BINARYSENSOR_VM:
             if description.api_category in (None, ProxmoxType.QEMU):
-                sensors.append(
-                    create_binary_sensor(
-                        coordinator=coordinator,
-                        config_entry=config_entry,
-                        info_device=device_info(
-                            hass=hass,
+                if getattr(coordinator.data, description.key, False):
+                    sensors.append(
+                        create_binary_sensor(
+                            coordinator=coordinator,
                             config_entry=config_entry,
-                            api_category=ProxmoxType.QEMU,
+                            info_device=device_info(
+                                hass=hass,
+                                config_entry=config_entry,
+                                api_category=ProxmoxType.QEMU,
+                                resource_id=vm_id,
+                            ),
+                            description=description,
                             resource_id=vm_id,
-                        ),
-                        description=description,
-                        resource_id=vm_id,
+                        )
                     )
-                )
+
+    return sensors
+
+
+async def async_setup_binary_sensors_lxc(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up binary sensors."""
+
+    sensors = []
+
+    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     for container_id in config_entry.data[CONF_LXC]:
         if f"{ProxmoxType.LXC}_{container_id}" in coordinators:
@@ -216,42 +253,23 @@ async def async_setup_entry(
             continue
         for description in PROXMOX_BINARYSENSOR_VM:
             if description.api_category in (None, ProxmoxType.LXC):
-                sensors.append(
-                    create_binary_sensor(
-                        coordinator=coordinator,
-                        config_entry=config_entry,
-                        info_device=device_info(
-                            hass=hass,
+                if getattr(coordinator.data, description.key, False):
+                    sensors.append(
+                        create_binary_sensor(
+                            coordinator=coordinator,
                             config_entry=config_entry,
-                            api_category=ProxmoxType.LXC,
+                            info_device=device_info(
+                                hass=hass,
+                                config_entry=config_entry,
+                                api_category=ProxmoxType.LXC,
+                                resource_id=container_id,
+                            ),
+                            description=description,
                             resource_id=container_id,
-                        ),
-                        description=description,
-                        resource_id=container_id,
+                        )
                     )
-                )
 
-    await _async_migrate_old_unique_ids(hass, migrate_unique_id_disks)
-    async_add_entities(sensors)
-
-
-async def _async_migrate_old_unique_ids(hass, entities):
-    """Migration of the unique id of disk entities."""
-    registry = er.async_get(hass)
-    for entity in entities:
-        entity_id = registry.async_get_entity_id(
-            "binary_sensor", DOMAIN, entity["old_unique_id"]
-        )
-        if entity_id is not None:
-            LOGGER.debug(
-                "Migrating unique_id %s: from [%s] to [%s]",
-                entity_id,
-                entity["old_unique_id"],
-                entity["new_unique_id"],
-            )
-            registry.async_update_entity(
-                entity_id, new_unique_id=entity["new_unique_id"]
-            )
+    return sensors
 
 
 def create_binary_sensor(

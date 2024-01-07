@@ -16,18 +16,18 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     REVOLUTIONS_PER_MINUTE,
+    Platform,
     UnitOfInformation,
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.typing import UNDEFINED, StateType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 import homeassistant.util.dt as dt_util
 
-from . import device_info
+from . import async_migrate_old_unique_ids, device_info
 from .const import (
     CONF_LXC,
     CONF_NODES,
@@ -35,12 +35,11 @@ from .const import (
     CONF_STORAGE,
     COORDINATORS,
     DOMAIN,
-    LOGGER,
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
 from .entity import ProxmoxEntity
-from .models import ProxmoxEntityDescription
+from .models import ProxmoxDiskData, ProxmoxEntityDescription
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -415,7 +414,7 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ),
     ProxmoxSensorEntityDescription(
         key="temperature_air",
-        name="Airflow Temperature",
+        name="Airflow temperature",
         icon="mdi:harddisk",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
@@ -441,6 +440,18 @@ async def async_setup_entry(
 ) -> None:
     """Set up sensor."""
 
+    async_add_entities(await async_setup_sensors_nodes(hass, config_entry))
+    async_add_entities(await async_setup_sensors_qemu(hass, config_entry))
+    async_add_entities(await async_setup_sensors_lxc(hass, config_entry))
+    async_add_entities(await async_setup_sensors_storages(hass, config_entry))
+
+
+async def async_setup_sensors_nodes(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up sensor."""
+
     sensors = []
     migrate_unique_id_disks = []
 
@@ -452,34 +463,19 @@ async def async_setup_entry(
         else:
             continue
 
-        # unfound vm case
         if coordinator.data is not None:
             for description in PROXMOX_SENSOR_NODES:
-                sensors.append(
-                    create_sensor(
-                        coordinator=coordinator,
-                        info_device=device_info(
-                            hass=hass,
-                            config_entry=config_entry,
-                            api_category=ProxmoxType.Node,
-                            node=node,
-                        ),
-                        description=description,
-                        resource_id=node,
-                        config_entry=config_entry,
-                    )
-                )
-
-            if f"{ProxmoxType.Update}_{node}" in coordinators:
-                coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
-                for description in PROXMOX_SENSOR_UPDATE:
+                if (
+                    (data_value := getattr(coordinator.data, description.key, False))
+                    and data_value != UNDEFINED
+                ) or description.value_fn is not None:
                     sensors.append(
                         create_sensor(
-                            coordinator=coordinator_updates,
+                            coordinator=coordinator,
                             info_device=device_info(
                                 hass=hass,
                                 config_entry=config_entry,
-                                api_category=ProxmoxType.Update,
+                                api_category=ProxmoxType.Node,
                                 node=node,
                             ),
                             description=description,
@@ -488,37 +484,80 @@ async def async_setup_entry(
                         )
                     )
 
+            if f"{ProxmoxType.Update}_{node}" in coordinators:
+                coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
+                for description in PROXMOX_SENSOR_UPDATE:
+                    if (
+                        data_value := getattr(
+                            coordinator_updates.data, description.key, False
+                        )
+                    ) and data_value != UNDEFINED:
+                        sensors.append(
+                            create_sensor(
+                                coordinator=coordinator_updates,
+                                info_device=device_info(
+                                    hass=hass,
+                                    config_entry=config_entry,
+                                    api_category=ProxmoxType.Update,
+                                    node=node,
+                                ),
+                                description=description,
+                                resource_id=node,
+                                config_entry=config_entry,
+                            )
+                        )
+
+            coordinator_disks_data: ProxmoxDiskData
             for coordinator_disk in (
                 coordinators[f"{ProxmoxType.Disk}_{node}"]
                 if f"{ProxmoxType.Disk}_{node}" in coordinators
                 else []
             ):
-                if (coordinator_data := coordinator_disk.data) is None:
+                if (coordinator_disks_data := coordinator_disk.data) is None:
                     continue
 
                 for description in PROXMOX_SENSOR_DISKS:
-                    sensors.append(
-                        create_sensor(
-                            coordinator=coordinator_disk,
-                            info_device=device_info(
-                                hass=hass,
-                                config_entry=config_entry,
-                                api_category=ProxmoxType.Disk,
-                                node=node,
-                                resource_id=coordinator_data.path,
-                                cordinator_resource=coordinator_data,
-                            ),
-                            description=description,
-                            resource_id=f"{node}_{coordinator_data.path}",
-                            config_entry=config_entry,
+                    if (
+                        data_value := getattr(
+                            coordinator_disk.data, description.key, False
                         )
-                    )
-                    migrate_unique_id_disks.append(
-                        {
-                            "old_unique_id": f"{config_entry.entry_id}_{coordinator_data.path}_{description.key}",
-                            "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.path}_{description.key}",
-                        }
-                    )
+                    ) and data_value != UNDEFINED:
+                        sensors.append(
+                            create_sensor(
+                                coordinator=coordinator_disk,
+                                info_device=device_info(
+                                    hass=hass,
+                                    config_entry=config_entry,
+                                    api_category=ProxmoxType.Disk,
+                                    node=node,
+                                    resource_id=coordinator_disks_data.path,
+                                    cordinator_resource=coordinator_disks_data,
+                                ),
+                                description=description,
+                                resource_id=f"{node}_{coordinator_disks_data.path}",
+                                config_entry=config_entry,
+                            )
+                        )
+                        migrate_unique_id_disks.append(
+                            {
+                                "old_unique_id": f"{config_entry.entry_id}_{coordinator_disks_data.path}_{description.key}",
+                                "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_disks_data.path}_{description.key}",
+                            }
+                        )
+
+    await async_migrate_old_unique_ids(hass, Platform.SENSOR, migrate_unique_id_disks)
+    return sensors
+
+
+async def async_setup_sensors_qemu(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up sensor."""
+
+    sensors = []
+
+    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     for vm_id in config_entry.data[CONF_QEMU]:
         if f"{ProxmoxType.QEMU}_{vm_id}" in coordinators:
@@ -526,25 +565,42 @@ async def async_setup_entry(
         else:
             continue
 
-        # unfound vm case
         if coordinator.data is None:
             continue
+
         for description in PROXMOX_SENSOR_QEMU:
             if description.api_category in (None, ProxmoxType.QEMU):
-                sensors.append(
-                    create_sensor(
-                        coordinator=coordinator,
-                        info_device=device_info(
-                            hass=hass,
-                            config_entry=config_entry,
-                            api_category=ProxmoxType.QEMU,
+                if (
+                    (data_value := getattr(coordinator.data, description.key, False))
+                    and data_value != UNDEFINED
+                ) or description.value_fn is not None:
+                    sensors.append(
+                        create_sensor(
+                            coordinator=coordinator,
+                            info_device=device_info(
+                                hass=hass,
+                                config_entry=config_entry,
+                                api_category=ProxmoxType.QEMU,
+                                resource_id=vm_id,
+                            ),
+                            description=description,
                             resource_id=vm_id,
-                        ),
-                        description=description,
-                        resource_id=vm_id,
-                        config_entry=config_entry,
+                            config_entry=config_entry,
+                        )
                     )
-                )
+
+    return sensors
+
+
+async def async_setup_sensors_lxc(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up sensor."""
+
+    sensors = []
+
+    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     for ct_id in config_entry.data[CONF_LXC]:
         if f"{ProxmoxType.LXC}_{ct_id}" in coordinators:
@@ -552,25 +608,42 @@ async def async_setup_entry(
         else:
             continue
 
-        # unfound container case
         if coordinator.data is None:
             continue
+
         for description in PROXMOX_SENSOR_LXC:
             if description.api_category in (None, ProxmoxType.LXC):
-                sensors.append(
-                    create_sensor(
-                        coordinator=coordinator,
-                        info_device=device_info(
-                            hass=hass,
-                            config_entry=config_entry,
-                            api_category=ProxmoxType.LXC,
+                if (
+                    (data_value := getattr(coordinator.data, description.key, False))
+                    and data_value != UNDEFINED
+                ) or description.value_fn is not None:
+                    sensors.append(
+                        create_sensor(
+                            coordinator=coordinator,
+                            info_device=device_info(
+                                hass=hass,
+                                config_entry=config_entry,
+                                api_category=ProxmoxType.LXC,
+                                resource_id=ct_id,
+                            ),
+                            description=description,
                             resource_id=ct_id,
-                        ),
-                        description=description,
-                        resource_id=ct_id,
-                        config_entry=config_entry,
+                            config_entry=config_entry,
+                        )
                     )
-                )
+
+    return sensors
+
+
+async def async_setup_sensors_storages(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up sensor."""
+
+    sensors = []
+
+    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     for storage_id in config_entry.data[CONF_STORAGE]:
         if f"{ProxmoxType.Storage}_{storage_id}" in coordinators:
@@ -578,47 +651,31 @@ async def async_setup_entry(
         else:
             continue
 
-        # unfound container case
         if coordinator.data is None:
             continue
+
         for description in PROXMOX_SENSOR_STORAGE:
             if description.api_category in (None, ProxmoxType.Storage):
-                sensors.append(
-                    create_sensor(
-                        coordinator=coordinator,
-                        info_device=device_info(
-                            hass=hass,
-                            config_entry=config_entry,
-                            api_category=ProxmoxType.Storage,
+                if (
+                    (data_value := getattr(coordinator.data, description.key, False))
+                    and data_value != UNDEFINED
+                ) or description.value_fn is not None:
+                    sensors.append(
+                        create_sensor(
+                            coordinator=coordinator,
+                            info_device=device_info(
+                                hass=hass,
+                                config_entry=config_entry,
+                                api_category=ProxmoxType.Storage,
+                                resource_id=storage_id,
+                            ),
+                            description=description,
                             resource_id=storage_id,
-                        ),
-                        description=description,
-                        resource_id=storage_id,
-                        config_entry=config_entry,
+                            config_entry=config_entry,
+                        )
                     )
-                )
 
-    await _async_migrate_old_unique_ids(hass, migrate_unique_id_disks)
-    async_add_entities(sensors)
-
-
-async def _async_migrate_old_unique_ids(hass, entities):
-    """Migration of the unique id of disk entities."""
-    registry = er.async_get(hass)
-    for entity in entities:
-        entity_id = registry.async_get_entity_id(
-            "sensor", DOMAIN, entity["old_unique_id"]
-        )
-        if entity_id is not None:
-            LOGGER.debug(
-                "Migrating unique_id %s: from [%s] to [%s]",
-                entity_id,
-                entity["old_unique_id"],
-                entity["new_unique_id"],
-            )
-            registry.async_update_entity(
-                entity_id, new_unique_id=entity["new_unique_id"]
-            )
+    return sensors
 
 
 def create_sensor(
