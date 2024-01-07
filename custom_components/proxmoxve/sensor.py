@@ -23,7 +23,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.typing import UNDEFINED, StateType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 import homeassistant.util.dt as dt_util
 
@@ -413,15 +413,17 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         translation_key="temperature",
     ),
     ProxmoxSensorEntityDescription(
-        key="power_cycles",
-        name="Power cycles",
-        icon="mdi:reload",
+        key="temperature_air",
+        name="Airflow temperature",
+        icon="mdi:harddisk",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
-        translation_key="power_cycles",
+        translation_key="temperature_air",
     ),
     ProxmoxSensorEntityDescription(
-        key="power_cycle2",
+        key="power_cycles",
         name="Power cycles",
         icon="mdi:reload",
         state_class=SensorStateClass.MEASUREMENT,
@@ -464,9 +466,9 @@ async def async_setup_sensors_nodes(
         if coordinator.data is not None:
             for description in PROXMOX_SENSOR_NODES:
                 if (
-                    getattr(coordinator.data, description.key, False)
-                    or description.value_fn is not None
-                ):
+                    (data_value := getattr(coordinator.data, description.key, False))
+                    and data_value != UNDEFINED
+                ) or description.value_fn is not None:
                     sensors.append(
                         create_sensor(
                             coordinator=coordinator,
@@ -485,7 +487,11 @@ async def async_setup_sensors_nodes(
             if f"{ProxmoxType.Update}_{node}" in coordinators:
                 coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
                 for description in PROXMOX_SENSOR_UPDATE:
-                    if getattr(coordinator_updates.data, description.key, False):
+                    if (
+                        data_value := getattr(
+                            coordinator_updates.data, description.key, False
+                        )
+                    ) and data_value != UNDEFINED:
                         sensors.append(
                             create_sensor(
                                 coordinator=coordinator_updates,
@@ -511,7 +517,11 @@ async def async_setup_sensors_nodes(
                     continue
 
                 for description in PROXMOX_SENSOR_DISKS:
-                    if getattr(coordinator_disk.data, description.key, False):
+                    if (
+                        data_value := getattr(
+                            coordinator_disk.data, description.key, False
+                        )
+                    ) and data_value != UNDEFINED:
                         sensors.append(
                             create_sensor(
                                 coordinator=coordinator_disk,
@@ -561,9 +571,9 @@ async def async_setup_sensors_qemu(
         for description in PROXMOX_SENSOR_QEMU:
             if description.api_category in (None, ProxmoxType.QEMU):
                 if (
-                    getattr(coordinator.data, description.key, False)
-                    or description.value_fn is not None
-                ):
+                    (data_value := getattr(coordinator.data, description.key, False))
+                    and data_value != UNDEFINED
+                ) or description.value_fn is not None:
                     sensors.append(
                         create_sensor(
                             coordinator=coordinator,
@@ -604,9 +614,9 @@ async def async_setup_sensors_lxc(
         for description in PROXMOX_SENSOR_LXC:
             if description.api_category in (None, ProxmoxType.LXC):
                 if (
-                    getattr(coordinator.data, description.key, False)
-                    or description.value_fn is not None
-                ):
+                    (data_value := getattr(coordinator.data, description.key, False))
+                    and data_value != UNDEFINED
+                ) or description.value_fn is not None:
                     sensors.append(
                         create_sensor(
                             coordinator=coordinator,
@@ -647,9 +657,9 @@ async def async_setup_sensors_storages(
         for description in PROXMOX_SENSOR_STORAGE:
             if description.api_category in (None, ProxmoxType.Storage):
                 if (
-                    getattr(coordinator.data, description.key, False)
-                    or description.value_fn is not None
-                ):
+                    (data_value := getattr(coordinator.data, description.key, False))
+                    and data_value != UNDEFINED
+                ) or description.value_fn is not None:
                     sensors.append(
                         create_sensor(
                             coordinator=coordinator,
