@@ -290,6 +290,9 @@
       "temperature": {
         "name": "Temperature"
       },
+      "temperature_air": {
+        "name": "Airflow Temperature"
+      },
       "updates_total": {
         "name": "Total updates",
         "state_attributes": {
