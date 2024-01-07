@@ -11,6 +11,7 @@ from requests.exceptions import ConnectTimeout, SSLError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_USERNAME
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.issue_registry import (
     IssueSeverity,
@@ -40,6 +41,7 @@ class ProxmoxCoordinator(
         | ProxmoxStorageData
         | ProxmoxUpdateData
         | ProxmoxVMData
+        | None
     ]
 ):
     """Proxmox VE data update coordinator."""
@@ -331,13 +333,14 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             raise UpdateFailed(f"LXC {self.resource_id} unable to be found")
 
         update_device_via(self, ProxmoxType.LXC, node_name)
+        LOGGER.warning("Test %s", api_status["cpu"])
         return ProxmoxLXCData(
             type=ProxmoxType.LXC,
             status=api_status["status"],
             name=api_status["name"],
             node=node_name,
             uptime=api_status["uptime"],
-            cpu=api_status["cpu"],
+            cpu=float(api_status["cpu"]) + 0.000001,
             memory_total=api_status["maxmem"],
             memory_used=api_status["mem"],
             memory_free=api_status["maxmem"] - api_status["mem"],
@@ -471,13 +474,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
             raise UpdateFailed(f"{self.resource_id} node not found")
 
         if api_status is None:
-            return ProxmoxUpdateData(
-                type=ProxmoxType.Update,
-                node=self.node_name,
-                total=0,
-                updates_list=[],
-                update=False,
-            )
+            raise UpdateFailed(f"{self.resource_id} node not found")
 
         updates_list = []
         total = 0
@@ -526,7 +523,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         self.node_name = node_name
         self.resource_id = disk_id
 
-    async def _async_update_data(self) -> ProxmoxDiskData:
+    async def _async_update_data(self) -> ProxmoxDiskData | None:
         """Update data  for Proxmox Disk."""
 
         if self.node_name is not None:
@@ -544,7 +541,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
             raise UpdateFailed(f"{self.resource_id} node not found")
 
         if api_status is None:
-            raise UpdateFailed("No data returned.")
+            return None
 
         for disk in api_status:
             if disk["devpath"] == self.resource_id:
@@ -688,8 +685,9 @@ def poll_api(
 
     try:
         return get_api(proxmox, api_path)
+    except AuthenticationError as error:
+        raise ConfigEntryAuthFailed from error
     except (
-        AuthenticationError,
         SSLError,
         ConnectTimeout,
     ) as error:
@@ -709,9 +707,10 @@ def poll_api(
                     "permission": permission_to_resource(api_category, resource_id),
                 },
             )
-            raise UpdateFailed(
-                "User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
-            ) from error
+            LOGGER.debug(
+                f"Error get API path {api_path}: User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
+            )
+            return None
         raise UpdateFailed from error
 
     async_delete_issue(

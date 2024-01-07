@@ -25,7 +25,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.issue_registry import (
@@ -679,3 +679,24 @@ def device_info(
         via_device=via_device,
         serial_number=serial_number or None,
     )
+
+
+async def async_migrate_old_unique_ids(
+    hass: HomeAssistant, platform: Platform, entities
+):
+    """Migration of the unique id of disk entities."""
+    registry = er.async_get(hass)
+    for entity in entities:
+        entity_id = registry.async_get_entity_id(
+            platform, DOMAIN, entity["old_unique_id"]
+        )
+        if entity_id is not None:
+            LOGGER.debug(
+                "Migrating unique_id %s: from [%s] to [%s]",
+                entity_id,
+                entity["old_unique_id"],
+                entity["new_unique_id"],
+            )
+            registry.async_update_entity(
+                entity_id, new_unique_id=entity["new_unique_id"]
+            )
