@@ -208,40 +208,40 @@
   },
   "issues": {
       "import_success": {
-          "description": "A configuração YAML do nó {node} de {host}:{port} instância de {integration} (`{platform}`) foi importada para a IU automaticamente.\n\nPode ser removido com segurança de seu `configuration.yaml` arquivo.",
-          "title": "O nó {node} de {host}:{port} foi importado da configuração YAML"
+          "description": "A configuração YAML da instância {host}:{port} de {integration} (`{platform}`) foi importada para a IU automaticamente.\n\nPode ser removido com segurança de seu `configuration.yaml` arquivo.",
+          "title": "A instância {host}:{port} foi importado da configuração YAML"
       },
       "import_invalid_port": {
-          "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido à porta inválida.\n\nVocê deve remover esta configuração do arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
+          "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido à porta inválida.\n\nVocê deve remover esta configuração do arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
           "title": "Erro ao importar configuração YAML de {host}:{port}"
       },
       "import_auth_error": {
-          "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido a um erro de autenticação.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
+          "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido a um erro de autenticação.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
           "title": "Erro ao importar configuração YAML de {host}:{port}"
       },
       "import_ssl_rejection": {
-          "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido à rejeição de SSL.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
+          "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido à rejeição de SSL.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
           "title": "Erro ao importar configuração YAML de {host}:{port}"
       },
       "import_cant_connect": {
-          "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido a uma falha na conexão.\n\nVocê deve remover esta configuração do arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
+          "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido a uma falha na conexão.\n\nVocê deve remover esta configuração do arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
           "title": "Erro ao importar configuração YAML de {host}:{port}"
       },
       "import_general_error": {
-          "description": "A importação da configuração YAML de {host}:{port} instância de {integration} (`{platform}`) falhou devido a um erro desconhecido.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
+          "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido a um erro desconhecido.\n\nVocê deve remover esta configuração de seu arquivo `configuration.yaml`, reiniciar o Home Assistant e configure-o manualmente.",
           "title": "Erro ao importar configuração YAML de {host}:{port}"
       },
       "import_already_configured": {
-          "description": "A configuração YAML do {node} de {host}:{port} instância de {integration} (`{platform}`) já existe na IU e foi ignorada na importação.\n\nVocê deve remover esta configuração de seu ` arquivo configuration.yaml` e reinicie o Home Assistant.",
-          "title": "O nó {node} de {host}:{port} já existe na IU, pode ser removido"
+          "description": "A configuração YAML da instância {host}:{port} de {integration} (`{platform}`) já existe na IU e foi ignorada na importação.\n\nVocê deve remover esta configuração de seu ` arquivo configuration.yaml` e reinicie o Home Assistant.",
+          "title": "A instância {host}:{port} já existe na IU, pode ser removido"
       },
       "import_node_not_exist": {
           "description": "O {node} da instância {host}:{port} de {integration} (`{platform}`) presente na configuração YAML não existe nesta instância e foi ignorado na importação.\n\nVocê deve remover isso configuração do seu arquivo `configuration.yaml` e reinicie o Home Assistant.",
           "title": "O nó {node} não existe em {host}:{port}"
       },
       "yaml_deprecated": {
-          "description": "A configuração da {integration} (`{platform}`) em YAML foi descontinuada e deve ser removida. Resolva os problemas de importação e remova a configuração YAML do arquivo `configuration.yaml`.",
-          "title": "A configuração de {integration} em YAML está obsoleta"
+          "description": "A configuração YAML da integração {integration} (`{platform}`) foi descontinuada e será removida na versão {version}. Resolva os problemas de importação e remova a configuração YAML do arquivo `configuration.yaml`.",
+          "title": "A configuração YAML de {integration} está obsoleta"
       },
       "resource_nonexistent": {
         "description": "{resource_type} {resource} não existe no nó ({host}:{port}), remova-o nas opções da integração.\n\nIsso também pode ocorrer se o usuário não tiver permissão suficiente para acessar o recurso.\n\nDica sobre as permissões necessárias:\n* `{permission}`",
