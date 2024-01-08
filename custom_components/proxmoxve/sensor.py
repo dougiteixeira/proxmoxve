@@ -426,7 +426,7 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key="power_cycles",
         name="Power cycles",
         icon="mdi:reload",
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         suggested_display_precision=0,
         translation_key="power_cycles",
     ),
