@@ -19,6 +19,7 @@ from homeassistant.const import (
     Platform,
     UnitOfInformation,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -429,6 +430,32 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         suggested_display_precision=0,
         translation_key="power_cycles",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="power_loss",
+        name="Unexpected power loss",
+        icon="mdi:flash-alert-outline",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        suggested_display_precision=0,
+        translation_key="power_loss",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="power_hours",
+        name="Power-on Hours",
+        icon="mdi:power-settings",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        suggested_display_precision=0,
+        translation_key="power_hours",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="life_left",
+        name="Life left",
+        icon="mdi:harddisk-remove",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+        translation_key="life_left",
     ),
 )
 

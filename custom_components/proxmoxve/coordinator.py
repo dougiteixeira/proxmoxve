@@ -605,6 +605,9 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                 temperature_air=UNDEFINED,
                 temperature=UNDEFINED,
                 power_cycles=UNDEFINED,
+                power_hours=UNDEFINED,
+                life_left=UNDEFINED,
+                power_loss=UNDEFINED,
             )
 
         for disk in api_status:
@@ -658,6 +661,19 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                             disk_attribute["raw"].strip().split(" ", 1)[0]
                         )
 
+                    elif int(disk_attribute["id"].strip()) == 9:
+                        power_hours_raw = disk_attribute["raw"]
+                        if len(power_hours_h := power_hours_raw.strip().split("h")) > 1:
+                            disk_attributes["power_hours"] = power_hours_h[0].strip()
+                        else:
+                            disk_attributes["power_hours"] = disk_attribute["raw"]
+
+                    elif int(disk_attribute["id"].strip()) == 231:
+                        disk_attributes["life_left"] = disk_attribute["value"]
+
+                    elif int(disk_attribute["id"].strip()) == 174:
+                        disk_attributes["power_loss"] = disk_attribute["raw"]
+
                 return ProxmoxDiskData(
                     type=ProxmoxType.Disk,
                     node=self.node_name,
@@ -677,6 +693,15 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     else UNDEFINED,
                     power_cycles=int(disk_attributes["power_cycles"])
                     if "power_cycles" in disk_attributes
+                    else UNDEFINED,
+                    life_left=int(disk_attributes["life_left"])
+                    if "life_left" in disk_attributes
+                    else UNDEFINED,
+                    power_hours=int(disk_attributes["power_hours"])
+                    if "power_hours" in disk_attributes
+                    else UNDEFINED,
+                    power_loss=int(disk_attributes["power_loss"])
+                    if "power_loss" in disk_attributes
                     else UNDEFINED,
                 )
 

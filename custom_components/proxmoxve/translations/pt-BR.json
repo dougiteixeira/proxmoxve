@@ -121,6 +121,9 @@
           "disk_used_perc": {
             "name": "Disco percentual em uso"
           },
+          "life_left": {
+            "name": "Vida útil restante"
+          },
           "lxc_on": {
             "name": "Containers em execução",
             "state_attributes": {
@@ -155,6 +158,12 @@
           },
           "power_cycles": {
             "name": "Ciclos de energia"
+          },
+          "power_loss": {
+            "name": "Desligamentos inesperados"
+          },
+          "power_hours": {
+            "name": "Tempo ligado"
           },
           "qemu_on": {
             "name": "Máquinas virtuais em execução",
