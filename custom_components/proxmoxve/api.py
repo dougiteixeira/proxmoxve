@@ -65,6 +65,7 @@ class ProxmoxClient:
             user=user_id,
             password=self._password,
             verify_ssl=self._verify_ssl,
+            timeout=30,
         )
 
     def get_api_client(self) -> ProxmoxAPI:
