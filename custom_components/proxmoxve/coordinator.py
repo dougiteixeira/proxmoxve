@@ -6,7 +6,13 @@ from typing import Any
 
 from proxmoxer import AuthenticationError, ProxmoxAPI
 from proxmoxer.core import ResourceException
-from requests.exceptions import ConnectTimeout, SSLError
+from requests.exceptions import (
+    ConnectionError as connError,
+    ConnectTimeout,
+    HTTPError,
+    RetryError,
+    SSLError,
+)
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_USERNAME
@@ -755,6 +761,10 @@ def poll_api(
     except (
         SSLError,
         ConnectTimeout,
+        HTTPError,
+        ConnectionError,
+        connError,
+        RetryError,
     ) as error:
         raise UpdateFailed(error) from error
     except ResourceException as error:
