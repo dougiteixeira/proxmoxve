@@ -674,6 +674,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     elif int(disk_attribute["id"].strip()) == 174:
                         disk_attributes["power_loss"] = disk_attribute["raw"]
 
+                disk_type=disk["type"] if "type" in disk else None
                 return ProxmoxDiskData(
                     type=ProxmoxType.Disk,
                     node=self.node_name,
@@ -681,10 +682,10 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     vendor=disk["vendor"] if "vendor" in disk else None,
                     serial=disk["serial"] if "serial" in disk else None,
                     model=disk["model"] if "model" in disk else None,
-                    disk_type=disk["type"] if "type" in disk else None,
+                    disk_type=disk_type,
                     size=float(disk["size"]) if "size" in disk else UNDEFINED,
                     health=disk["health"] if "health" in disk else UNDEFINED,
-                    disk_rpm=float(disk["rpm"]) if "rpm" in disk else UNDEFINED,
+                    disk_rpm=float(disk["rpm"]) if ("rpm" in disk and disk_type.upper() not in ("SSD", None)) else UNDEFINED,
                     temperature_air=disk_attributes["temperature_air"]
                     if "temperature_air" in disk_attributes
                     else UNDEFINED,
