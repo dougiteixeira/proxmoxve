@@ -554,6 +554,19 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         self.node_name = node_name
         self.resource_id = disk_id
 
+    def text_to_smart_id(self, text: str) -> str:
+        """Update data  for Proxmox Disk."""
+        match text:
+            case "Temperature":
+                smart_id = "194"
+            case "Power Cycles":
+                smart_id = "12"
+            case "Power On Hours":
+                smart_id = "9"
+            case _:
+                smart_id = "0"
+        return smart_id
+
     async def _async_update_data(self) -> ProxmoxDiskData:
         """Update data  for Proxmox Disk."""
 
@@ -620,10 +633,8 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                             attributes_json.append(
                                 {
                                     "name": value_json[0].strip(),
-                                    "raw": value_json[1].strip(),
-                                    "id": 194
-                                    if value_json[0].strip() == "Temperature"
-                                    else None,
+                                    "raw": value_json[1].strip().replace(",", ""),
+                                    "id": self.text_to_smart_id(value_json[0].strip()),
                                 }
                             )
 
@@ -631,12 +642,12 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     if int(disk_attribute["id"].strip()) == 12:
                         disk_attributes["power_cycles"] = disk_attribute["raw"]
 
-                    if int(disk_attribute["id"].strip()) == 194:
+                    elif int(disk_attribute["id"].strip()) == 194:
                         disk_attributes["temperature"] = (
                             disk_attribute["raw"].strip().split(" ", 1)[0]
                         )
 
-                    if int(disk_attribute["id"].strip()) == 190:
+                    elif int(disk_attribute["id"].strip()) == 190:
                         disk_attributes["temperature_air"] = (
                             disk_attribute["raw"].strip().split(" ", 1)[0]
                         )
