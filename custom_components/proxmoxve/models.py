@@ -119,3 +119,6 @@ class ProxmoxDiskData:
     temperature: float | UndefinedType
     temperature_air: float | UndefinedType
     power_cycles: int | UndefinedType
+    power_hours: int | UndefinedType
+    life_left: int | UndefinedType
+    power_loss: int | UndefinedType
