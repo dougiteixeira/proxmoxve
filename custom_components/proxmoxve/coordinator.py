@@ -665,6 +665,8 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                         power_hours_raw = disk_attribute["raw"]
                         if len(power_hours_h := power_hours_raw.strip().split("h")) > 1:
                             disk_attributes["power_hours"] = power_hours_h[0].strip()
+                        if len(power_hours_s := power_hours_raw.strip().split(" ")) > 1:
+                            disk_attributes["power_hours"] = power_hours_s[0].strip()
                         else:
                             disk_attributes["power_hours"] = disk_attribute["raw"]
 
