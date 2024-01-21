@@ -46,12 +46,20 @@ body:
       label: Diagnostics information
       placeholder: "drag-and-drop the diagnostics data file here (do not copy-and-paste the content)"
       description: >-
-        The integration provide the ability to [download diagnostic data](https://www.home-assistant.io/docs/configuration/troubleshooting/#debug-logs-and-diagnostics).
+        The integration provide the ability to download diagnostic data.
 
         **It would really help if you could download the diagnostics data for the device you are having issues with,
         and <ins>drag-and-drop that file into the textbox below.</ins>**
 
-        It generally allows pinpointing defects and thus resolving issues faster.   
+        It generally allows pinpointing defects and thus resolving issues faster.
+        
+        Please, you can follow the steps below:
+          * [Enable integration debugging](https://www.home-assistant.io/docs/configuration/troubleshooting/#enabling-debug-logging).
+          * Reload the integration configuration entry.
+          * [Download a diagnostic file](https://www.home-assistant.io/docs/configuration/troubleshooting/#download-diagnostics).
+          * [Disable integration debugging and download the generated log file](https://www.home-assistant.io/docs/configuration/troubleshooting/#disable-debug-logging-and-download-logs).
+          * Attach the diagnostic file and the generated log file here.
+          
   - type: textarea
     attributes:
       label: Additional information
