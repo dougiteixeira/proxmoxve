@@ -614,15 +614,18 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
             if disk["devpath"] == self.resource_id:
                 disk_attributes = {}
                 api_path = f"nodes/{self.node_name}/disks/smart?disk={self.resource_id}"
-                disk_attributes_api = await self.hass.async_add_executor_job(
-                    poll_api,
-                    self.hass,
-                    self.config_entry,
-                    self.proxmox,
-                    api_path,
-                    ProxmoxType.Disk,
-                    self.resource_id,
-                )
+                try:
+                    disk_attributes_api = await self.hass.async_add_executor_job(
+                        poll_api,
+                        self.hass,
+                        self.config_entry,
+                        self.proxmox,
+                        api_path,
+                        ProxmoxType.Disk,
+                        self.resource_id,
+                    )
+                except UpdateFailed:
+                    disk_attributes_api = None
 
                 attributes_json = []
                 if (
