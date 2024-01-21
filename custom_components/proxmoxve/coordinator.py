@@ -687,7 +687,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     disk_type=disk_type,
                     size=float(disk["size"]) if "size" in disk else UNDEFINED,
                     health=disk["health"] if "health" in disk else UNDEFINED,
-                    disk_rpm=float(disk["rpm"]) if ("rpm" in disk and disk_type.upper() not in ("SSD", None)) else UNDEFINED,
+                    disk_rpm=float(disk["rpm"]) if ("rpm" in disk and disk_type.upper() not in ("SSD", "NVME", "USB", None)) else UNDEFINED,
                     temperature_air=disk_attributes["temperature_air"]
                     if "temperature_air" in disk_attributes
                     else UNDEFINED,
