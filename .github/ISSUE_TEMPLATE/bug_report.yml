@@ -44,7 +44,7 @@ body:
   - type: textarea
     attributes:
       label: Diagnostics information
-      placeholder: "drag-and-drop the diagnostics data file here (do not copy-and-paste the content)"
+      placeholder: "drag-and-drop the diagnostics data and logs file here (do not copy-and-paste the content)"
       description: >-
         The integration provide the ability to download diagnostic data.
 
