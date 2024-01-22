@@ -154,11 +154,15 @@ async def async_get_api_data_diagnostics(
 
                 nodes[node["node"]]["disks"] = {}
                 for disk in disks if disks is not None else []:
-                    disk_attributes = await hass.async_add_executor_job(
-                        get_api,
-                        proxmox,
-                        f"nodes/{node['node']}/disks/smart/?disk={disk['devpath']}",
-                    )
+                    try:
+                        disk_attributes = await hass.async_add_executor_job(
+                            get_api,
+                            proxmox,
+                            f"nodes/{node['node']}/disks/smart/?disk={disk['devpath']}",
+                        )
+                    except:
+                        disk_attributes = None
+
                     nodes[node["node"]]["disks"][disk["devpath"]] = {
                         "data": disk,
                         "smart": disk_attributes,
