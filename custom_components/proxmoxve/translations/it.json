@@ -77,7 +77,7 @@
         "title": "L'istanza {host}:{port} esiste già nell'interfaccia utente e può essere rimossa."
       },
       "import_node_not_exist": {
-        "description": "Il {nodo} dell'istanza {host}:{port} di {integration} ('{platform}') presente nella configurazione YAML non esiste in questa istanza ed è stato ignorato durante l'importazione.\n\nDevi rimuovere questa configurazione dal tuo file configuration.yaml e riavviare Home Assistant.",
+        "description": "Il {node} dell'istanza {host}:{port} di {integration} ('{platform}') presente nella configurazione YAML non esiste in questa istanza ed è stato ignorato durante l'importazione.\n\nDevi rimuovere questa configurazione dal tuo file configuration.yaml e riavviare Home Assistant.",
         "title": "Il nodo {node} non esiste in {host}:{port}."
       },
       "yaml_deprecated": {
@@ -85,7 +85,7 @@
         "title": "La configurazione di {integration} in formato YAML è deprecata."
       },
       "resource_nonexistent": {
-        "description": "Il {resource_type} {resource} non esiste su ({host}:{port}), rimuovilo dalle opzioni di integrazione.\n\nQuesto può anche essere causato se l'utente non ha sufficienti autorizzazioni per accedere alla risorsa.",
+        "description": "Il {resource_type} {resource} non esiste su ({host}:{port}), rimuovilo dalle opzioni di integrazione.\n\nQuesto può anche essere causato se l'utente non ha sufficienti autorizzazioni per accedere alla risorsa.\n\nSuggerimento sui permessi necessari:\n* `{permission}`",
         "title": "{resource_type} {resource} does not exist"
       },
       "no_permissions": {
@@ -93,7 +93,7 @@
         "title": "L'utente '{user}' non ha le autorizzazioni necessarie."
       },
       "resource_exception_forbiden": {
-        "description": "L'utente {user} non ha le autorizzazioni sufficienti per accedere alla risorsa '{resource}'.\n\nSi prega di consultare la documentazione e verificare le autorizzazioni dell'utente..",
+        "description": "L'utente {user} non ha le autorizzazioni sufficienti per accedere alla risorsa '{resource}'.\n\nSuggerimento sui permessi necessari:\n* `{permission}`\n\nSi prega di consultare la documentazione e verificare le autorizzazioni dell'utente..",
         "title": "Errore di autorizzazioni per '{resource}'.`"
       },
       "resource_command_forbiden": {
