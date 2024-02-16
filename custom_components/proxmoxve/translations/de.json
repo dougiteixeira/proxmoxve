@@ -188,7 +188,7 @@
             "title": "Berechtigungsfehler für `{resource}`"
         },
         "resource_nonexistent": {
-            "description": "{resource_type} {resource} existiert nicht auf ({host}:{port}), entferne es aus den Integrationsoptionen.\n\nDies kann auch auftreten, wenn der Benutzer nicht genügend Berechtigungen zum Zugriff auf die Ressource hat.",
+            "description": "{resource_type} {resource} existiert nicht auf ({host}:{port}), entferne es aus den Integrationsoptionen.\n\nDies kann auch auftreten, wenn der Benutzer nicht genügend Berechtigungen zum Zugriff auf die Ressource hat.\n\nNotwendinge Berechtigung:\n* `{permission}`",
             "title": "{resource_type} {resource} existiert nicht"
         },
         "yaml_deprecated": {
