@@ -17,12 +17,8 @@ You should use this as an example and adjust to your use case.
 url1=http://10.10.10.xxx:8123/api/states/sensor.proxmox_temperatura
 token1=xxxxx
 
-i=1
-sensors | grep -e "°C" | while read line; do
-                temp=$(echo $line | awk -F "+" '{ print $2 }' | awk -F "." '{ print $1 }');
-                url1a=$url1'_'$i;
-                curl -X POST -H "Authorization: Bearer $token1" -H 'Content-type: application/json' --data "{\"state\":\"$temp\",\"attributes\": {\"friendly_name\":\"Temperatura Proxmox\",\"icon\":\"mdi:cpu-64-bit\",\"state_class\":\"measurement\",\"unit_of_measurement\":\"°C\",\"device_class\":\"temperature\"}}" $url1a;
-        done
+temp=$(sensors | grep -e "°C" | grep "Core" | awk -F "+" '{ print $2 }' | awk -F "." '{ print $1 }' | sort | tail -n1);
+curl -X POST -H "Authorization: Bearer $token1" -H 'Content-type: application/json' --data "{\"state\":\"$temp\",\"attributes\": {\"friendly_name\":\"Proxmox CPU Temperature\",\"icon\":\"mdi:cpu-64-bit\",\"state_class\":\"measurement\",\"unit_of_measurement\":\"°C\",\"device_class\":\"temperature\"}}" $url1;
 ```
 
 #### Give the file execute permission:
@@ -38,4 +34,4 @@ sensors | grep -e "°C" | while read line; do
 `*/1 * * * * /usr/temp_ha_post`
 
 #### Restart the cron service:
-`services cron restart`
+`service cron restart`
