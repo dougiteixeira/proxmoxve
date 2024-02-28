@@ -14,7 +14,7 @@ You should use this as an example and adjust to your use case.
  
 ```
 #! /bin/bash
-url1=http://10.10.10.xxx:8123/api/states/sensor.proxmox_temperatura
+url1=http://10.10.10.xxx:8123/api/states/sensor.proxmox_cpu_temperature
 token1=xxxxx
 
 temp=$(sensors | grep -e "°C" | grep "Core" | awk -F "+" '{ print $2 }' | awk -F "." '{ print $1 }' | sort | tail -n1);
