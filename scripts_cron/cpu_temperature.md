@@ -7,7 +7,7 @@ You should use this as an example and adjust to your use case.
 *There will be no support for issues with this alternative.*
 
 ### Install `xsensors`
- `apt-get install xsensors`
+ `apt-get install lm-sensors`
  
 ### Create script in your server Proxmox:
  `nano /usr/temp_ha_post`
