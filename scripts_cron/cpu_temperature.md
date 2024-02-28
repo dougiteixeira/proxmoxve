@@ -6,7 +6,7 @@ You should use this as an example and adjust to your use case.
 
 *There will be no support for issues with this alternative.*
 
-### Install `xsensors`
+### Install `lm-sensors`
  `apt-get install lm-sensors`
  
 ### Create script in your server Proxmox:
