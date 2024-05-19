@@ -218,6 +218,9 @@
       "disk_used_perc": {
         "name": "Disk used percentage"
       },
+      "disk_wearout": {
+        "name": "Wearout"
+      },
       "life_left": {
         "name": "Life left"
       },
