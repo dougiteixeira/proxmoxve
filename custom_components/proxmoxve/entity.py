@@ -1,11 +1,17 @@
 """Proxmox parent entity class."""
 
+import dataclasses
+
+from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
 
-from .models import ProxmoxEntityDescription
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class ProxmoxEntityDescription(EntityDescription):
+    """Describe a Proxmox entity."""
 
 
 class ProxmoxEntity(CoordinatorEntity):
