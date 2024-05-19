@@ -11,7 +11,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.issue_registry import (
     IssueSeverity,
     async_create_issue,
-    async_delete_issue,
+    delete_issue,
 )
 
 from .const import (
@@ -168,7 +168,7 @@ def post_api_command(
             f"Proxmox {resource} {command} error - {error}",
         ) from error
 
-    async_delete_issue(
+    delete_issue(
         self.hass,
         DOMAIN,
         issue_id,
