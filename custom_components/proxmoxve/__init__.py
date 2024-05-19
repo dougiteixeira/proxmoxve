@@ -32,7 +32,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.issue_registry import (
     IssueSeverity,
     async_create_issue,
-    delete_issue,
+    async_delete_issue,
 )
 from homeassistant.helpers.typing import ConfigType
 
@@ -348,7 +348,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             node_proxmox["node"]
             for node_proxmox in (nodes_api if nodes_api is not None else [])
         ]:
-            delete_issue(
+            async_delete_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{node}_resource_nonexistent",
@@ -418,7 +418,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             (int(resource["vmid"]) if "vmid" in resource else None)
             for resource in (resources if resources is not None else [])
         ]:
-            delete_issue(
+            async_delete_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{vm_id}_resource_nonexistent",
@@ -455,7 +455,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             (int(resource["vmid"]) if "vmid" in resource else None)
             for resource in (resources if resources is not None else [])
         ]:
-            delete_issue(
+            async_delete_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{container_id}_resource_nonexistent",
@@ -492,7 +492,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             (resource.get("storage", None))
             for resource in (resources if resources is not None else [])
         ]:
-            delete_issue(
+            async_delete_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{storage_id}_resource_nonexistent",
