@@ -761,6 +761,7 @@ async def async_setup_sensors_storages(
                                 config_entry=config_entry,
                                 api_category=ProxmoxType.Storage,
                                 resource_id=storage_id,
+                                cordinator_resource=coordinator.data,
                             ),
                             description=description,
                             resource_id=storage_id,
