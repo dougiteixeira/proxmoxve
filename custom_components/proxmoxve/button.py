@@ -1,4 +1,5 @@
 """Button to set Proxmox VE data."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,15 +25,16 @@ from .const import (
     ProxmoxCommand,
     ProxmoxType,
 )
-from .entity import ProxmoxEntity
-from .models import ProxmoxEntityDescription
+from .entity import ProxmoxEntity, ProxmoxEntityDescription
 
 
 @dataclass(frozen=True, kw_only=True)
 class ProxmoxButtonEntityDescription(ProxmoxEntityDescription, ButtonEntityDescription):
     """Class describing Proxmox buttons entities."""
 
-    api_category: ProxmoxType | None = None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
+    api_category: ProxmoxType | None = (
+        None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
+    )
 
 
 PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (

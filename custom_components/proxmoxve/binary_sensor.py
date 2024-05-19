@@ -1,4 +1,5 @@
 """Binary sensor to read Proxmox VE data."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,8 +19,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from . import COORDINATORS, DOMAIN, async_migrate_old_unique_ids, device_info
 from .const import CONF_LXC, CONF_NODES, CONF_QEMU, ProxmoxKeyAPIParse, ProxmoxType
-from .entity import ProxmoxEntity
-from .models import ProxmoxEntityDescription
+from .entity import ProxmoxEntity, ProxmoxEntityDescription
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -28,9 +28,11 @@ class ProxmoxBinarySensorEntityDescription(
 ):
     """Class describing Proxmox binarysensor entities."""
 
-    on_value: Any | None = None
+    on_value: list | None = None
     inverted: bool | None = False
-    api_category: ProxmoxType | None = None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
+    api_category: ProxmoxType | None = (
+        None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
+    )
 
 
 PROXMOX_BINARYSENSOR_NODES: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
@@ -38,7 +40,7 @@ PROXMOX_BINARYSENSOR_NODES: Final[tuple[ProxmoxBinarySensorEntityDescription, ..
         key=ProxmoxKeyAPIParse.STATUS,
         name="Status",
         device_class=BinarySensorDeviceClass.RUNNING,
-        on_value="online",
+        on_value=["online"],
         translation_key="status",
     ),
 )
@@ -50,7 +52,7 @@ PROXMOX_BINARYSENSOR_UPDATES: Final[
         key=ProxmoxKeyAPIParse.UPDATE_AVAIL,
         name="Updates packages",
         device_class=BinarySensorDeviceClass.UPDATE,
-        on_value=True,
+        on_value=[True],
         translation_key="update_avail",
     ),
 )
@@ -60,7 +62,7 @@ PROXMOX_BINARYSENSOR_DISKS: Final[tuple[ProxmoxBinarySensorEntityDescription, ..
         key=ProxmoxKeyAPIParse.HEALTH,
         name="Health",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        on_value="PASSED",
+        on_value=["PASSED", "OK"],
         inverted=True,
         translation_key="health",
     ),
@@ -71,14 +73,14 @@ PROXMOX_BINARYSENSOR_VM: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]]
         key=ProxmoxKeyAPIParse.STATUS,
         name="Status",
         device_class=BinarySensorDeviceClass.RUNNING,
-        on_value="running",
+        on_value=["running"],
         translation_key="status",
     ),
     ProxmoxBinarySensorEntityDescription(
         key=ProxmoxKeyAPIParse.HEALTH,
         name="Health",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        on_value="running",
+        on_value=["running"],
         inverted=True,
         api_category=ProxmoxType.QEMU,
         translation_key="health",
@@ -153,11 +155,7 @@ async def async_setup_binary_sensors_nodes(
                             )
                         )
 
-            for coordinator_disk in (
-                coordinators[f"{ProxmoxType.Disk}_{node}"]
-                if f"{ProxmoxType.Disk}_{node}" in coordinators
-                else []
-            ):
+            for coordinator_disk in coordinators.get(f"{ProxmoxType.Disk}_{node}", []):
                 if (coordinator_data := coordinator_disk.data) is None:
                     continue
 
@@ -317,11 +315,11 @@ class ProxmoxBinarySensorEntity(ProxmoxEntity, BinarySensorEntity):
         if self.entity_description.inverted:
             return (
                 getattr(data, self.entity_description.key)
-                != self.entity_description.on_value
+                not in self.entity_description.on_value
             )
         return (
             getattr(data, self.entity_description.key)
-            == self.entity_description.on_value
+            in self.entity_description.on_value
         )
 
     @property
