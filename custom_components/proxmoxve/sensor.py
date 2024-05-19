@@ -821,6 +821,8 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
                 return 0
             else:
                 return None
+        elif getattr(data, self.entity_description.key, False) == UNDEFINED:
+            return None
         else:
             native_value = getattr(data, self.entity_description.key)
 
