@@ -72,7 +72,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Wake-on-LAN",
         entity_registry_enabled_default=False,
         translation_key="wakeonlan",
-    ),    
+    ),
 )
 
 PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
