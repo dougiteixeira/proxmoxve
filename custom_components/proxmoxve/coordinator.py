@@ -594,6 +594,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                 type=ProxmoxType.Disk,
                 node=self.node_name,
                 path=self.resource_id,
+                disk_wearout=UNDEFINED,
                 vendor=None,
                 serial=None,
                 model=None,
@@ -693,6 +694,13 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     serial=disk.get("serial", None),
                     model=disk.get("model", None),
                     disk_type=disk_type,
+                    disk_wearout=float(disk["wearout"])
+                    if (
+                        "wearout" in disk
+                        and disk_type.upper() in ("SSD", "NVME")
+                        and str(disk["wearout"]).upper() != "N/A"
+                    )
+                    else UNDEFINED,
                     size=float(disk["size"]) if "size" in disk else UNDEFINED,
                     health=disk.get("health", UNDEFINED),
                     disk_rpm=float(disk["rpm"])

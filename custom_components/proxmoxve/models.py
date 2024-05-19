@@ -116,3 +116,4 @@ class ProxmoxDiskData:
     power_hours: int | UndefinedType
     life_left: int | UndefinedType
     power_loss: int | UndefinedType
+    disk_wearout: float | UndefinedType
