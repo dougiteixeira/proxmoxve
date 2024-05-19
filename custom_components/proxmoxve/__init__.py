@@ -632,7 +632,8 @@ def device_info(
         model = model_processor
 
     elif api_category is ProxmoxType.Disk:
-        name = f"{api_category.capitalize()} {node}:{resource_id}"
+        model = cordinator_resource.model
+        name = f"{api_category.capitalize()} {node}: {model.replace("_"," ")} ({resource_id})"
         identifier = (
             f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
         )
@@ -646,9 +647,9 @@ def device_info(
         else:
             disk_type = cordinator_resource.disk_type
             model = (
-                f"{disk_type.upper()} {cordinator_resource.model} "
+                f"{disk_type.upper()} {model.replace("_"," ")} "
                 if disk_type is not None
-                else f"{disk_type}{cordinator_resource.model}"
+                else f"{disk_type}{model.replace("_"," ")}"
             )
             manufacturer = cordinator_resource.vendor
             serial_number = cordinator_resource.serial
