@@ -647,32 +647,38 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
 
                 for disk_attribute in attributes_json:
                     if int(disk_attribute["id"].strip()) == 12:
-                        disk_attributes["power_cycles"] = disk_attribute["raw"]
+                        disk_attributes["power_cycles"] = int(disk_attribute["raw"])
 
                     elif int(disk_attribute["id"].strip()) == 194:
-                        disk_attributes["temperature"] = (
+                        disk_attributes["temperature"] = int(
                             disk_attribute["raw"].strip().split(" ", 1)[0]
                         )
 
                     elif int(disk_attribute["id"].strip()) == 190:
-                        disk_attributes["temperature_air"] = (
+                        disk_attributes["temperature_air"] = int(
                             disk_attribute["raw"].strip().split(" ", 1)[0]
                         )
 
                     elif int(disk_attribute["id"].strip()) == 9:
                         power_hours_raw = disk_attribute["raw"]
                         if len(power_hours_h := power_hours_raw.strip().split("h")) > 1:
-                            disk_attributes["power_hours"] = power_hours_h[0].strip()
-                        if len(power_hours_s := power_hours_raw.strip().split(" ")) > 1:
-                            disk_attributes["power_hours"] = power_hours_s[0].strip()
+                            disk_attributes["power_hours"] = int(
+                                power_hours_h[0].strip()
+                            )
+                        elif (
+                            len(power_hours_s := power_hours_raw.strip().split(" ")) > 1
+                        ):
+                            disk_attributes["power_hours"] = int(
+                                power_hours_s[0].strip()
+                            )
                         else:
-                            disk_attributes["power_hours"] = disk_attribute["raw"]
+                            disk_attributes["power_hours"] = int(disk_attribute["raw"])
 
                     elif int(disk_attribute["id"].strip()) == 231:
-                        disk_attributes["life_left"] = disk_attribute["value"]
+                        disk_attributes["life_left"] = int(disk_attribute["value"])
 
                     elif int(disk_attribute["id"].strip()) == 174:
-                        disk_attributes["power_loss"] = disk_attribute["raw"]
+                        disk_attributes["power_loss"] = int(disk_attribute["raw"])
 
                 disk_type = disk.get("type", None)
                 return ProxmoxDiskData(
@@ -683,7 +689,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     serial=disk.get("serial", None),
                     model=disk.get("model", None),
                     disk_type=disk_type,
-                    size=float(disk.get("size", UNDEFINED)),
+                    size=float(disk["size"]) if "size" in disk else UNDEFINED,
                     health=disk.get("health", UNDEFINED),
                     disk_rpm=float(disk["rpm"])
                     if (
@@ -693,18 +699,10 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     else UNDEFINED,
                     temperature_air=disk_attributes.get("temperature_air", UNDEFINED),
                     temperature=disk_attributes.get("temperature", UNDEFINED),
-                    power_cycles=int(disk_attributes["power_cycles"])
-                    if "power_cycles" in disk_attributes
-                    else UNDEFINED,
-                    life_left=int(disk_attributes["life_left"])
-                    if "life_left" in disk_attributes
-                    else UNDEFINED,
-                    power_hours=int(disk_attributes["power_hours"])
-                    if "power_hours" in disk_attributes
-                    else UNDEFINED,
-                    power_loss=int(disk_attributes["power_loss"])
-                    if "power_loss" in disk_attributes
-                    else UNDEFINED,
+                    power_cycles=disk_attributes.get("power_cycles", UNDEFINED),
+                    life_left=disk_attributes.get("life_left", UNDEFINED),
+                    power_hours=disk_attributes.get("power_hours", UNDEFINED),
+                    power_loss=disk_attributes.get("power_loss", UNDEFINED),
                 )
 
         raise UpdateFailed(
