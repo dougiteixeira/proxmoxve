@@ -23,7 +23,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.issue_registry import (
     IssueSeverity,
     async_create_issue,
-    async_delete_issue,
+    delete_issue,
 )
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -792,6 +792,11 @@ def poll_api(
                 return "Unmapped"
 
     try:
+        delete_issue(
+            hass,
+            DOMAIN,
+            f"{config_entry.entry_id}_{resource_id}_forbiden",
+        )
         return get_api(proxmox, api_path)
     except AuthenticationError as error:
         raise ConfigEntryAuthFailed from error
@@ -824,9 +829,3 @@ def poll_api(
             )
             return None
         raise UpdateFailed from error
-
-    async_delete_issue(
-        hass,
-        DOMAIN,
-        f"{config_entry.entry_id}_{resource_id}_forbiden",
-    )
