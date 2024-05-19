@@ -828,6 +828,9 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
             elif self.entity_description.key in (
                 ProxmoxKeyAPIParse.CPU,
                 ProxmoxKeyAPIParse.UPDATE_TOTAL,
+                ProxmoxKeyAPIParse.MEMORY_USED,
+                ProxmoxKeyAPIParse.DISK_USED,
+                ProxmoxKeyAPIParse.SWAP_USED,
             ):
                 return 0
             else:

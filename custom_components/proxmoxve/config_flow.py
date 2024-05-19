@@ -25,7 +25,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.issue_registry import (
     IssueSeverity,
     async_create_issue,
-    async_delete_issue,
+    delete_issue,
 )
 
 from .api import ProxmoxClient, get_api
@@ -370,7 +370,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
                 )
-                async_delete_issue(
+                delete_issue(
                     self.hass,
                     DOMAIN,
                     f"{self.config_entry.entry_id}_{node}_resource_nonexistent",
@@ -411,7 +411,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
                 )
-                async_delete_issue(
+                delete_issue(
                     self.hass,
                     DOMAIN,
                     f"{self.config_entry.entry_id}_{qemu_id}_resource_nonexistent",
@@ -435,7 +435,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
                 )
-                async_delete_issue(
+                delete_issue(
                     self.hass,
                     DOMAIN,
                     f"{self.config_entry.entry_id}_{lxc_id}_resource_nonexistent",
@@ -457,7 +457,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
                 )
-                async_delete_issue(
+                delete_issue(
                     self.hass,
                     DOMAIN,
                     f"{self.config_entry.entry_id}_{storage_id}_resource_nonexistent",
