@@ -1,4 +1,5 @@
 """DataUpdateCoordinators for the Proxmox VE integration."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -171,18 +172,12 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             model=api_status["cpuinfo"]["model"]
             if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
             else UNDEFINED,
-            status=api_status["status"] if "status" in api_status else UNDEFINED,
-            version=api_status["version"]["version"]
-            if "version" in api_status["version"]
-            else UNDEFINED,
-            uptime=api_status["uptime"] if "uptime" in api_status else UNDEFINED,
-            cpu=api_status["cpu"] if "cpu" in api_status else UNDEFINED,
-            disk_total=api_status["disk_max"]
-            if "disk_max" in api_status
-            else UNDEFINED,
-            disk_used=api_status["disk_used"]
-            if "disk_used" in api_status
-            else UNDEFINED,
+            status=api_status.get("status", UNDEFINED),
+            version=api_status["version"].get("version", UNDEFINED),
+            uptime=api_status.get("uptime", UNDEFINED),
+            cpu=api_status.get("cpu", UNDEFINED),
+            disk_total=api_status.get("disk_max", UNDEFINED),
+            disk_used=api_status.get("disk_used", UNDEFINED),
             memory_total=api_status["memory"]["total"]
             if (("memory" in api_status) and "total" in api_status["memory"])
             else UNDEFINED,
@@ -278,20 +273,20 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             node=node_name,
             status=api_status["lock"]
             if ("lock" in api_status and api_status["lock"] == "suspended")
-            else (api_status["status"] if "status" in api_status else UNDEFINED),
-            name=api_status["name"] if "name" in api_status else UNDEFINED,
-            health=api_status["qmpstatus"] if "qmpstatus" in api_status else UNDEFINED,
-            uptime=api_status["uptime"] if "uptime" in api_status else UNDEFINED,
-            cpu=api_status["cpu"] if "cpu" in api_status else UNDEFINED,
-            memory_total=api_status["maxmem"] if "maxmem" in api_status else UNDEFINED,
-            memory_used=api_status["mem"] if "mem" in api_status else UNDEFINED,
+            else (api_status.get("status", UNDEFINED)),
+            name=api_status.get("name", UNDEFINED),
+            health=api_status.get("qmpstatus", UNDEFINED),
+            uptime=api_status.get("uptime", UNDEFINED),
+            cpu=api_status.get("cpu", UNDEFINED),
+            memory_total=api_status.get("maxmem", UNDEFINED),
+            memory_used=api_status.get("mem", UNDEFINED),
             memory_free=(api_status["maxmem"] - api_status["mem"])
             if ("maxmem" in api_status and "mem" in api_status)
             else UNDEFINED,
-            network_in=api_status["netin"] if "netin" in api_status else UNDEFINED,
-            network_out=api_status["netout"] if "netout" in api_status else UNDEFINED,
-            disk_total=api_status["maxdisk"] if "maxdisk" in api_status else UNDEFINED,
-            disk_used=api_status["disk"] if "disk" in api_status else UNDEFINED,
+            network_in=api_status.get("netin", UNDEFINED),
+            network_out=api_status.get("netout", UNDEFINED),
+            disk_total=api_status.get("maxdisk", UNDEFINED),
+            disk_used=api_status.get("disk", UNDEFINED),
         )
 
 
@@ -364,21 +359,21 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         return ProxmoxLXCData(
             type=ProxmoxType.LXC,
             node=node_name,
-            status=api_status["status"] if "status" in api_status else UNDEFINED,
-            name=api_status["name"] if "name" in api_status else UNDEFINED,
-            uptime=api_status["uptime"] if "uptime" in api_status else UNDEFINED,
-            cpu=api_status["cpu"] if "cpu" in api_status else UNDEFINED,
-            memory_total=api_status["maxmem"] if "maxmem" in api_status else UNDEFINED,
-            memory_used=api_status["mem"] if "mem" in api_status else UNDEFINED,
+            status=api_status.get("status", UNDEFINED),
+            name=api_status.get("name", UNDEFINED),
+            uptime=api_status.get("uptime", UNDEFINED),
+            cpu=api_status.get("cpu", UNDEFINED),
+            memory_total=api_status.get("maxmem", UNDEFINED),
+            memory_used=api_status.get("mem", UNDEFINED),
             memory_free=(api_status["maxmem"] - api_status["mem"])
             if ("maxmem" in api_status and "mem" in api_status)
             else UNDEFINED,
-            network_in=api_status["netin"] if "netin" in api_status else UNDEFINED,
-            network_out=api_status["netout"] if "netout" in api_status else UNDEFINED,
-            disk_total=api_status["maxdisk"] if "maxdisk" in api_status else UNDEFINED,
-            disk_used=api_status["disk"] if "disk" in api_status else UNDEFINED,
-            swap_total=api_status["maxswap"] if "maxswap" in api_status else UNDEFINED,
-            swap_used=api_status["swap"] if "swap" in api_status else UNDEFINED,
+            network_in=api_status.get("netin", UNDEFINED),
+            network_out=api_status.get("netout", UNDEFINED),
+            disk_total=api_status.get("maxdisk", UNDEFINED),
+            disk_used=api_status.get("disk", UNDEFINED),
+            swap_total=api_status.get("maxswap", UNDEFINED),
+            swap_used=api_status.get("swap", UNDEFINED),
             swap_free=(api_status["maxswap"] - api_status["swap"])
             if ("maxswap" in api_status and "swap" in api_status)
             else UNDEFINED,
@@ -453,10 +448,10 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
         return ProxmoxStorageData(
             type=ProxmoxType.Storage,
             node=node_name,
-            disk_total=api_status["total"] if "total" in api_status else UNDEFINED,
-            disk_used=api_status["used"] if "used" in api_status else UNDEFINED,
-            disk_free=api_status["avail"] if "avail" in api_status else UNDEFINED,
-            content=api_status["content"] if "content" in api_status else UNDEFINED,
+            disk_total=api_status.get("total", UNDEFINED),
+            disk_used=api_status.get("used", UNDEFINED),
+            disk_free=api_status.get("avail", UNDEFINED),
+            content=api_status.get("content", UNDEFINED),
         )
 
 
@@ -679,24 +674,25 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     elif int(disk_attribute["id"].strip()) == 174:
                         disk_attributes["power_loss"] = disk_attribute["raw"]
 
-                disk_type=disk["type"] if "type" in disk else None
+                disk_type = disk.get("type", None)
                 return ProxmoxDiskData(
                     type=ProxmoxType.Disk,
                     node=self.node_name,
                     path=self.resource_id,
-                    vendor=disk["vendor"] if "vendor" in disk else None,
-                    serial=disk["serial"] if "serial" in disk else None,
-                    model=disk["model"] if "model" in disk else None,
+                    vendor=disk.get("vendor", None),
+                    serial=disk.get("serial", None),
+                    model=disk.get("model", None),
                     disk_type=disk_type,
-                    size=float(disk["size"]) if "size" in disk else UNDEFINED,
-                    health=disk["health"] if "health" in disk else UNDEFINED,
-                    disk_rpm=float(disk["rpm"]) if ("rpm" in disk and disk_type.upper() not in ("SSD", "NVME", "USB", None)) else UNDEFINED,
-                    temperature_air=disk_attributes["temperature_air"]
-                    if "temperature_air" in disk_attributes
+                    size=float(disk.get("size", UNDEFINED)),
+                    health=disk.get("health", UNDEFINED),
+                    disk_rpm=float(disk["rpm"])
+                    if (
+                        "rpm" in disk
+                        and disk_type.upper() not in ("SSD", "NVME", "USB", None)
+                    )
                     else UNDEFINED,
-                    temperature=disk_attributes["temperature"]
-                    if "temperature" in disk_attributes
-                    else UNDEFINED,
+                    temperature_air=disk_attributes.get("temperature_air", UNDEFINED),
+                    temperature=disk_attributes.get("temperature", UNDEFINED),
                     power_cycles=int(disk_attributes["power_cycles"])
                     if "power_cycles" in disk_attributes
                     else UNDEFINED,

@@ -1,4 +1,5 @@
 """Sensor to read Proxmox VE data."""
+
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
@@ -39,8 +40,7 @@ from .const import (
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
-from .entity import ProxmoxEntity
-from .models import ProxmoxDiskData, ProxmoxEntityDescription
+from .entity import ProxmoxEntity, ProxmoxEntityDescription
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -49,7 +49,9 @@ class ProxmoxSensorEntityDescription(ProxmoxEntityDescription, SensorEntityDescr
 
     conversion_fn: Callable | None = None  # conversion factor to be applied to units
     value_fn: Callable[[Any], Any | str] | None = None
-    api_category: ProxmoxType | None = None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
+    api_category: ProxmoxType | None = (
+        None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
+    )
     extra_attrs: list[str] | None = None
 
 
