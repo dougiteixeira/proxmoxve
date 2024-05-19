@@ -427,30 +427,34 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
                 if resource["storage"] == self.resource_id:
                     node_name = resource["node"]
 
-        if node_name is not None:
-            api_path = f"nodes/{str(node_name)}/storage/{self.resource_id}/status"
-            api_status = await self.hass.async_add_executor_job(
-                poll_api,
-                self.hass,
-                self.config_entry,
-                self.proxmox,
-                api_path,
-                ProxmoxType.Storage,
-                self.resource_id,
-            )
-        else:
-            raise UpdateFailed(f"{self.resource_id} storage node not found")
+        api_path = "cluster/resources?type=storage"
+        api_storages = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            api_path,
+            ProxmoxType.Storage,
+            self.resource_id,
+        )
+
+        api_status = []
+        for api_storage in api_storages:
+            if api_storage["storage"] == self.resource_id:
+                api_status = api_storage
 
         if api_status is None or "content" not in api_status:
             raise UpdateFailed(f"Storage {self.resource_id} unable to be found")
 
         update_device_via(self, ProxmoxType.Storage, node_name)
+        storage_id = api_status["id"]
+        name = f"Storage {storage_id.replace("storage/", "")}"
         return ProxmoxStorageData(
             type=ProxmoxType.Storage,
             node=node_name,
-            disk_total=api_status.get("total", UNDEFINED),
-            disk_used=api_status.get("used", UNDEFINED),
-            disk_free=api_status.get("avail", UNDEFINED),
+            name=name,
+            disk_total=api_status.get("maxdisk", UNDEFINED),
+            disk_used=api_status.get("disk", UNDEFINED),
             content=api_status.get("content", UNDEFINED),
         )
 

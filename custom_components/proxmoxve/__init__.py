@@ -66,7 +66,7 @@ from .coordinator import (
     ProxmoxStorageCoordinator,
     ProxmoxUpdateCoordinator,
 )
-from .models import ProxmoxDiskData
+from .models import ProxmoxDiskData, ProxmoxStorageData
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,
@@ -578,7 +578,7 @@ def device_info(
     node: str | None = None,
     resource_id: int | None = None,
     create: bool | None = False,
-    cordinator_resource: ProxmoxDiskData | None = None,
+    cordinator_resource: ProxmoxDiskData | ProxmoxStorageData | None = None,
 ):
     """Return the Device Info."""
 
@@ -610,7 +610,7 @@ def device_info(
         if (coordinator_data := coordinator.data) is not None:
             node = coordinator_data.node
 
-        name = f"{api_category.capitalize()} {resource_id}"
+        name = cordinator_resource.name
         identifier = f"{config_entry.entry_id}_{api_category.upper()}_{resource_id}"
         url = f"https://{host}:{port}/#v1:0:={api_category}/{node}/{resource_id}"
         via_device = (

@@ -79,8 +79,8 @@ class ProxmoxStorageData:
 
     type: str
     node: str
+    name: str
     content: str | UndefinedType
-    disk_free: float | UndefinedType
     disk_used: float | UndefinedType
     disk_total: float | UndefinedType
 
