@@ -1,4 +1,5 @@
 """Config Flow for ProxmoxVE."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -236,27 +237,27 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                         resource_nodes.append(resource["node"])
                 if ("type" in resource) and (resource["type"] == ProxmoxType.QEMU):
                     if "name" in resource:
-                        resource_qemu[
-                            str(resource["vmid"])
-                        ] = f"{resource['vmid']} {resource['name']}"
+                        resource_qemu[str(resource["vmid"])] = (
+                            f"{resource['vmid']} {resource['name']}"
+                        )
                     else:
                         resource_qemu[str(resource["vmid"])] = f"{resource['vmid']}"
                 if ("type" in resource) and (resource["type"] == ProxmoxType.LXC):
                     if "name" in resource:
-                        resource_lxc[
-                            str(resource["vmid"])
-                        ] = f"{resource['vmid']} {resource['name']}"
+                        resource_lxc[str(resource["vmid"])] = (
+                            f"{resource['vmid']} {resource['name']}"
+                        )
                     else:
                         resource_lxc[str(resource["vmid"])] = f"{resource['vmid']}"
                 if ("type" in resource) and (resource["type"] == ProxmoxType.Storage):
                     if "storage" in resource:
-                        resource_storage[
-                            str(resource["storage"])
-                        ] = f"{resource['storage']} {resource['id']}"
+                        resource_storage[str(resource["storage"])] = (
+                            f"{resource['storage']} {resource['id']}"
+                        )
                     else:
-                        resource_storage[
-                            str(resource["storage"])
-                        ] = f"{resource['storage']}"
+                        resource_storage[str(resource["storage"])] = (
+                            f"{resource['storage']}"
+                        )
 
             return self.async_show_form(
                 step_id="change_expose",
@@ -835,27 +836,27 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         resource_nodes.append(resource["node"])
                 if ("type" in resource) and (resource["type"] == ProxmoxType.QEMU):
                     if "name" in resource:
-                        resource_qemu[
-                            str(resource["vmid"])
-                        ] = f"{resource['vmid']} {resource['name']}"
+                        resource_qemu[str(resource["vmid"])] = (
+                            f"{resource['vmid']} {resource['name']}"
+                        )
                     else:
                         resource_qemu[str(resource["vmid"])] = f"{resource['vmid']}"
                 if ("type" in resource) and (resource["type"] == ProxmoxType.LXC):
                     if "name" in resource:
-                        resource_lxc[
-                            str(resource["vmid"])
-                        ] = f"{resource['vmid']} {resource['name']}"
+                        resource_lxc[str(resource["vmid"])] = (
+                            f"{resource['vmid']} {resource['name']}"
+                        )
                     else:
                         resource_lxc[str(resource["vmid"])] = f"{resource['vmid']}"
                 if ("type" in resource) and (resource["type"] == ProxmoxType.Storage):
                     if "storage" in resource:
-                        resource_storage[
-                            str(resource["storage"])
-                        ] = f"{resource['storage']} {resource['id']}"
+                        resource_storage[str(resource["storage"])] = (
+                            f"{resource['storage']} {resource['id']}"
+                        )
                     else:
-                        resource_lxc[
-                            str(resource["storage"])
-                        ] = f"{resource['storage']}"
+                        resource_lxc[str(resource["storage"])] = (
+                            f"{resource['storage']}"
+                        )
 
             return self.async_show_form(
                 step_id="expose",
