@@ -183,7 +183,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
                 else UNDEFINED,
                 status=api_status.get("status", UNDEFINED),
-                version=api_status["version"].get("version", UNDEFINED),
+                version=api_status.get("version", UNDEFINED),
                 uptime=api_status.get("uptime", UNDEFINED),
                 cpu=api_status.get("cpu", UNDEFINED),
                 disk_total=api_status.get("disk_max", UNDEFINED),
@@ -206,10 +206,18 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 swap_used=api_status["swap"]["used"]
                 if (("swap" in api_status) and "used" in api_status["swap"])
                 else UNDEFINED,
-                qemu_on=api_status["qemu"]["total"],
-                qemu_on_list=api_status["qemu"]["list"],
-                lxc_on=api_status["lxc"]["total"],
-                lxc_on_list=api_status["lxc"]["list"],
+                qemu_on=api_status["qemu"]["total"]
+                if (("qemu" in api_status) and "total" in api_status["qemu"])
+                else 0,
+                qemu_on_list=api_status["qemu"]["list"]
+                 if (("qemu" in api_status) and "list" in api_status["qemu"])
+                else UNDEFINED,
+                lxc_on=api_status["lxc"]["total"]
+                if (("lxc" in api_status) and "total" in api_status["lxc"])
+                else 0,
+                lxc_on_list=api_status["lxc"]["list"]
+                if (("lxc" in api_status) and "list" in api_status["lxc"])
+                else UNDEFINED,
             )
         raise UpdateFailed(
             f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
