@@ -31,6 +31,7 @@ import homeassistant.util.dt as dt_util
 
 from . import async_migrate_old_unique_ids, device_info
 from .const import (
+    LOGGER,
     CONF_LXC,
     CONF_NODES,
     CONF_QEMU,
@@ -497,7 +498,7 @@ async def async_setup_sensors_nodes(
                                 coordinator.data, description.key, False
                             )
                         )
-                        and data_value != UNDEFINED
+                        #and data_value != UNDEFINED
                     )
                     or data_value == 0
                     or (
@@ -807,7 +808,7 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
         if (data := self.coordinator.data) is None:
             return None
 
-        if not getattr(data, self.entity_description.key, False):
+        if (not getattr(data, self.entity_description.key, False)) and getattr(data, self.entity_description.key, True) != 0:
             if value := self.entity_description.value_fn:
                 native_value = value(data)
             elif self.entity_description.key in (

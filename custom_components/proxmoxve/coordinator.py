@@ -182,8 +182,10 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 model=api_status["cpuinfo"]["model"]
                 if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
                 else UNDEFINED,
-                status=api_status.get("status", UNDEFINED),
-                version=api_status.get("version", UNDEFINED),
+                status=api_status.get("status", "Offline"),
+                version=api_status["version"].get("version", UNDEFINED) 
+                if ("version" in api_status)
+                else UNDEFINED,
                 uptime=api_status.get("uptime", UNDEFINED),
                 cpu=api_status.get("cpu", UNDEFINED),
                 disk_total=api_status.get("disk_max", UNDEFINED),
@@ -504,21 +506,41 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
     async def _async_update_data(self) -> ProxmoxUpdateData:
         """Update data  for Proxmox Update."""
 
+        api_path = "nodes"
+        node_status = ""
+        node_api = {}
         api_status = None
+        if nodes_api := await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            api_path,
+            ProxmoxType.Node,
+            self.node_name,
+        ):
+            for node_api in nodes_api:
+                if node_api[CONF_NODE] == self.node_name:
+                    node_status = node_api["status"]
+                    break
+            if node_status == "":                                
+                node_status = "offline"
+            LOGGER.warning("Node %s Status is %s", self.node_name, node_status)    
 
-        if self.node_name is not None:
-            api_path = f"nodes/{str(self.node_name)}/apt/update"
-            api_status = await self.hass.async_add_executor_job(
-                poll_api,
-                self.hass,
-                self.config_entry,
-                self.proxmox,
-                api_path,
-                ProxmoxType.Update,
-                self.resource_id,
-            )
-        else:
-            raise UpdateFailed(f"{self.resource_id} node not found")
+        if node_status == "online":
+            if self.node_name is not None:
+                api_path = f"nodes/{str(self.node_name)}/apt/update"
+                api_status = await self.hass.async_add_executor_job(
+                    poll_api,
+                    self.hass,
+                    self.config_entry,
+                    self.proxmox,
+                    api_path,
+                    ProxmoxType.Update,
+                    self.resource_id,
+                )
+            else:
+                raise UpdateFailed(f"{self.resource_id} node not found")
 
         if api_status is None:
             return ProxmoxUpdateData(
