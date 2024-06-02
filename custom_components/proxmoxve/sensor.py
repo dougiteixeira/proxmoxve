@@ -464,7 +464,7 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Wearout",
         icon="mdi:clipboard-pulse-outline",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (100 - x) / 100 if x != UNDEFINED else None,
+        conversion_fn=lambda x: (100 - x) if x != UNDEFINED else None,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         translation_key="disk_wearout",
