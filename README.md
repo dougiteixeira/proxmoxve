@@ -59,6 +59,11 @@ logger:
   logs:
     custom_components.proxmoxve: debug
 ```
+## Translations
+
+Translation files are [CC0](/custom_components/proxmoxve/translations/LICENSE.md) licensed.
+
+Translating can be done from your webbrowser, no programming knowledge is needed!
 
 ## Example screenshot:
 * Node
