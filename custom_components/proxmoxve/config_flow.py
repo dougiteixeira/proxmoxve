@@ -463,7 +463,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """ProxmoxVE Config Flow class."""
 
-    VERSION = 4
+    VERSION = 5
     _reauth_entry: config_entries.ConfigEntry | None = None
 
     def __init__(self) -> None:
