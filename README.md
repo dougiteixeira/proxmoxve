@@ -64,6 +64,9 @@ logger:
 Translation files are [CC0](/custom_components/proxmoxve/translations/LICENSE.md) licensed.
 
 Translating can be done from your webbrowser, no programming knowledge is needed!
+<a href="https://hosted.weblate.org/engage/proxmoxve_v2/">
+<img src="https://hosted.weblate.org/widget/proxmoxve_v2/open-graph.png" alt="Status da tradução" />
+</a>
 
 ## Example screenshot:
 * Node
