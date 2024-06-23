@@ -8,11 +8,7 @@ from requests.exceptions import ConnectTimeout
 
 from homeassistant.const import CONF_USERNAME
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.issue_registry import (
-    IssueSeverity,
-    async_create_issue,
-    delete_issue,
-)
+from homeassistant.helpers import issue_registry as ir
 
 from .const import (
     DEFAULT_PORT,
@@ -145,12 +141,12 @@ def post_api_command(
                 resource = f"{api_category.capitalize()} {node}"
             elif api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
                 resource = f"{api_category.upper()} {vm_id}"
-            async_create_issue(
+            ir.create_issue(
                 self.hass,
                 DOMAIN,
                 issue_id,
                 is_fixable=False,
-                severity=IssueSeverity.ERROR,
+                severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_command_forbiden",
                 translation_placeholders={
                     "resource": resource,
@@ -168,7 +164,7 @@ def post_api_command(
             f"Proxmox {resource} {command} error - {error}",
         ) from error
 
-    delete_issue(
+    ir.delete_issue(
         self.hass,
         DOMAIN,
         issue_id,

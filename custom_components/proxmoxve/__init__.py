@@ -26,14 +26,13 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    issue_registry as ir,
+)
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.issue_registry import (
-    IssueSeverity,
-    async_create_issue,
-    async_delete_issue,
-)
 from homeassistant.helpers.typing import ConfigType
 
 from .api import ProxmoxClient, get_api
@@ -128,13 +127,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             "YAML configuration from your configuration.yaml file",
             VERSION_REMOVE_YAML,
         )
-        async_create_issue(
+        ir.async_create_issue(
             hass,
             DOMAIN,
             "yaml_deprecated",
             breaks_in_ha_version=VERSION_REMOVE_YAML,
             is_fixable=False,
-            severity=IssueSeverity.WARNING,
+            severity=ir.IssueSeverity.WARNING,
             translation_key="yaml_deprecated",
             translation_placeholders={
                 "integration": INTEGRATION_TITLE,
@@ -144,12 +143,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         )
         for conf in config[DOMAIN]:
             if conf.get(CONF_PORT) > 65535 or conf.get(CONF_PORT) <= 0:
-                async_create_issue(
+                ir.async_create_issue(
                     hass,
                     DOMAIN,
                     f"{conf.get[CONF_HOST]}_{conf.get[CONF_PORT]}_import_invalid_port",
                     is_fixable=False,
-                    severity=IssueSeverity.ERROR,
+                    severity=ir.IssueSeverity.ERROR,
                     translation_key="import_invalid_port",
                     translation_placeholders={
                         "integration": INTEGRATION_TITLE,
@@ -348,7 +347,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             node_proxmox["node"]
             for node_proxmox in (nodes_api if nodes_api is not None else [])
         ]:
-            async_delete_issue(
+            ir.async_delete_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{node}_resource_nonexistent",
@@ -395,12 +394,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 coordinators[f"{ProxmoxType.Disk}_{node}"] = coordinators_disk
 
         else:
-            async_create_issue(
+            ir.async_create_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{node}_resource_nonexistent",
                 is_fixable=False,
-                severity=IssueSeverity.ERROR,
+                severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_nonexistent",
                 translation_placeholders={
                     "integration": INTEGRATION_TITLE,
@@ -418,7 +417,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             (int(resource["vmid"]) if "vmid" in resource else None)
             for resource in (resources if resources is not None else [])
         ]:
-            async_delete_issue(
+            ir.async_delete_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{vm_id}_resource_nonexistent",
@@ -432,12 +431,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             await coordinator_qemu.async_refresh()
             coordinators[f"{ProxmoxType.QEMU}_{vm_id}"] = coordinator_qemu
         else:
-            async_create_issue(
+            ir.async_create_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{vm_id}_resource_nonexistent",
                 is_fixable=False,
-                severity=IssueSeverity.ERROR,
+                severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_nonexistent",
                 translation_placeholders={
                     "integration": INTEGRATION_TITLE,
@@ -455,7 +454,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             (int(resource["vmid"]) if "vmid" in resource else None)
             for resource in (resources if resources is not None else [])
         ]:
-            async_delete_issue(
+            ir.async_delete_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{container_id}_resource_nonexistent",
@@ -469,12 +468,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             await coordinator_lxc.async_refresh()
             coordinators[f"{ProxmoxType.LXC}_{container_id}"] = coordinator_lxc
         else:
-            async_create_issue(
+            ir.async_create_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{container_id}_resource_nonexistent",
                 is_fixable=False,
-                severity=IssueSeverity.ERROR,
+                severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_nonexistent",
                 translation_placeholders={
                     "integration": INTEGRATION_TITLE,
@@ -492,7 +491,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             (resource.get("storage", None))
             for resource in (resources if resources is not None else [])
         ]:
-            async_delete_issue(
+            ir.async_delete_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{storage_id}_resource_nonexistent",
@@ -506,12 +505,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             await coordinator_storage.async_refresh()
             coordinators[f"{ProxmoxType.Storage}_{storage_id}"] = coordinator_storage
         else:
-            async_create_issue(
+            ir.async_create_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{storage_id}_resource_nonexistent",
                 is_fixable=False,
-                severity=IssueSeverity.ERROR,
+                severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_nonexistent",
                 translation_placeholders={
                     "integration": INTEGRATION_TITLE,
