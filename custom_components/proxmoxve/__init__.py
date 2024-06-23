@@ -204,8 +204,13 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             CONF_LXC: config_entry.data.get(CONF_LXC),
         }
 
-        config_entry.version = 2
-        hass.config_entries.async_update_entry(config_entry, data=data_new, options={})
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=data_new,
+            options={},
+            version=2,
+            minor_version=1,
+        )
 
         LOGGER.debug("Migration - remove devices: %s", device_identifiers)
         for device_identifier in device_identifiers:
@@ -235,9 +240,12 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         for resource in config_entry.data[CONF_LXC]:
             device_identifiers.append(f"{ProxmoxType.LXC.upper()}_{resource}")
 
-        config_entry.version = 3
         hass.config_entries.async_update_entry(
-            config_entry, data=config_entry.data, options={}
+            config_entry,
+            data=config_entry.data,
+            options={},
+            version=3,
+            minor_version=1,
         )
 
         LOGGER.debug("Migration - remove devices: %s", device_identifiers)
@@ -260,7 +268,6 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             )
 
     if config_entry.version == 3:
-        config_entry.version = 4
         data_new = {
             CONF_HOST: config_entry.data.get(CONF_HOST),
             CONF_PORT: config_entry.data.get(CONF_PORT),
@@ -273,7 +280,52 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             CONF_LXC: config_entry.data.get(CONF_LXC),
             CONF_STORAGE: [],
         }
-        hass.config_entries.async_update_entry(config_entry, data=data_new, options={})
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=data_new,
+            options={},
+            version=4,
+            minor_version=1,
+        )
+
+    if config_entry.version == 4:
+        for storage in config_entry.data.get(CONF_STORAGE):
+            dev_reg = dr.async_get(hass)
+            device = dev_reg.async_get_or_create(
+                config_entry_id=config_entry.entry_id,
+                identifiers={
+                    (
+                        DOMAIN,
+                        (
+                            f"{config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage}"
+                        ),
+                    )
+                },
+            )
+            dev_reg.async_update_device(
+                device_id=device.id,
+                remove_config_entry_id=config_entry.entry_id,
+            )
+
+        data_new = {
+            CONF_HOST: config_entry.data.get(CONF_HOST),
+            CONF_PORT: config_entry.data.get(CONF_PORT),
+            CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
+            CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
+            CONF_REALM: config_entry.data.get(CONF_REALM),
+            CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
+            CONF_NODES: config_entry.data.get(CONF_NODES),
+            CONF_QEMU: config_entry.data.get(CONF_QEMU),
+            CONF_LXC: config_entry.data.get(CONF_LXC),
+            CONF_STORAGE: [],
+        }
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=data_new,
+            options={},
+            version=5,
+            minor_version=1,
+        )
 
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
@@ -488,7 +540,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     for storage_id in config_entry.data[CONF_STORAGE]:
         if storage_id in [
-            (resource.get("storage", None))
+            (resource.get("id", None))
             for resource in (resources if resources is not None else [])
         ]:
             ir.async_delete_issue(
@@ -519,7 +571,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     "port": config_entry.data[CONF_PORT],
                     "resource_type": ProxmoxType.Storage.capitalize(),
                     "resource": storage_id,
-                    "permission": f"['perm','/storage/{storage_id}',['Datastore.Audit'],'any',1]",
+                    "permission": f"['perm','{storage_id}',['Datastore.Audit'],'any',1]",
                 },
             )
 
@@ -610,8 +662,8 @@ def device_info(
             node = coordinator_data.node
 
         name = cordinator_resource.name
-        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{resource_id}"
-        url = f"https://{host}:{port}/#v1:0:={api_category}/{node}/{resource_id}"
+        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{resource_id.replace("storage/", "")}"
+        url = f"https://{host}:{port}/#v1:0:={resource_id}"
         via_device = (
             DOMAIN,
             f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
