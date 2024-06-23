@@ -19,12 +19,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.issue_registry import (
-    IssueSeverity,
-    async_create_issue,
-    delete_issue,
-)
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -792,7 +787,7 @@ def poll_api(
                 return "Unmapped"
 
     try:
-        delete_issue(
+        ir.delete_issue(
             hass,
             DOMAIN,
             f"{config_entry.entry_id}_{resource_id}_forbiden",
@@ -811,12 +806,12 @@ def poll_api(
         raise UpdateFailed(error) from error
     except ResourceException as error:
         if error.status_code == 403 and issue_crete_permissions:
-            async_create_issue(
+            ir.create_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{resource_id}_forbiden",
                 is_fixable=False,
-                severity=IssueSeverity.ERROR,
+                severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_exception_forbiden",
                 translation_placeholders={
                     "resource": f"{api_category.capitalize()} {resource_id}",
