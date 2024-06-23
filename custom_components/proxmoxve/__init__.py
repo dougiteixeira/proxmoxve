@@ -204,8 +204,13 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             CONF_LXC: config_entry.data.get(CONF_LXC),
         }
 
-        config_entry.version = 2
-        hass.config_entries.async_update_entry(config_entry, data=data_new, options={})
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=data_new,
+            options={},
+            version=2,
+            minor_version=1,
+        )
 
         LOGGER.debug("Migration - remove devices: %s", device_identifiers)
         for device_identifier in device_identifiers:
@@ -235,9 +240,12 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         for resource in config_entry.data[CONF_LXC]:
             device_identifiers.append(f"{ProxmoxType.LXC.upper()}_{resource}")
 
-        config_entry.version = 3
         hass.config_entries.async_update_entry(
-            config_entry, data=config_entry.data, options={}
+            config_entry,
+            data=config_entry.data,
+            options={},
+            version=3,
+            minor_version=1,
         )
 
         LOGGER.debug("Migration - remove devices: %s", device_identifiers)
@@ -260,23 +268,6 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             )
 
     if config_entry.version == 3:
-        config_entry.version = 4
-        data_new = {
-            CONF_HOST: config_entry.data.get(CONF_HOST),
-            CONF_PORT: config_entry.data.get(CONF_PORT),
-            CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
-            CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
-            CONF_REALM: config_entry.data.get(CONF_REALM),
-            CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
-            CONF_NODES: config_entry.data.get(CONF_NODES),
-            CONF_QEMU: config_entry.data.get(CONF_QEMU),
-            CONF_LXC: config_entry.data.get(CONF_LXC),
-            CONF_STORAGE: [],
-        }
-        hass.config_entries.async_update_entry(config_entry, data=data_new, options={})
-
-    if config_entry.version == 4:
-        storages = config_entry.data.get(CONF_STORAGE)
         data_new = {
             CONF_HOST: config_entry.data.get(CONF_HOST),
             CONF_PORT: config_entry.data.get(CONF_PORT),
@@ -290,16 +281,51 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             CONF_STORAGE: [],
         }
         hass.config_entries.async_update_entry(
-            config_entry, data=data_new, options={}, version=5
+            config_entry,
+            data=data_new,
+            options={},
+            version=4,
+            minor_version=1,
         )
-        for storage in storages:
-            identifier = (
-                f"{config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage}"
+
+    if config_entry.version == 4:
+        for storage in config_entry.data.get(CONF_STORAGE):
+            dev_reg = dr.async_get(hass)
+            device = dev_reg.async_get_or_create(
+                config_entry_id=config_entry.entry_id,
+                identifiers={
+                    (
+                        DOMAIN,
+                        (
+                            f"{config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage}"
+                        ),
+                    )
+                },
             )
-            await async_remove_device(
-                entry_id=config_entry.entry_id,
-                device_identifier=identifier,
+            dev_reg.async_update_device(
+                device_id=device.id,
+                remove_config_entry_id=config_entry.entry_id,
             )
+
+        data_new = {
+            CONF_HOST: config_entry.data.get(CONF_HOST),
+            CONF_PORT: config_entry.data.get(CONF_PORT),
+            CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
+            CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
+            CONF_REALM: config_entry.data.get(CONF_REALM),
+            CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
+            CONF_NODES: config_entry.data.get(CONF_NODES),
+            CONF_QEMU: config_entry.data.get(CONF_QEMU),
+            CONF_LXC: config_entry.data.get(CONF_LXC),
+            CONF_STORAGE: [],
+        }
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=data_new,
+            options={},
+            version=5,
+            minor_version=1,
+        )
 
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
@@ -727,24 +753,3 @@ async def async_migrate_old_unique_ids(
             registry.async_update_entity(
                 entity_id, new_unique_id=entity["new_unique_id"]
             )
-
-
-async def async_remove_device(
-    self,
-    entry_id: str,
-    device_identifier: str,
-) -> bool:
-    """Remove device."""
-    device_identifiers = {(DOMAIN, device_identifier)}
-    dev_reg = dr.async_get(self.hass)
-    device = dev_reg.async_get_or_create(
-        config_entry_id=entry_id,
-        identifiers=device_identifiers,
-    )
-
-    dev_reg.async_update_device(
-        device_id=device.id,
-        remove_config_entry_id=entry_id,
-    )
-    LOGGER.debug("Device %s (%s) removed", device.name, device.id)
-    return True
