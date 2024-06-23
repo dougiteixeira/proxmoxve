@@ -419,7 +419,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
 
         for resource in resources if resources is not None else []:
             if "storage" in resource:
-                if resource["storage"] == self.resource_id:
+                if resource["id"] == self.resource_id:
                     node_name = resource["node"]
 
         api_path = "cluster/resources?type=storage"
@@ -435,13 +435,12 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
 
         api_status = []
         for api_storage in api_storages:
-            if api_storage["storage"] == self.resource_id:
+            if api_storage["id"] == self.resource_id:
                 api_status = api_storage
 
         if api_status is None or "content" not in api_status:
             raise UpdateFailed(f"Storage {self.resource_id} unable to be found")
 
-        update_device_via(self, ProxmoxType.Storage, node_name)
         storage_id = api_status["id"]
         name = f"Storage {storage_id.replace("storage/", "")}"
         return ProxmoxStorageData(
