@@ -128,7 +128,7 @@ async def async_setup_binary_sensors_nodes(
         # unfound node case
         if coordinator.data is not None:
             for description in PROXMOX_BINARYSENSOR_NODES:
-                if getattr(coordinator.data, description.key, False) != UNDEFINED:
+                if getattr(coordinator.data, description.key, UNDEFINED) != UNDEFINED:
                     sensors.append(
                         create_binary_sensor(
                             coordinator=coordinator,
@@ -222,7 +222,7 @@ async def async_setup_binary_sensors_qemu(
             continue
         for description in PROXMOX_BINARYSENSOR_VM:
             if description.api_category in (None, ProxmoxType.QEMU):
-                if getattr(coordinator.data, description.key, False) != UNDEFINED:
+                if getattr(coordinator.data, description.key, UNDEFINED) != UNDEFINED:
                     sensors.append(
                         create_binary_sensor(
                             coordinator=coordinator,
@@ -262,7 +262,7 @@ async def async_setup_binary_sensors_lxc(
             continue
         for description in PROXMOX_BINARYSENSOR_VM:
             if description.api_category in (None, ProxmoxType.LXC):
-                if getattr(coordinator.data, description.key, False) != UNDEFINED:
+                if getattr(coordinator.data, description.key, UNDEFINED) != UNDEFINED:
                     sensors.append(
                         create_binary_sensor(
                             coordinator=coordinator,
