@@ -507,16 +507,12 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
             )
 
         updates_list = []
-        total = 0
         for update in api_status:
             updates_list.append(f"{update['Title']} - {update['Version']}")
-            total += 1
 
         updates_list.sort()
-
-        update_avail = False
-        if total > 0:
-            update_avail = True
+        total = len(updates_list) if updates_list is not None else 0
+        update_avail = total > 0
 
         return ProxmoxUpdateData(
             type=ProxmoxType.Update,
