@@ -15,10 +15,18 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import UNDEFINED
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from . import COORDINATORS, DOMAIN, async_migrate_old_unique_ids, device_info
-from .const import CONF_LXC, CONF_NODES, CONF_QEMU, ProxmoxKeyAPIParse, ProxmoxType
+from .const import (
+    CONF_LXC,
+    CONF_NODES,
+    CONF_QEMU,
+    LOGGER,
+    ProxmoxKeyAPIParse,
+    ProxmoxType,
+)
 from .entity import ProxmoxEntity, ProxmoxEntityDescription
 
 
@@ -120,7 +128,7 @@ async def async_setup_binary_sensors_nodes(
         # unfound node case
         if coordinator.data is not None:
             for description in PROXMOX_BINARYSENSOR_NODES:
-                if getattr(coordinator.data, description.key, False):
+                if getattr(coordinator.data, description.key, False) != UNDEFINED:
                     sensors.append(
                         create_binary_sensor(
                             coordinator=coordinator,
@@ -139,7 +147,10 @@ async def async_setup_binary_sensors_nodes(
             if f"{ProxmoxType.Update}_{node}" in coordinators:
                 coordinator_updates = coordinators[f"{ProxmoxType.Update}_{node}"]
                 for description in PROXMOX_BINARYSENSOR_UPDATES:
-                    if getattr(coordinator_updates.data, description.key, False):
+                    if (
+                        getattr(coordinator_updates.data, description.key, False)
+                        != UNDEFINED
+                    ):
                         sensors.append(
                             create_binary_sensor(
                                 coordinator=coordinator_updates,
@@ -211,7 +222,7 @@ async def async_setup_binary_sensors_qemu(
             continue
         for description in PROXMOX_BINARYSENSOR_VM:
             if description.api_category in (None, ProxmoxType.QEMU):
-                if getattr(coordinator.data, description.key, False):
+                if getattr(coordinator.data, description.key, False) != UNDEFINED:
                     sensors.append(
                         create_binary_sensor(
                             coordinator=coordinator,
@@ -251,7 +262,7 @@ async def async_setup_binary_sensors_lxc(
             continue
         for description in PROXMOX_BINARYSENSOR_VM:
             if description.api_category in (None, ProxmoxType.LXC):
-                if getattr(coordinator.data, description.key, False):
+                if getattr(coordinator.data, description.key, False) != UNDEFINED:
                     sensors.append(
                         create_binary_sensor(
                             coordinator=coordinator,
@@ -309,18 +320,13 @@ class ProxmoxBinarySensorEntity(ProxmoxEntity, BinarySensorEntity):
         if (data := self.coordinator.data) is None:
             return False
 
-        if not getattr(data, self.entity_description.key):
+        if not (data_value := getattr(data, self.entity_description.key)):
             return False
 
         if self.entity_description.inverted:
-            return (
-                getattr(data, self.entity_description.key)
-                not in self.entity_description.on_value
-            )
-        return (
-            getattr(data, self.entity_description.key)
-            in self.entity_description.on_value
-        )
+            return data_value not in self.entity_description.on_value
+
+        return data_value in self.entity_description.on_value
 
     @property
     def available(self) -> bool:
