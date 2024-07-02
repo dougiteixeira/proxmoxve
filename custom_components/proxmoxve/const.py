@@ -62,6 +62,7 @@ class ProxmoxCommand(StrEnum):
     START_ALL = "startall"
     STOP_ALL = "stopall"
     HIBERNATE = "hibernate"
+    WAKEONLAN = "wakeonlan"
 
 
 class ProxmoxKeyAPIParse(StrEnum):

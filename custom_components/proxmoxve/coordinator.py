@@ -76,22 +76,10 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
     async def _async_update_data(self) -> ProxmoxNodeData:
         """Update data  for Proxmox Node."""
 
-        api_path = f"nodes/{self.resource_id}/status"
-        api_status = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            api_path,
-            ProxmoxType.Node,
-            self.resource_id,
-        )
-        if api_status is None:
-            raise UpdateFailed(
-                f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
-            )
-
         api_path = "nodes"
+        node_status = ""
+        node_api = {}
+        api_status = {}
         if nodes_api := await self.hass.async_add_executor_job(
             poll_api,
             self.hass,
@@ -103,98 +91,133 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         ):
             for node_api in nodes_api:
                 if node_api[CONF_NODE] == self.resource_id:
-                    api_status["status"] = node_api["status"]
-                    api_status["cpu"] = node_api["cpu"]
-                    api_status["disk_max"] = node_api["maxdisk"]
-                    api_status["disk_used"] = node_api["disk"]
+                    node_status = node_api["status"]
                     break
+            if node_status == "":
+                LOGGER.warning("Node %s Status is %s", self.resource_id, node_status)
+                node_status = "offline"
 
-        api_path = f"nodes/{self.resource_id}/version"
-        api_status["version"] = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            api_path,
-            ProxmoxType.Node,
-            self.resource_id,
-        )
+        if node_status == "online":
+            api_path = f"nodes/{self.resource_id}/status"
+            api_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Node,
+                self.resource_id,
+            )
+            if api_status is None:
+                raise UpdateFailed(
+                    f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
+                )
 
-        api_path = f"nodes/{self.resource_id}/qemu"
-        qemu_status = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            api_path,
-            ProxmoxType.QEMU,
-            self.resource_id,
-        )
-        node_qemu: dict[str, Any] = {}
-        node_qemu_on: int = 0
-        node_qemu_on_list: list[str] = []
-        for qemu in qemu_status if qemu_status is not None else []:
-            if "status" in qemu and qemu["status"] == "running":
-                node_qemu_on += 1
-                node_qemu_on_list.append(f"{qemu['name']} ({qemu['vmid']})")
-        node_qemu["total"] = node_qemu_on
-        node_qemu["list"] = node_qemu_on_list
-        api_status["qemu"] = node_qemu
+            api_status["status"] = node_api["status"]
+            api_status["cpu"] = node_api["cpu"]
+            api_status["disk_max"] = node_api["maxdisk"]
+            api_status["disk_used"] = node_api["disk"]
 
-        api_path = f"nodes/{self.resource_id}/lxc"
-        lxc_status = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            api_path,
-            ProxmoxType.LXC,
-            self.resource_id,
-        )
-        node_lxc: dict[str, Any] = {}
-        node_lxc_on: int = 0
-        node_lxc_on_list: list[str] = []
-        for lxc in lxc_status if lxc_status is not None else []:
-            if lxc["status"] == "running":
-                node_lxc_on += 1
-                node_lxc_on_list.append(f"{lxc['name']} ({lxc['vmid']})")
-        node_lxc["total"] = node_lxc_on
-        node_lxc["list"] = node_lxc_on_list
-        api_status["lxc"] = node_lxc
+            api_path = f"nodes/{self.resource_id}/version"
+            api_status["version"] = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Node,
+                self.resource_id,
+            )
 
-        return ProxmoxNodeData(
-            type=ProxmoxType.Node,
-            model=api_status["cpuinfo"]["model"]
-            if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
-            else UNDEFINED,
-            status=api_status.get("status", UNDEFINED),
-            version=api_status["version"].get("version", UNDEFINED),
-            uptime=api_status.get("uptime", UNDEFINED),
-            cpu=api_status.get("cpu", UNDEFINED),
-            disk_total=api_status.get("disk_max", UNDEFINED),
-            disk_used=api_status.get("disk_used", UNDEFINED),
-            memory_total=api_status["memory"]["total"]
-            if (("memory" in api_status) and "total" in api_status["memory"])
-            else UNDEFINED,
-            memory_used=api_status["memory"]["used"]
-            if (("memory" in api_status) and "used" in api_status["memory"])
-            else UNDEFINED,
-            memory_free=api_status["memory"]["free"]
-            if (("memory" in api_status) and "free" in api_status["memory"])
-            else UNDEFINED,
-            swap_total=api_status["swap"]["total"]
-            if (("swap" in api_status) and "total" in api_status["swap"])
-            else UNDEFINED,
-            swap_free=api_status["swap"]["free"]
-            if (("swap" in api_status) and "free" in api_status["swap"])
-            else UNDEFINED,
-            swap_used=api_status["swap"]["used"]
-            if (("swap" in api_status) and "used" in api_status["swap"])
-            else UNDEFINED,
-            qemu_on=api_status["qemu"]["total"],
-            qemu_on_list=api_status["qemu"]["list"],
-            lxc_on=api_status["lxc"]["total"],
-            lxc_on_list=api_status["lxc"]["list"],
+            api_path = f"nodes/{self.resource_id}/qemu"
+            qemu_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.QEMU,
+                self.resource_id,
+            )
+            node_qemu: dict[str, Any] = {}
+            node_qemu_on: int = 0
+            node_qemu_on_list: list[str] = []
+            for qemu in qemu_status if qemu_status is not None else []:
+                if "status" in qemu and qemu["status"] == "running":
+                    node_qemu_on += 1
+                    node_qemu_on_list.append(f"{qemu['name']} ({qemu['vmid']})")
+            node_qemu["total"] = node_qemu_on
+            node_qemu["list"] = node_qemu_on_list
+            api_status["qemu"] = node_qemu
+
+            api_path = f"nodes/{self.resource_id}/lxc"
+            lxc_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.LXC,
+                self.resource_id,
+            )
+            node_lxc: dict[str, Any] = {}
+            node_lxc_on: int = 0
+            node_lxc_on_list: list[str] = []
+            for lxc in lxc_status if lxc_status is not None else []:
+                if lxc["status"] == "running":
+                    node_lxc_on += 1
+                    node_lxc_on_list.append(f"{lxc['name']} ({lxc['vmid']})")
+            node_lxc["total"] = node_lxc_on
+            node_lxc["list"] = node_lxc_on_list
+            api_status["lxc"] = node_lxc
+
+        if node_status != "":
+            return ProxmoxNodeData(
+                type=ProxmoxType.Node,
+                model=api_status["cpuinfo"]["model"]
+                if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
+                else UNDEFINED,
+                status=api_status.get("status", "Offline"),
+                version=api_status["version"].get("version", UNDEFINED) 
+                if ("version" in api_status)
+                else UNDEFINED,
+                uptime=api_status.get("uptime", UNDEFINED),
+                cpu=api_status.get("cpu", UNDEFINED),
+                disk_total=api_status.get("disk_max", UNDEFINED),
+                disk_used=api_status.get("disk_used", UNDEFINED),
+                memory_total=api_status["memory"]["total"]
+                if (("memory" in api_status) and "total" in api_status["memory"])
+                else UNDEFINED,
+                memory_used=api_status["memory"]["used"]
+                if (("memory" in api_status) and "used" in api_status["memory"])
+                else UNDEFINED,
+                memory_free=api_status["memory"]["free"]
+                if (("memory" in api_status) and "free" in api_status["memory"])
+                else UNDEFINED,
+                swap_total=api_status["swap"]["total"]
+                if (("swap" in api_status) and "total" in api_status["swap"])
+                else UNDEFINED,
+                swap_free=api_status["swap"]["free"]
+                if (("swap" in api_status) and "free" in api_status["swap"])
+                else UNDEFINED,
+                swap_used=api_status["swap"]["used"]
+                if (("swap" in api_status) and "used" in api_status["swap"])
+                else UNDEFINED,
+                qemu_on=api_status["qemu"]["total"]
+                if (("qemu" in api_status) and "total" in api_status["qemu"])
+                else 0,
+                qemu_on_list=api_status["qemu"]["list"]
+                 if (("qemu" in api_status) and "list" in api_status["qemu"])
+                else UNDEFINED,
+                lxc_on=api_status["lxc"]["total"]
+                if (("lxc" in api_status) and "total" in api_status["lxc"])
+                else 0,
+                lxc_on_list=api_status["lxc"]["list"]
+                if (("lxc" in api_status) and "list" in api_status["lxc"])
+                else UNDEFINED,
+            )
+        raise UpdateFailed(
+            f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
         )
 
 
@@ -481,21 +504,41 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
     async def _async_update_data(self) -> ProxmoxUpdateData:
         """Update data  for Proxmox Update."""
 
+        api_path = "nodes"
+        node_status = ""
+        node_api = {}
         api_status = None
+        if nodes_api := await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            api_path,
+            ProxmoxType.Node,
+            self.node_name,
+        ):
+            for node_api in nodes_api:
+                if node_api[CONF_NODE] == self.node_name:
+                    node_status = node_api["status"]
+                    break
+            if node_status == "":                                
+                node_status = "offline"
+            LOGGER.warning("Node %s Status is %s", self.node_name, node_status)    
 
-        if self.node_name is not None:
-            api_path = f"nodes/{str(self.node_name)}/apt/update"
-            api_status = await self.hass.async_add_executor_job(
-                poll_api,
-                self.hass,
-                self.config_entry,
-                self.proxmox,
-                api_path,
-                ProxmoxType.Update,
-                self.resource_id,
-            )
-        else:
-            raise UpdateFailed(f"{self.resource_id} node not found")
+        if node_status == "online":
+            if self.node_name is not None:
+                api_path = f"nodes/{str(self.node_name)}/apt/update"
+                api_status = await self.hass.async_add_executor_job(
+                    poll_api,
+                    self.hass,
+                    self.config_entry,
+                    self.proxmox,
+                    api_path,
+                    ProxmoxType.Update,
+                    self.resource_id,
+                )
+            else:
+                raise UpdateFailed(f"{self.resource_id} node not found")
 
         if api_status is None:
             return ProxmoxUpdateData(
