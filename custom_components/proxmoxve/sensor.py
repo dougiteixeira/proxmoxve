@@ -62,7 +62,9 @@ PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Disk free",
         icon="mdi:harddisk",
         native_unit_of_measurement=UnitOfInformation.BYTES,
-        value_fn=lambda x: (x.disk_total - x.disk_used),
+        value_fn=lambda x: (x.disk_total - x.disk_used)
+        if (UNDEFINED not in (x.disk_total, x.disk_used))
+        else 0,
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -76,7 +78,9 @@ PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: 1 - (x.disk_used / x.disk_total) if x.disk_total != UNDEFINED and x.disk_total > 0 else 0,
+        value_fn=lambda x: 1 - (x.disk_used / x.disk_total)
+        if (UNDEFINED not in (x.disk_used, x.disk_total) and x.disk_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
         entity_registry_enabled_default=False,
@@ -112,7 +116,9 @@ PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.disk_used / x.disk_total) if x.disk_total != UNDEFINED and x.disk_total > 0  else 0,
+        value_fn=lambda x: (x.disk_used / x.disk_total)
+        if (UNDEFINED not in (x.disk_used, x.disk_total) and x.disk_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
         translation_key="disk_used_perc",
@@ -136,7 +142,9 @@ PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.memory_free / x.memory_total) if x.memory_total != UNDEFINED and x.memory_total > 0  else 0,
+        value_fn=lambda x: (x.memory_free / x.memory_total)
+        if (UNDEFINED not in (x.memory_free, x.memory_total) and x.memory_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
@@ -171,7 +179,9 @@ PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.memory_used / x.memory_total) if x.memory_total != UNDEFINED and x.memory_total > 0  else 0,
+        value_fn=lambda x: (x.memory_used / x.memory_total)
+        if (UNDEFINED not in (x.memory_used, x.memory_total) and x.memory_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         translation_key="memory_used_perc",
@@ -196,7 +206,9 @@ PROXMOX_SENSOR_SWAP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.swap_free / x.swap_total) if x.swap_total != UNDEFINED and x.swap_total > 0 else 0,
+        value_fn=lambda x: (x.swap_free / x.swap_total)
+        if (UNDEFINED not in (x.swap_free, x.swap_total) and x.swap_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
@@ -232,7 +244,9 @@ PROXMOX_SENSOR_SWAP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.swap_used / x.swap_total) if x.swap_total != UNDEFINED and x.swap_total > 0 else 0,
+        value_fn=lambda x: (x.swap_used / x.swap_total)
+        if (UNDEFINED not in (x.swap_used, x.swap_total) and x.swap_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
@@ -339,7 +353,7 @@ PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:server",
         translation_key="status_raw",
         value_fn=lambda x: x.health
-        if x.health not in ["running", "stopped"]
+        if (x.health not in ["running", "stopped", UNDEFINED])
         else x.status,
     ),
     *PROXMOX_SENSOR_CPU,
@@ -455,6 +469,16 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=0,
         translation_key="life_left",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="disk_wearout",
+        name="Wearout",
+        icon="mdi:clipboard-pulse-outline",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (100 - x) if x != UNDEFINED else None,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        translation_key="disk_wearout",
     ),
 )
 
@@ -758,6 +782,7 @@ async def async_setup_sensors_storages(
                                 config_entry=config_entry,
                                 api_category=ProxmoxType.Storage,
                                 resource_id=storage_id,
+                                cordinator_resource=coordinator.data,
                             ),
                             description=description,
                             resource_id=storage_id,
@@ -814,6 +839,9 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
             elif self.entity_description.key in (
                 ProxmoxKeyAPIParse.CPU,
                 ProxmoxKeyAPIParse.UPDATE_TOTAL,
+                ProxmoxKeyAPIParse.MEMORY_USED,
+                ProxmoxKeyAPIParse.DISK_USED,
+                ProxmoxKeyAPIParse.SWAP_USED,
             ):
                 return 0
             else:

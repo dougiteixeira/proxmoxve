@@ -19,12 +19,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.issue_registry import (
-    IssueSeverity,
-    async_create_issue,
-    async_delete_issue,
-)
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -447,33 +442,36 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
 
         for resource in resources if resources is not None else []:
             if "storage" in resource:
-                if resource["storage"] == self.resource_id:
+                if resource["id"] == self.resource_id:
                     node_name = resource["node"]
 
-        if node_name is not None:
-            api_path = f"nodes/{str(node_name)}/storage/{self.resource_id}/status"
-            api_status = await self.hass.async_add_executor_job(
-                poll_api,
-                self.hass,
-                self.config_entry,
-                self.proxmox,
-                api_path,
-                ProxmoxType.Storage,
-                self.resource_id,
-            )
-        else:
-            raise UpdateFailed(f"{self.resource_id} storage node not found")
+        api_path = "cluster/resources?type=storage"
+        api_storages = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            api_path,
+            ProxmoxType.Storage,
+            self.resource_id,
+        )
+
+        api_status = []
+        for api_storage in api_storages:
+            if api_storage["id"] == self.resource_id:
+                api_status = api_storage
 
         if api_status is None or "content" not in api_status:
             raise UpdateFailed(f"Storage {self.resource_id} unable to be found")
 
-        update_device_via(self, ProxmoxType.Storage, node_name)
+        storage_id = api_status["id"]
+        name = f"Storage {storage_id.replace("storage/", "")}"
         return ProxmoxStorageData(
             type=ProxmoxType.Storage,
             node=node_name,
-            disk_total=api_status.get("total", UNDEFINED),
-            disk_used=api_status.get("used", UNDEFINED),
-            disk_free=api_status.get("avail", UNDEFINED),
+            name=name,
+            disk_total=api_status.get("maxdisk", UNDEFINED),
+            disk_used=api_status.get("disk", UNDEFINED),
             content=api_status.get("content", UNDEFINED),
         )
 
@@ -552,16 +550,12 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
             )
 
         updates_list = []
-        total = 0
         for update in api_status:
             updates_list.append(f"{update['Title']} - {update['Version']}")
-            total += 1
 
         updates_list.sort()
-
-        update_avail = False
-        if total > 0:
-            update_avail = True
+        total = len(updates_list) if updates_list is not None else 0
+        update_avail = total > 0
 
         return ProxmoxUpdateData(
             type=ProxmoxType.Update,
@@ -633,6 +627,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                 type=ProxmoxType.Disk,
                 node=self.node_name,
                 path=self.resource_id,
+                disk_wearout=UNDEFINED,
                 vendor=None,
                 serial=None,
                 model=None,
@@ -732,6 +727,13 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     serial=disk.get("serial", None),
                     model=disk.get("model", None),
                     disk_type=disk_type,
+                    disk_wearout=float(disk["wearout"])
+                    if (
+                        "wearout" in disk
+                        and disk_type.upper() in ("SSD", "NVME")
+                        and str(disk["wearout"]).upper() != "N/A"
+                    )
+                    else UNDEFINED,
                     size=float(disk["size"]) if "size" in disk else UNDEFINED,
                     health=disk.get("health", UNDEFINED),
                     disk_rpm=float(disk["rpm"])
@@ -823,6 +825,11 @@ def poll_api(
                 return "Unmapped"
 
     try:
+        ir.delete_issue(
+            hass,
+            DOMAIN,
+            f"{config_entry.entry_id}_{resource_id}_forbiden",
+        )
         return get_api(proxmox, api_path)
     except AuthenticationError as error:
         raise ConfigEntryAuthFailed from error
@@ -837,12 +844,12 @@ def poll_api(
         raise UpdateFailed(error) from error
     except ResourceException as error:
         if error.status_code == 403 and issue_crete_permissions:
-            async_create_issue(
+            ir.create_issue(
                 hass,
                 DOMAIN,
                 f"{config_entry.entry_id}_{resource_id}_forbiden",
                 is_fixable=False,
-                severity=IssueSeverity.ERROR,
+                severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_exception_forbiden",
                 translation_placeholders={
                     "resource": f"{api_category.capitalize()} {resource_id}",
@@ -855,9 +862,3 @@ def poll_api(
             )
             return None
         raise UpdateFailed from error
-
-    async_delete_issue(
-        hass,
-        DOMAIN,
-        f"{config_entry.entry_id}_{resource_id}_forbiden",
-    )
