@@ -79,8 +79,8 @@ class ProxmoxStorageData:
 
     type: str
     node: str
+    name: str
     content: str | UndefinedType
-    disk_free: float | UndefinedType
     disk_used: float | UndefinedType
     disk_total: float | UndefinedType
 
@@ -116,3 +116,4 @@ class ProxmoxDiskData:
     power_hours: int | UndefinedType
     life_left: int | UndefinedType
     power_loss: int | UndefinedType
+    disk_wearout: float | UndefinedType

@@ -121,6 +121,9 @@
           "disk_used_perc": {
             "name": "Disco percentual em uso"
           },
+          "disk_wearout": {
+            "name": "Desgaste"
+          },
           "life_left": {
             "name": "Vida útil restante"
           },
