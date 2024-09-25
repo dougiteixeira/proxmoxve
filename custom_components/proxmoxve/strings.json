@@ -32,7 +32,7 @@
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:component::proxmoxve::config::step::host::data::password%]",
-          "token_name": "[%key:component::proxmoxve::config::step::host::data::t_name%]"
+          "token_name": "[%key:component::proxmoxve::config::step::host::data::token_name%]"
         }
       }
     },
