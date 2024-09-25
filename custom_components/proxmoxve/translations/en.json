@@ -6,7 +6,7 @@
           "data": {
             "host": "Host",
             "password": "Password or token value",
-            "t_name": "Token name",
+            "token_name": "Token name",
             "port": "Port",
             "realm": "Realm",
             "username": "Username",
@@ -113,7 +113,7 @@
         "host_auth": {
           "data": {
               "password": "Password or token value",
-              "t_name": "Token name",
+              "token_name": "Token name",
               "realm": "Realm",
               "username": "Username",
               "verify_ssl": "Verify SSL certificate"
