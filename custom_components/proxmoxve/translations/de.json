@@ -37,7 +37,7 @@
             "data": {
                 "password": "Passwort oder Tokenwert",
                 "username": "Benutzername",
-                "t_name": "Token Name"
+                "token_name": "Token Name"
             },
             "description": "Der Benutzername oder das Passwort ist ungültig.",
             "title": "Integration erneut authentifizieren"
