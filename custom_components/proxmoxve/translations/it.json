@@ -6,7 +6,7 @@
           "data": {
             "host": "Host",
             "password": "Password o token",
-            "t_name": "Nome del token",
+            "token_name": "Nome del token",
             "port": "Porta",
             "realm": "Dominio",
             "username": "Nome utente",
@@ -114,7 +114,7 @@
         "host_auth": {
           "data": {
             "password": "Password o token",
-            "t_name": "Nome del token",
+            "token_name": "Nome del token",
             "realm": "Dominio",
             "username": "Nome utente",
             "verify_ssl": "Verifica certificato SSL"
