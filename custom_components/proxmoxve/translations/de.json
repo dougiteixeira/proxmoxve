@@ -25,7 +25,7 @@
             "data": {
                 "host": "Host",
                 "password": "Passwort oder Tokenwert",
-                "t_name": "Token Name",
+                "token_name": "Token Name",
                 "port": "Port",
                 "realm": "Bereich",
                 "username": "Benutzername",
@@ -230,7 +230,7 @@
             "host_auth": {
                 "data": {
                     "password": "Passwort oder Tokenwert",
-                    "t_name": "Token Name",
+                    "token_name": "Token Name",
                     "realm": "Bereich",
                     "username": "Benutzername",
                     "verify_ssl": "SSL-Zertifikat überprüfen"
