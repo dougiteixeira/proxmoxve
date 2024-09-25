@@ -24,7 +24,8 @@
             "host": {
             "data": {
                 "host": "Host",
-                "password": "Passwort",
+                "password": "Passwort oder Tokenwert",
+                "token_name": "Token Name",
                 "port": "Port",
                 "realm": "Bereich",
                 "username": "Benutzername",
@@ -34,8 +35,9 @@
             },
             "reauth_confirm": {
             "data": {
-                "password": "Passwort",
-                "username": "Benutzername"
+                "password": "Passwort oder Tokenwert",
+                "username": "Benutzername",
+                "token_name": "Token Name"
             },
             "description": "Der Benutzername oder das Passwort ist ungültig.",
             "title": "Integration erneut authentifizieren"
@@ -227,7 +229,8 @@
             },
             "host_auth": {
                 "data": {
-                    "password": "Passwort",
+                    "password": "Passwort oder Tokenwert",
+                    "token_name": "Token Name",
                     "realm": "Bereich",
                     "username": "Benutzername",
                     "verify_ssl": "SSL-Zertifikat überprüfen"

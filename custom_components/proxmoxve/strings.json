@@ -7,7 +7,8 @@
           "host": "[%key:common::config_flow::data::host%]",
           "port": "[%key:common::config_flow::data::port%]",
           "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:common::config_flow::data::password%]",
+          "password": "Password or token value",
+          "token_name": "Token name",
           "realm": "Realm",
           "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
         }
@@ -30,7 +31,8 @@
         "title": "[%key:common::config_flow::title::reauth%]",
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:common::config_flow::data::password%]"
+          "password": "[%key:component::proxmoxve::config::step::host::data::password%]",
+          "token_name": "[%key:component::proxmoxve::config::step::host::data::token_name%]"
         }
       }
     },
@@ -113,7 +115,8 @@
         "description": "[%key:component::proxmoxve::config::step::host::description%]",
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:common::config_flow::data::password%]",
+          "password": "[%key:component::proxmoxve::config::step::host::data::password%]",
+          "token_name": "[%key:component::proxmoxve::config::step::host::data::token_name%]",
           "realm": "[%key:component::proxmoxve::config::step::host::data::realm%]",
           "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
         }

@@ -47,6 +47,7 @@ from .const import (
     CONF_STORAGE,
     CONF_VMS,
     COORDINATORS,
+    CONF_TOKEN_NAME,
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
@@ -82,6 +83,7 @@ CONFIG_SCHEMA = vol.Schema(
                     {
                         vol.Required(CONF_HOST): cv.string,
                         vol.Required(CONF_USERNAME): cv.string,
+                        vol.Optional(CONF_TOKEN_NAME, default=''): cv.string,
                         vol.Required(CONF_PASSWORD): cv.string,
                         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
                         vol.Optional(CONF_REALM, default=DEFAULT_REALM): cv.string,
@@ -196,6 +198,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             CONF_HOST: config_entry.data.get(CONF_HOST),
             CONF_PORT: config_entry.data.get(CONF_PORT),
             CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
+            CONF_TOKEN_NAME: config_entry.data.get(CONF_TOKEN_NAME),
             CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
             CONF_REALM: config_entry.data.get(CONF_REALM),
             CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
@@ -272,6 +275,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             CONF_HOST: config_entry.data.get(CONF_HOST),
             CONF_PORT: config_entry.data.get(CONF_PORT),
             CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
+            CONF_TOKEN_NAME: config_entry.data.get(CONF_TOKEN_NAME),
             CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
             CONF_REALM: config_entry.data.get(CONF_REALM),
             CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
@@ -311,6 +315,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             CONF_HOST: config_entry.data.get(CONF_HOST),
             CONF_PORT: config_entry.data.get(CONF_PORT),
             CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
+            CONF_TOKEN_NAME: config_entry.data.get(CONF_TOKEN_NAME),
             CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
             CONF_REALM: config_entry.data.get(CONF_REALM),
             CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
@@ -341,6 +346,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     host = entry_data[CONF_HOST]
     port = entry_data[CONF_PORT]
     user = entry_data[CONF_USERNAME]
+    token_name = entry_data[CONF_TOKEN_NAME]
     realm = entry_data[CONF_REALM]
     password = entry_data[CONF_PASSWORD]
     verify_ssl = entry_data[CONF_VERIFY_SSL]
@@ -350,6 +356,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         host=host,
         port=port,
         user=user,
+        token_name=token_name,
         realm=realm,
         password=password,
         verify_ssl=verify_ssl,

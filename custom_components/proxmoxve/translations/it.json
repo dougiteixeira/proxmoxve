@@ -5,7 +5,8 @@
           "description": "Informazioni host Proxmox",
           "data": {
             "host": "Host",
-            "password": "Password",
+            "password": "Password o token",
+            "token_name": "Nome del token",
             "port": "Porta",
             "realm": "Dominio",
             "username": "Nome utente",
@@ -29,7 +30,8 @@
           "description": "Nome Utente o Password non validi.",
           "title": "Riautentica l'integrazione",
           "data": {
-            "password": "Password",
+            "password": "Password o token",
+            "token_name": "Nome del token",
             "username": "Nome utente"
           }
         }
@@ -111,7 +113,8 @@
         },
         "host_auth": {
           "data": {
-            "password": "Password",
+            "password": "Password o token",
+            "token_name": "Nome del token",
             "realm": "Dominio",
             "username": "Nome utente",
             "verify_ssl": "Verifica certificato SSL"

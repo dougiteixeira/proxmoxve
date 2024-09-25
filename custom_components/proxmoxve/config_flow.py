@@ -35,6 +35,7 @@ from .const import (
     CONF_STORAGE,
     CONF_VMS,
     COORDINATORS,
+    CONF_TOKEN_NAME,
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
@@ -59,6 +60,7 @@ SCHEMA_HOST_SSL: vol.Schema = vol.Schema(
 SCHEMA_HOST_AUTH: vol.Schema = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
+        vol.Optional(CONF_TOKEN_NAME, default=''): str,
         vol.Required(CONF_PASSWORD): str,
         vol.Optional(CONF_REALM, default=DEFAULT_REALM): str,
     }
@@ -104,6 +106,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             host: str = str(self.config_entry.data[CONF_HOST])
             port: int = int(str(self.config_entry.data[CONF_PORT]))
             user: str = str(user_input.get(CONF_USERNAME))
+            token_name: str = str(user_input.get(CONF_TOKEN_NAME))
             realm: str = str(user_input.get(CONF_REALM))
             password: str = str(user_input.get(CONF_PASSWORD))
             verify_ssl = user_input.get(CONF_VERIFY_SSL)
@@ -113,6 +116,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     host=host,
                     port=port,
                     user=user,
+                    token_name=token_name,
                     realm=realm,
                     password=password,
                     verify_ssl=verify_ssl,
@@ -138,6 +142,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     else {}
                 )
                 config_data[CONF_USERNAME] = user_input.get(CONF_USERNAME)
+                config_data[CONF_TOKEN_NAME] = user_input.get(CONF_TOKEN_NAME)
                 config_data[CONF_PASSWORD] = user_input.get(CONF_PASSWORD)
                 config_data[CONF_REALM] = user_input.get(CONF_REALM)
                 config_data[CONF_VERIFY_SSL] = user_input.get(CONF_VERIFY_SSL)
@@ -190,6 +195,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             host = self.config_entry.data[CONF_HOST]
             port = self.config_entry.data[CONF_PORT]
             user = self.config_entry.data[CONF_USERNAME]
+            token_name = self.config_entry.data[CONF_TOKEN_NAME]
             realm = self.config_entry.data[CONF_REALM]
             password = self.config_entry.data[CONF_PASSWORD]
             verify_ssl = self.config_entry.data[CONF_VERIFY_SSL]
@@ -199,6 +205,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     host=host,
                     port=port,
                     user=user,
+                    token_name=token_name,
                     realm=realm,
                     password=password,
                     verify_ssl=verify_ssl,
@@ -504,6 +511,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         host: str = str(import_config.get(CONF_HOST))
         port: int = int(str(import_config.get(CONF_PORT)))
         user: str = str(import_config.get(CONF_USERNAME))
+        token_name: str = str(import_config.get(CONF_TOKEN_NAME))
         realm: str = str(import_config.get(CONF_REALM))
         password: str = str(import_config.get(CONF_PASSWORD))
         verify_ssl = import_config.get(CONF_VERIFY_SSL)
@@ -512,6 +520,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host=host,
             port=port,
             user=user,
+            token_name=token_name,
             realm=realm,
             password=password,
             verify_ssl=verify_ssl,
@@ -669,6 +678,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             port: int = int(str(self._reauth_entry.data[CONF_PORT]))
             verify_ssl: bool = bool(self._reauth_entry.data[CONF_VERIFY_SSL])
             user: str = str(user_input.get(CONF_USERNAME))
+            token_name: str = str(user_input.get(CONF_TOKEN_NAME))
             realm: str = str(user_input.get(CONF_REALM))
             password: str = str(user_input.get(CONF_PASSWORD))
 
@@ -677,6 +687,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     host,
                     port=port,
                     user=user,
+                    token_name=token_name,
                     realm=realm,
                     password=password,
                     verify_ssl=verify_ssl,
@@ -704,6 +715,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 config_data.update(
                     {
                         CONF_USERNAME: user_input.get(CONF_USERNAME),
+                        CONF_TOKEN_NAME: user_input.get(CONF_TOKEN_NAME),
                         CONF_PASSWORD: user_input.get(CONF_PASSWORD),
                         CONF_REALM: user_input.get(CONF_REALM),
                     }
@@ -747,6 +759,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host = user_input.get(CONF_HOST, "")
             port = user_input.get(CONF_PORT, DEFAULT_PORT)
             username = user_input.get(CONF_USERNAME, "")
+            token_name = user_input.get(CONF_TOKEN_NAME, "")
             password = user_input.get(CONF_PASSWORD, "")
             realm = user_input.get(CONF_REALM, DEFAULT_REALM)
             verify_ssl = user_input.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
@@ -762,6 +775,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         host,
                         port=port,
                         user=username,
+                        token_name=token_name,
                         realm=realm,
                         password=password,
                         verify_ssl=verify_ssl,
@@ -784,6 +798,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._config[CONF_HOST] = host
                     self._config[CONF_PORT] = port
                     self._config[CONF_USERNAME] = username
+                    self._config[CONF_TOKEN_NAME] = token_name
                     self._config[CONF_PASSWORD] = password
                     self._config[CONF_REALM] = realm
                     self._config[CONF_VERIFY_SSL] = verify_ssl
