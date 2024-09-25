@@ -30,7 +30,7 @@
               "data": {
                   "host": "Host",
                   "password": "Senha ou token",
-                  "t_name": "Nome do token",
+                  "token_name": "Nome do token",
                   "port": "Porta",
                   "realm": "Domínio",
                   "username": "Usuário",
@@ -41,7 +41,7 @@
           "reauth_confirm": {
               "data": {
                   "password": "Senha ou token",
-                  "t_name": "Nome do token",
+                  "token_name": "Nome do token",
                   "username": "Usuário"
               },
               "description": "O nome de usuário ou senha é inválido.",
@@ -314,7 +314,7 @@
           "host_auth": {
               "data": {
                   "password": "Senha ou token",
-                  "t_name": "Nome do token",
+                  "token_name": "Nome do token",
                   "realm": "Domínio",
                   "username": "Usuário",
                   "verify_ssl": "Verificar certificado SSL"
