@@ -31,7 +31,7 @@
           "title": "Riautentica l'integrazione",
           "data": {
             "password": "Password o token",
-            "t_name": "Nome del token",
+            "token_name": "Nome del token",
             "username": "Nome utente"
           }
         }
