@@ -194,7 +194,10 @@
       },
       "reset": {
         "name": "Reset"
-      }
+      },
+      "wakeonlan": {
+        "name": "Wake-on-LAN"
+      }      
     },
     "sensor": {
       "cpu_used": {
