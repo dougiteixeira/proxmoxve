@@ -1,0 +1,153 @@
+{
+    "config": {
+        "step": {
+            "host": {
+                "description": "Informação do host Proxmox",
+                "data": {
+                    "host": "Host",
+                    "password": "Senha ou valor do token",
+                    "token_name": "Nome do token",
+                    "port": "Porta",
+                    "realm": "Realm",
+                    "username": "Nome de utilizador",
+                    "verify_ssl": "Verificar certificado SSL"
+                }
+            },
+            "expose": {
+                "description": "Selecione os nós, Máquinas Virtuais (QEMU), Contentores (LXC) e Armazenamentos da instância Proxmox que deseja expor",
+                "data": {
+                    "nodes": "Nós",
+                    "qemu": "Máquinas Virtuais (QEMU)",
+                    "lxc": "Contentores Linux (LXC)",
+                    "storage": "Armazenamentos",
+                    "disks_enable": "Ativar informação dos discos físicos"
+                },
+                "data_description": {
+                    "disks_enable": "Se utilizar hibernação de discos, deve desativar esta opção para que os discos não sejam reativados indevidamente."
+                }
+            },
+            "reauth_confirm": {
+                "description": "O nome de utilizador ou a senha são inválidos.",
+                "title": "Reautenticar Integração",
+                "data": {
+                    "password": "Senha ou valor do token",
+                    "username": "Nome de utilizador"
+                }
+            }
+        },
+        "error": {
+            "auth_error": "Autenticação inválida",
+            "cant_connect": "Falha ao ligar",
+            "general_error": "Erro inesperado",
+            "invalid_port": "Número de porta inválido",
+            "ssl_rejection": "Não foi possível verificar o certificado SSL"
+        },
+        "abort": {
+            "already_configured": "Dispositivo já configurado",
+            "no_resources": "Não foram devolvidos recursos para esta instância.",
+            "reauth_successful": "Reautenticação bem-sucedida"
+        }
+    },
+    "issues": {
+        "import_success": {
+            "title": "{host}:{port} foi importado da configuração YAML",
+            "description": "A configuração YAML da instância {host}:{port} de {integration} (`{platform}`) foi automaticamente importada para a interface.\n\nPode ser removida com segurança do seu ficheiro `configuration.yaml`."
+        },
+        "import_invalid_port": {
+            "title": "Erro ao importar configuração YAML de {host}:{port}",
+            "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido a uma porta inválida.\n\nDeve remover esta configuração do seu ficheiro `configuration.yaml`, reiniciar o Home Assistant e configurá-la manualmente."
+        },
+        "import_auth_error": {
+            "title": "Erro ao importar configuração YAML de {host}:{port}",
+            "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido a erro de autenticação.\n\nDeve remover esta configuração do seu ficheiro `configuration.yaml`, reiniciar o Home Assistant e configurá-la manualmente."
+        },
+        "import_ssl_rejection": {
+            "title": "Erro ao importar configuração YAML de {host}:{port}",
+            "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido a rejeição de SSL.\n\nDeve remover esta configuração do seu ficheiro `configuration.yaml`, reiniciar o Home Assistant e configurá-la manualmente."
+        },
+        "import_cant_connect": {
+            "title": "Erro ao importar configuração YAML de {host}:{port}",
+            "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido a falha de ligação.\n\nDeve remover esta configuração do seu ficheiro `configuration.yaml`, reiniciar o Home Assistant e configurá-la manualmente."
+        },
+        "import_general_error": {
+            "title": "Erro ao importar configuração YAML de {host}:{port}",
+            "description": "A importação da configuração YAML da instância {host}:{port} de {integration} (`{platform}`) falhou devido a um erro desconhecido.\n\nDeve remover esta configuração do seu ficheiro `configuration.yaml`, reiniciar o Home Assistant e configurá-la manualmente."
+        },
+        "import_already_configured": {
+            "title": "A instância {host}:{port} já existe na interface, pode ser removida",
+            "description": "A configuração YAML da instância {host}:{port} de {integration} (`{platform}`) já existe na interface e foi ignorada na importação.\n\nDeve remover esta configuração do seu ficheiro `configuration.yaml` e reiniciar o Home Assistant."
+        },
+        "import_node_not_exist": {
+            "title": "O nó {node} não existe em {host}:{port}",
+            "description": "O {node} da instância {host}:{port} de {integration} (`{platform}`) presente na configuração YAML não existe nesta instância e foi ignorado na importação.\n\nDeve remover esta configuração do seu ficheiro `configuration.yaml` e reiniciar o Home Assistant."
+        },
+        "yaml_deprecated": {
+            "title": "A configuração do {integration} em YAML está obsoleta",
+            "description": "A configuração do {integration} (`{platform}`) em YAML está obsoleta e deve ser removida na versão {version}.\n\nResolva os problemas de importação e remova a configuração YAML do seu ficheiro `configuration.yaml`."
+        },
+        "resource_nonexistent": {
+            "description": "{resource_type} {resource} não existe em ({host}:{port}), remova-o nas opções de integração.\n\nIsto também pode ser causado se o utilizador não tiver permissão suficiente para aceder ao recurso.\n\nSugestão para permissões necessárias:\n* `{permission}`",
+            "title": "{resource_type} {resource} não existe"
+        },
+        "no_permissions": {
+            "description": "O utilizador `{user}` não tem as permissões necessárias para todas as funcionalidades.\n\nAs seguintes funcionalidades não estão acessíveis ao utilizador:\n`{errors}`\n\nVerifique as permissões do utilizador conforme descrito na documentação.",
+            "title": "O utilizador `{user}` não tem as permissões necessárias"
+        },
+        "resource_exception_forbiden": {
+            "description": "O utilizador `{user}` não tem permissões suficientes para aceder ao recurso `{resource}`.\n\nSugestão para permissões necessárias:\n* `{permission}`\n\nPor favor, verifique a documentação e as permissões do utilizador.",
+            "title": "Erro de permissões para `{resource}`"
+        },
+        "resource_command_forbiden": {
+            "description": "O utilizador `{user}` não tem permissões suficientes para executar o comando `{command}` no recurso `{resource}`.\n\nSugestão para permissões necessárias:\n* `{permission}`\n\nPor favor, verifique a documentação e as permissões do utilizador.",
+            "title": "Erro de permissão para o comando `{resource}`"
+        }
+    },
+    "options": {
+        "step": {
+            "menu": {
+                "menu_options": {
+                    "host_auth": "Alterar informação de autenticação do host",
+                    "change_expose": "Adicionar ou remover Nós, VMs, Contentores ou Armazenamentos"
+                }
+            },
+            "host_auth": {
+                "data": {
+                    "password": "Senha ou valor do token",
+                    "token_name": "Nome do token",
+                    "realm": "Realm",
+                    "username": "Nome de utilizador",
+                    "verify_ssl": "Verificar certificado SSL"
+                },
+                "description": "Informação do host Proxmox"
+            },
+            "change_expose": {
+                "description": "Selecione os nós e Máquinas Virtuais (QEMU) e Contentores (LXC) da instância Proxmox que deseja expor",
+                "data": {
+                    "lxc": "Contentores Linux (LXC)",
+                    "nodes": "Nós",
+                    "qemu": "Máquinas Virtuais (QEMU)",
+                    "storage": "Armazenamentos",
+                    "disks_enable": "Ativar informação dos discos físicos"
+                },
+                "data_description": {
+                    "disks_enable": "Se utilizar hibernação de discos, deve desativar esta opção para que os discos não sejam reativados indevidamente."
+                }
+            }
+        },
+        "error": {
+            "auth_error": "Autenticação inválida",
+            "cant_connect": "Falha ao ligar",
+            "general_error": "Erro inesperado",
+            "invalid_port": "Número de porta inválido",
+            "ssl_rejection": "Não foi possível verificar o certificado SSL"
+        },
+        "abort": {
+            "no_nodes": "Não foram devolvidos nós para o host.",
+            "no_vms": "Não há máquinas virtuais ou contentores para este nó, a entrada de configuração será criada para o nó.",
+            "changes_successful": "Alterações guardadas com sucesso.",
+            "no_nodes_to_add": "Não há nós para adicionar.",
+            "no_vms_to_add": "Não há máquinas virtuais ou contentores para adicionar.",
+            "no_storages_to_add": "Não há armazenamentos para adicionar."
+        }
+    }
+}
