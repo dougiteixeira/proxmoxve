@@ -2,60 +2,60 @@
     "config": {
       "step": {
         "host": {
-          "description": "Proxmox host information",
+          "description": "Proxmox информация за хоста",
           "data": {
-            "host": "Host",
-            "password": "Password or token value",
-            "token_name": "Token name",
-            "port": "Port",
-            "realm": "Realm",
-            "username": "Username",
-            "verify_ssl": "Verify SSL certificate"
+            "host": "Хост",
+            "password": "Парола или токен стойност",
+            "token_name": "Име на токен",
+            "port": "Порт",
+            "realm": "Обхват (Realm)",
+            "username": "Потребителско име",
+            "verify_ssl": "Проверка на SSL сертификат"
           }
         },
         "expose": {
-          "description": "Select the Proxmox instance nodes, Virtual Machines (QEMU), Containers (LXC) and Storages you want to expose",
+          "description": "Изберете възлите на Proxmox инстанцията, виртуалните машини (QEMU), контейнерите (LXC) и хранилищата, които искате да изложите",
           "data": {
-            "nodes": "Nodes",
-            "qemu": "Virtual Machines (QEMU)",
-            "lxc": "Linux Containers (LXC)",
-            "storage": "Storages",
-            "disks_enable": "Enable physical disk information"
+            "nodes": "Възли",
+            "qemu": "Виртуални машини (QEMU)",
+            "lxc": "Линукс контейнери (LXC)",
+            "storage": "Хранилища за данни",
+            "disks_enable": "Активирайте информацията за физическия диск"
           },
           "data_description": {
-            "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+            "disks_enable": "Ако работите с хибернация на диска, трябва да деактивирате тази опция за интегриране, за да не причинява неоправдано повторно активиране на дисковете."
           }
         },
         "reauth_confirm": {
-          "description": "The username or password is invalid.",
-          "title": "Reauthenticate Integration",
+          "description": "Невалидно потребителско име или парола.",
+          "title": "Повторно удостоверяване на интеграцията",
           "data": {
-            "password": "Password or token value",
-            "username": "Username"
+            "password": "Парола или токен стойност",
+            "username": "Потребителско име"
           }
         }
       },
       "error": {
-        "auth_error": "Invalid authentication",
-        "cant_connect": "Failed to connect",
-        "general_error": "Unexpected error",
-        "invalid_port": "Invalid port number",
-        "ssl_rejection": "Could not verify the SSL certificate"
+        "auth_error": "Невалидна автентикация",
+        "cant_connect": "Неуспешно свързване",
+        "general_error": "Неочаквана грешка",
+        "invalid_port": "Невалиден номер на порт",
+        "ssl_rejection": "Неуспешна проверка на SSL сертификат"
       },
       "abort": {
-        "already_configured": "Device is already configured",
-        "no_resources": "No resources were returned for this instance.",
-        "reauth_successful": "Re-authentication was successful"
+        "already_configured": "Устройството вече е конфигурирано",
+        "no_resources": "За тази инстанция не бяха върнати ресурси.",
+        "reauth_successful": "Повторното удостоверяване беше успешно"
       }
     },
     "issues": {
       "import_success": {
-        "title": "{host}:{port} was imported from YAML configuration",
-        "description": "The YAML configuration of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file."
+        "title": "{host}:{port} беше импортиран от YAML конфигурация",
+        "description": "YAML конфигурацията на {host}:{port} инстанцията на {integration} (`{platform}`) е импортирана в потребителския интерфейс автоматично.\n\nМоже безопасно да се премахне от вашия файл `configuration.yaml`."
       },
       "import_invalid_port": {
-        "title": "Error in importing YAML configuration from {host}:{port}",
-        "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to invalid port.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+        "title": "Грешка при импортирането на YAML конфигурация от {host}:{port}",
+        "description": "Импортирането на YAML конфигурация от {host}:{port} инстанцията на {integration} (`{platform}`) не бе успешно поради невалиден порт.\n\nТрябва да премахнете тази конфигурация от вашия файл `configuration.yaml`, да рестартирате Home Assistant и конфигурирайте го ръчно."
       },
       "import_auth_error": {
         "title": "Error in importing YAML configuration from {host}:{port}",
@@ -94,12 +94,12 @@
         "title": "User `{user}` does not have the required permissions"
       },
       "resource_exception_forbiden": {
-        "description": "User `{user}` does not have sufficient permissions to access resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-        "title": "Permissions error for `{resource}`"
+        "description": "Потребителят `{user}` няма достатъчно права за достъп до ресурса `{resource}`.\n\nСъвет относно необходимите права:\n* `{permission}`\n\nМоля, проверете документацията и потребителските права.",
+        "title": "Грешка в разрешенията за `{resource}`"
       },
       "resource_command_forbiden": {
-        "description": "User `{user}` does not have sufficient permissions to execute command `{command}` on resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-        "title": "Permission error for `{resource}` command"
+        "description": "Потребителят `{user}` няма необходимите права да изпълни `{command}` командата на ресурса `{resource}`.\n\nСъвет относно необходимите права:\n* `{permission}`\n\nМоля, проверете документацията и потребителските права.",
+        "title": "Грешка в разрешението за `{resource}` командата"
       }
     },
     "options": {
@@ -112,197 +112,197 @@
         },
         "host_auth": {
           "data": {
-              "password": "Password or token value",
-              "token_name": "Token name",
-              "realm": "Realm",
-              "username": "Username",
-              "verify_ssl": "Verify SSL certificate"
+              "password": "Парола или токен стойност",
+              "token_name": "Токен име",
+              "realm": "Обхват (Realm)",
+              "username": "Потребителско име",
+              "verify_ssl": "Проверка на SSL сертификат"
           },
-          "description": "Proxmox host information"
+          "description": "Proxmox хост информация"
         },
         "change_expose": {
-          "description": "Select the Proxmox instance nodes ans Virtual Machines (QEMU) and Containers (LXC) you want to expose",
+          "description": "Изберете възлите на инстанцията на Proxmox и виртуалните машини (QEMU) и контейнерите (LXC), които искате да изложите",
           "data": {
-            "lxc": "Linux Containers (LXC)",
-            "nodes": "Nodes",
-            "qemu": "Virtual Machines (QEMU)",
-            "storage": "Storages",
-            "disks_enable": "Enable physical disk information"
+            "lxc": "Линукс контейнери (LXC)",
+            "nodes": "Възли",
+            "qemu": "Виртуални машини (QEMU)",
+            "storage": "Хранилища за данни",
+            "disks_enable": "Активирайте информацията за физическия диск"
           },
           "data_description": {
-            "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+            "disks_enable": "Ако работите с хибернация на диска, трябва да деактивирате тази опция за интегриране, така че да не причинява неоправдано повторно активиране на дисковете."
           }
         }
       },
       "error": {
-        "auth_error": "Invalid authentication",
-        "cant_connect": "Failed to connect",
-        "general_error": "Unexpected error",
-        "invalid_port": "Invalid port number",
-        "ssl_rejection": "Could not verify the SSL certificate"
+        "auth_error": "Невалидно удостоверяване",
+        "cant_connect": "Неуспешно свързване",
+        "general_error": "Неочаквана грешка",
+        "invalid_port": "Невалиден порт номер",
+        "ssl_rejection": "Неуспешна проверка на SSL сертификат"
       },
       "abort": {
-        "no_nodes": "No nodes were returned for the host.",
-        "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
-        "changes_successful": "Changes saved successfully.",
-        "no_nodes_to_add": "No nodes to add.",
-        "node_already_exists": "The selected node already exists.",
-        "auth_error": "Invalid authentication",
-        "cant_connect": "Failed to connect",
-        "general_error": "Unexpected error",
-        "invalid_port": "Invalid port number",
-        "ssl_rejection": "Could not verify the SSL certificate"
+        "no_nodes": "Не бяха върнати възли за хоста.",
+        "no_vms": "Няма виртуални машини или контейнери за този възел, записът за конфигурация ще бъде създаден за възела.",
+        "changes_successful": "Промените са запазени успешно.",
+        "no_nodes_to_add": "Няма възли за добавяне.",
+        "node_already_exists": "Избраният възел вече съществува.",
+        "auth_error": "Невалидно удостоверяване",
+        "cant_connect": "Неуспешно свързване",
+        "general_error": "Неочаквана грешка",
+        "invalid_port": "Невалиден номер на порт",
+        "ssl_rejection": "Неуспешна проверка на SSL сертификат"
       }
     },
     "entity": {
       "binary_sensor": {
         "status": {
-          "name": "Status"
+          "name": "Статус"
         },
         "health": {
-          "name": "Health"
+          "name": "Здравен статус"
         },
         "update_avail": {
-          "name": "Updates packages"
+          "name": "Пакети с актуализации"
         }
       },
       "button": {
         "start_all": {
-          "name": "Start all"
+          "name": "Старт на всички"
         },
         "stop_all": {
-          "name": "Stop all"
+          "name": "Спри на всички"
         },
         "shutdown": {
-          "name": "Shutdown"
+          "name": "Спиране"
         },
         "reboot": {
-          "name": "Reboot"
+          "name": "Рестарт"
         },
         "start": {
-          "name": "Start"
+          "name": "Старт"
         },
         "stop": {
-          "name": "Stop"
+          "name": "Спиране"
         },
         "resume": {
-          "name": "Resume"
+          "name": "Възобновнови"
         },
         "suspend": {
-          "name": "Suspend"
+          "name": "Спиране"
         },
         "reset": {
-          "name": "Reset"
+          "name": "Рестарт"
         }
       },
       "sensor": {
         "cpu_used": {
-          "name": "CPU used"
+          "name": "Използван CPU ресурс"
         },
         "disk_free": {
-          "name": "Disk free"
+          "name": "Свободно дисково пространство"
         },
         "disk_free_perc": {
-          "name": "Disk free percentage"
+          "name": "Свободно дисково пространство в процент"
         },
         "disk_rpm": {
-          "name": "Disk speed"
+          "name": "Скорост на диска"
         },
         "disk_size": {
-          "name": "Size"
+          "name": "Размер"
         },
         "disk_total": {
-          "name": "Disk total"
+          "name": "Общо дисково пространство"
         },
         "disk_used": {
-          "name": "Disk used"
+          "name": "Използвано дисково пространство"
         },
         "disk_used_perc": {
-          "name": "Disk used percentage"
+          "name": "Процент на използван диск"
         },
         "disk_wearout": {
-          "name": "Wearout"
+          "name": "Износване"
         },
         "life_left": {
-          "name": "Life left"
+          "name": "Остатъчен живот"
         },
         "lxc_on": {
-          "name": "Containers running",
+          "name": "Работещи контейнери",
           "state_attributes": {
             "lxc_on_list": {
-              "name": "Containers list"
+              "name": "Списък на контейнерите"
             }
           }
         },
         "memory_free": {
-          "name": "Memory free"
+          "name": "Свободна памет"
         },
         "memory_free_perc": {
-          "name": "Memory free percentage"
+          "name": "Свободна памет в процент"
         },
         "memory_total": {
-          "name": "Memory total"
+          "name": "Обща памет"
         },
         "memory_used": {
-          "name": "Memory used"
+          "name": "Изполвана памет"
         },
         "memory_used_perc": {
-          "name": "Memory used percentage"
+          "name": "Използвана памет в процент"
         },
         "network_in": {
-          "name": "Network in"
+          "name": "Входяща мрежа"
         },
         "network_out": {
-          "name": "Network out"
+          "name": "Изходяша мрежа"
         },
         "node": {
-          "name": "Node"
+          "name": "Възел"
         },
         "power_cycles": {
-          "name": "Power cycles"
+          "name": "Токови цикли"
         },
         "power_loss": {
-          "name": "Unexpected power loss"
+          "name": "Неочаквана спиране на тока"
         },
         "power_hours": {
-          "name": "Power-on hours"
+          "name": "Часове за включване"
         },
         "qemu_on": {
-          "name": "Virtual machines running",
+          "name": "Работещи виртуални машини",
           "state_attributes": {
             "qemu_on_list": {
-              "name": "Virtual machines list"
+              "name": "Списък на виртуалните машини"
             }
           }
         },
         "status_raw": {
-          "name": "Status",
+          "name": "Статус",
           "state": {
-            "internal-error": "Internal error",
-            "prelaunch": "Pre launch",
-            "paused": "Paused",
-            "stopped": "Stopped",
-            "suspended": "Suspended",
-            "running": "Running"
+            "internal-error": "Вътрешна грешка",
+            "prelaunch": "Предварително стартиране",
+            "paused": "На пауза",
+            "stopped": "Спряно",
+            "suspended": "Спряно",
+            "running": "В ход"
           }
         },
         "swap_free": {
-          "name": "Swap free"
+          "name": "Свободен Swap"
         },
         "swap_free_perc": {
-          "name": "Swap free percentage"
+          "name": "Свободен Swap в процент"
         },
         "swap_total": {
-          "name": "Swap total"
+          "name": "Общ Swap"
         },
         "swap_used": {
-          "name": "Swap used"
+          "name": "Използван Swap"
         },
         "swap_used_perc": {
-          "name": "Swap used percentage"
+          "name": "Използван Swap в процент"
         },
         "temperature": {
-          "name": "Temperature"
+          "name": "Температура"
         },
         "updates_total": {
           "name": "Общо актуализации",
