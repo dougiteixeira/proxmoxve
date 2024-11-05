@@ -43,55 +43,55 @@
         "ssl_rejection": "Неуспешна проверка на SSL сертификат"
       },
       "abort": {
-        "already_configured": "Устройството вече е конфигурирано",
+        "already_configured": "Устройството вече е настроено",
         "no_resources": "За тази инстанция не бяха върнати ресурси.",
         "reauth_successful": "Повторното удостоверяване беше успешно"
       }
     },
     "issues": {
       "import_success": {
-        "title": "{host}:{port} беше импортиран от YAML конфигурация",
-        "description": "YAML конфигурацията на {host}:{port} инстанцията на {integration} (`{platform}`) е импортирана в потребителския интерфейс автоматично.\n\nМоже безопасно да се премахне от вашия файл `configuration.yaml`."
+        "title": "{host}:{port} беше импортиран от YAML настройката",
+        "description": "YAML настройката на {host}:{port} инстанцията на {integration} (`{platform}`) е импортирана в потребителския интерфейс автоматично.\n\nМоже безопасно да се премахне от вашия файл `configuration.yaml`."
       },
       "import_invalid_port": {
-        "title": "Грешка при импортирането на YAML конфигурация от {host}:{port}",
-        "description": "Импортирането на YAML конфигурация от {host}:{port} инстанцията на {integration} (`{platform}`) не бе успешно поради невалиден порт.\n\nТрябва да премахнете тази конфигурация от вашия файл `configuration.yaml`, да рестартирате Home Assistant и конфигурирайте го ръчно."
+        "title": "Грешка при импортирането на YAML настройката от {host}:{port}",
+        "description": "Импортирането на YAML настройката от {host}:{port} инстанцията на {integration} (`{platform}`) не бе успешно поради невалиден порт.\n\nТрябва да премахнете тази настройка от вашия файл `configuration.yaml`, да рестартирате Home Assistant и конфигурирайте го ръчно."
       },
       "import_auth_error": {
-        "title": "Error in importing YAML configuration from {host}:{port}",
-        "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to authentication error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+        "title": "Грешка при импортирането на YAML настройката от {host}:{port}",
+        "description": "Импортиране на YAML настройката от {host}:{port} инстанцията на {integration} (`{platform}`) неуспешно поради грешка при удостоверяване.\n\nТрябва да премахнете тази настройка от вашия `configuration.yaml` файл, да рестартирате Home Assistant и ръчно да го настройте."
       },
       "import_ssl_rejection": {
-        "title": "Error in importing YAML configuration from {host}:{port}",
-        "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to SSL rejection.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+        "title": "Въззникна грешка при импортирането на YAML настройката от {host}:{port}",
+        "description": "Импортиране на YAML настройката от {host}:{port} инстанцията на {integration} (`{platform}`) неуспешно поради отхвърляне на SSL.\n\nТрябва да премахнете тази настройка от вашия `configuration.yaml` файл, да рестартирате Home Assistant и ръчно да го настройте."
       },
       "import_cant_connect": {
-        "title": "Error in importing YAML configuration from {host}:{port}",
-        "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to connection failed.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+        "title": "Грешка при импортирането на YAML настройката от {host}:{port}",
+        "description": "Импортиране на YAML настройката от {host}:{port} инстанция на {integration} (`{platform}`) неуспешно поради неуспешно свързване.\n\nТрябва да премахнете тази настройка от вашия `configuration.yaml` файл, да рестартирате Home Assistant и ръчно да го настройте."
       },
       "import_general_error": {
-        "title": "Error in importing YAML configuration from {host}:{port}",
-        "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to unknown error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+        "title": "Грешка при импортирането на YAML настройката от {host}:{port}",
+        "description": "Импортиране на YAML настройката от {host}:{port} инстанция на {integration} (`{platform}`) неуспешно поради неизвестна грешка.\n\nТрябва да премахнете тази настройка от вашия `configuration.yaml` файл, да рестартирате Home Assistant и ръчно да го настройте."
       },
       "import_already_configured": {
-        "title": "The instance {host}:{port} already exists in the UI, can be removed",
-        "description": "The YAML configuration of instace {host}:{port} of {integration} (`{platform}`) already exists in the UI and was ignored on import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+        "title": "Инстанцията {host}:{port} вече съществува в UI, но може да се премахне",
+        "description": "YAML настройката {host}:{port} на инстанцията {integration} (`{platform}`) вече съществува в потребителския интерфейс и е игнориран при импортиране.\n\nТрябва да премахнете тази настройка от вашия `configuration.yaml` файл и да рестартирате Home Assistant."
       },
       "import_node_not_exist": {
-        "title": "Node {node} does not exist in {host}:{port}",
-        "description": "The {node} of the {host}:{port} instance of {integration} (`{platform}`) present in the YAML configuration does not exist in this instance and was ignored in the import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+        "title": "Възелът {node} не съществува в {host}:{port}",
+        "description": "Възълът {node} на {host}:{port} инстанцията на интеграцията {integration} (`{platform}`) в YAML настройката не съществува в този случай и е игнориран при импортирането.\n\nТрябва да премахнете тази настройка от вашия `configuration.yaml` файл и да рестартирате Home Assistant."
       },
       "yaml_deprecated": {
-        "title": "Configuration of the {integration} in YAML is deprecated",
-        "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in {version}.\n\nResolve the import issues and remove the YAML configuration from your `configuration.yaml` file."
+        "title": "Настройката на {integration} в YAML е остарял",
+        "description": "Настройката на {integration} (`{platform}`) в YAML е остарял и трябва да бъде премахнат {version}.\n\nРазрешете проблемите с импортирането и премахнете YAML настройката от вашия `configuration.yaml` файл."
       },
       "resource_nonexistent": {
-        "description": "{resource_type} {resource} does not exist on ({host}:{port}), remove it in integration options.\n\nThis can also be caused if the user doesn't have enough permission to access the resource.\n\nTip on required permissions:\n* `{permission}`",
-        "title": "{resource_type} {resource} does not exist"
+        "description": "{resource_type} {resource} не съществува на ({host}:{port}), премахнете го в опциите за интеграция.\n\nТова също може да бъде причинено, ако потребителят няма достатъчно права за достъп до ресурса.\n\nСъвет относно необходимите права:\n* `{permission}`",
+        "title": "{resource_type} {resource} не съществува"
       },
       "no_permissions": {
-        "description": "The user `{user}` does not have the required permissions for all features.\n\nThe following features are not accessible by the user:\n`{errors}`\n\nCheck the user permissions as described in the documentation.",
-        "title": "User `{user}` does not have the required permissions"
+        "description": "Потребителят `{user}` няма необходимите права за всички функции.\n\nСледните функции не са достъпни от потребителя:\n`{errors}`\n\nПроверете потребителските права, както е описано в документацията.",
+        "title": "Потребителят `{user}` не притежава необходимите права"
       },
       "resource_exception_forbiden": {
         "description": "Потребителят `{user}` няма достатъчно права за достъп до ресурса `{resource}`.\n\nСъвет относно необходимите права:\n* `{permission}`\n\nМоля, проверете документацията и потребителските права.",
@@ -106,8 +106,8 @@
       "step": {
         "menu": {
           "menu_options": {
-            "host_auth": "Change host authentication information",
-            "change_expose": "Add or remove Nodes, VMs, Containers or Storages"
+            "host_auth": "Променете информацията за удостоверяване на хоста",
+            "change_expose": "Добавете или премахнете възли, виртуални машини, контейнери или хранилища за данни"
           }
         },
         "host_auth": {
@@ -143,7 +143,7 @@
       },
       "abort": {
         "no_nodes": "Не бяха върнати възли за хоста.",
-        "no_vms": "Няма виртуални машини или контейнери за този възел, записът за конфигурация ще бъде създаден за възела.",
+        "no_vms": "Няма виртуални машини или контейнери за този възел, записът за настройкаата ще бъде създаден за възела.",
         "changes_successful": "Промените са запазени успешно.",
         "no_nodes_to_add": "Няма възли за добавяне.",
         "node_already_exists": "Избраният възел вече съществува.",
@@ -203,7 +203,7 @@
           "name": "Свободно дисково пространство"
         },
         "disk_free_perc": {
-          "name": "Свободно дисково пространство в процент"
+          "name": "Свободно дисково пространство в проценти"
         },
         "disk_rpm": {
           "name": "Скорост на диска"
@@ -218,10 +218,10 @@
           "name": "Използвано дисково пространство"
         },
         "disk_used_perc": {
-          "name": "Процент на използван диск"
+          "name": "Проценти на използван диск"
         },
         "disk_wearout": {
-          "name": "Износване"
+          "name": "Износване на диск"
         },
         "life_left": {
           "name": "Остатъчен живот"
@@ -238,7 +238,7 @@
           "name": "Свободна памет"
         },
         "memory_free_perc": {
-          "name": "Свободна памет в процент"
+          "name": "Свободна памет в проценти"
         },
         "memory_total": {
           "name": "Обща памет"
@@ -247,7 +247,7 @@
           "name": "Изполвана памет"
         },
         "memory_used_perc": {
-          "name": "Използвана памет в процент"
+          "name": "Използвана памет в проценти"
         },
         "network_in": {
           "name": "Входяща мрежа"
@@ -290,7 +290,7 @@
           "name": "Свободен Swap"
         },
         "swap_free_perc": {
-          "name": "Свободен Swap в процент"
+          "name": "Свободен Swap в проценти"
         },
         "swap_total": {
           "name": "Общ Swap"
@@ -299,7 +299,7 @@
           "name": "Използван Swap"
         },
         "swap_used_perc": {
-          "name": "Използван Swap в процент"
+          "name": "Използван Swap в проценти"
         },
         "temperature": {
           "name": "Температура"
