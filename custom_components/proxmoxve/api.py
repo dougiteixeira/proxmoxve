@@ -126,10 +126,11 @@ def post_api_command(
         issue_id = f"{self.config_entry.entry_id}_{vm_id}_command_forbiden"
 
     try:
-        # Only the START_ALL and STOP_ALL are not part of status API
+        # START_ALL, STOP_ALL, WAKEONLAN are not part of status API
         if api_category is ProxmoxType.Node and command in [
             ProxmoxCommand.START_ALL,
             ProxmoxCommand.STOP_ALL,
+            ProxmoxCommand.WAKEONLAN,
         ]:
             result = post_api(proxmox, f"nodes/{node}/{command}")
         elif api_category is ProxmoxType.Node:
