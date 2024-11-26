@@ -76,8 +76,10 @@ PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Disk free percentage",
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: 1 - (x.disk_used / x.disk_total) if x.disk_total != UNDEFINED and x.disk_total > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: 1 - (x.disk_used / x.disk_total)
+        if (UNDEFINED not in (x.disk_used, x.disk_total) and x.disk_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
         entity_registry_enabled_default=False,
@@ -112,9 +114,10 @@ PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Disk used percentage",
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
-        update_offline_node
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.disk_used / x.disk_total) if x.disk_total != UNDEFINED and x.disk_total > 0  else 0,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: (x.disk_used / x.disk_total)
+        if (UNDEFINED not in (x.disk_used, x.disk_total) and x.disk_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
         translation_key="disk_used_perc",
@@ -137,8 +140,10 @@ PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Memory free percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.memory_free / x.memory_total) if x.memory_total != UNDEFINED and x.memory_total > 0  else 0,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: (x.memory_free / x.memory_total)
+        if (UNDEFINED not in (x.memory_free, x.memory_total) and x.memory_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
@@ -172,8 +177,10 @@ PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Memory used percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.memory_used / x.memory_total) if x.memory_total != UNDEFINED and x.memory_total > 0  else 0,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: (x.memory_used / x.memory_total)
+        if (UNDEFINED not in (x.memory_used, x.memory_total) and x.memory_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         translation_key="memory_used_perc",
@@ -197,8 +204,10 @@ PROXMOX_SENSOR_SWAP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Swap free percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.swap_free / x.swap_total) if x.swap_total != UNDEFINED and x.swap_total > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: (x.swap_free / x.swap_total)
+        if (UNDEFINED not in (x.swap_free, x.swap_total) and x.swap_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
@@ -233,8 +242,10 @@ PROXMOX_SENSOR_SWAP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Swap used percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (x.swap_used / x.swap_total) if x.swap_total != UNDEFINED and x.swap_total > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        value_fn=lambda x: (x.swap_used / x.swap_total)
+        if (UNDEFINED not in (x.swap_used, x.swap_total) and x.swap_total > 0)
+        else 0,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         entity_registry_enabled_default=False,
