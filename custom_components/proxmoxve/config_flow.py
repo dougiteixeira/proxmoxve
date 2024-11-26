@@ -27,6 +27,7 @@ from .api import ProxmoxClient, get_api
 from .const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
+    CONF_UPDATE_ENABLE,
     CONF_LXC,
     CONF_NODE,
     CONF_NODES,
@@ -288,6 +289,12 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                                 CONF_DISKS_ENABLE, True
                             ),
                         ): selector.BooleanSelector(),
+                        vol.Optional(
+                            CONF_UPDATE_ENABLE,
+                            default=self.config_entry.options.get(
+                                CONF_UPDATE_ENABLE, True
+                            ),
+                        ): selector.BooleanSelector(),
                     }
                 ),
             )
@@ -307,7 +314,10 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             }
         )
 
-        options_data = {CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)}
+        options_data = {
+            CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
+            CONF_UPDATE_ENABLE: user_input.get(CONF_UPDATE_ENABLE)
+        }
 
         self.hass.config_entries.async_update_entry(
             self.config_entry, data=config_data, options=options_data
@@ -384,6 +394,20 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                             continue
 
                         identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{coordinator_data.path}"
+                        await self.async_remove_device(
+                            entry_id=self.config_entry.entry_id,
+                            device_identifier=identifier,
+                        )
+             or not user_input.get(CONF_UPDATE_ENABLE):
+                coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][
+                    COORDINATORS
+                ]
+                if f"{ProxmoxType.Update}_{node}" in coordinators:
+                    for coordinator_update in coordinators[f"{ProxmoxType.Update}_{node}"]:
+                        if (coordinator_data := coordinator_update.data) is None:
+                            continue
+
+                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Update.upper()}_{node}"
                         await self.async_remove_device(
                             entry_id=self.config_entry.entry_id,
                             device_identifier=identifier,
@@ -874,6 +898,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_DISKS_ENABLE,
                             default=True,
                         ): selector.BooleanSelector(),
+                        vol.Optional(
+                            CONF_UPDATE_ENABLE,
+                            default=True,
+                        ): selector.BooleanSelector(),
                     }
                 ),
             )
@@ -917,7 +945,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title=(f"{self._config[CONF_HOST]}:{self._config[CONF_PORT]}"),
             data=self._config,
-            options={CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)},
+            options={
+                CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
+                CONF_UPDATE_ENABLE: user_input.get(CONF_UPDATE_ENABLE),
+            },
         )
 
     @staticmethod

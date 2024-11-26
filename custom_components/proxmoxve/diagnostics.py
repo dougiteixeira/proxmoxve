@@ -16,7 +16,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from .api import get_api
-from .const import CONF_DISKS_ENABLE, COORDINATORS, DOMAIN, PROXMOX_CLIENT
+from .const import CONF_DISKS_ENABLE, CONF_UPDATE_ENABLE, COORDINATORS, DOMAIN, PROXMOX_CLIENT
 from .coordinator import (
     ProxmoxDiskCoordinator,
     ProxmoxLXCCoordinator,
@@ -128,24 +128,25 @@ async def async_get_api_data_diagnostics(
             else:
                 nodes[node["node"]]["storage"]["error"] = error
 
-        try:
-            nodes[node["node"]]["updates"] = await hass.async_add_executor_job(
-                get_api, proxmox, f"nodes/{node['node']}/apt/update"
-            )
-        except ResourceException as error:
-            if error.status_code == 403:
-                nodes[node["node"]]["updates"]["error"] = (
-                    "403 Forbidden: Permission check failed"
+        if config_entry.options.get(CONF_UPDATE_ENABLE, True):
+            try:
+                nodes[node["node"]]["updates"] = await hass.async_add_executor_job(
+                    get_api, proxmox, f"nodes/{node['node']}/apt/update"
                 )
-            else:
-                nodes[node["node"]]["updates"]["error"] = error
+            except ResourceException as error:
+                if error.status_code == 403:
+                    nodes[node["node"]]["updates"]["error"] = (
+                        "403 Forbidden: Permission check failed"
+                    )
+                else:
+                    nodes[node["node"]]["updates"]["error"] = error
 
-        try:
-            nodes[node["node"]]["versions"] = await hass.async_add_executor_job(
-                get_api, proxmox, f"nodes/{node['node']}/apt/versions"
-            )
-        except ResourceException as error:
-            nodes[node["node"]]["updates"]["error"] = error
+            try:
+                nodes[node["node"]]["versions"] = await hass.async_add_executor_job(
+                    get_api, proxmox, f"nodes/{node['node']}/apt/versions"
+                )
+            except ResourceException as error:
+                nodes[node["node"]]["updates"]["error"] = error
 
         if config_entry.options.get(CONF_DISKS_ENABLE, True):
             try:

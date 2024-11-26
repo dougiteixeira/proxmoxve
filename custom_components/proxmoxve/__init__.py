@@ -422,14 +422,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             if coordinator_node.data is not None:
                 nodes_add_device.append(node)
 
-            coordinator_updates = ProxmoxUpdateCoordinator(
-                hass=hass,
-                proxmox=proxmox,
-                api_category=ProxmoxType.Update,
-                node_name=node,
-            )
-            await coordinator_updates.async_refresh()
-            coordinators[f"{ProxmoxType.Update}_{node}"] = coordinator_updates
+            if config_entry.options.get(CONF_UPDATE_ENABLE, True):
+                coordinator_updates = ProxmoxUpdateCoordinator(
+                    hass=hass,
+                    proxmox=proxmox,
+                    api_category=ProxmoxType.Update,
+                    node_name=node,
+                )
+                await coordinator_updates.async_refresh()
+                coordinators[f"{ProxmoxType.Update}_{node}"] = coordinator_updates
 
             if config_entry.options.get(CONF_DISKS_ENABLE, True):
                 try:

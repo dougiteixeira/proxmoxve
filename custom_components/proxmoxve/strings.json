@@ -20,10 +20,12 @@
           "qemu": "Virtual Machines (QEMU)",
           "lxc": "Linux Containers (LXC)",
           "storage": "Storages",
-          "disks_enable": "Enable physical disk information"
+          "disks_enable": "Enable physical disk information",
+          "update_enable": "Enable update information"
         },
         "data_description": {
-          "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+          "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly.",
+          "update_enable": "If you do not want to grant Sys.Modify permissions, disable update information fetching here to prevent permission errors."
         }
       },
       "reauth_confirm": {
@@ -128,10 +130,12 @@
           "qemu": "[%key:component::proxmoxve::config::step::expose::data::qemu%]",
           "lxc": "[%key:component::proxmoxve::config::step::expose::data::lxc%]",
           "storage": "[%key:component::proxmoxve::config::step::expose::data::storage%]",
-          "disks_enable": "[%key:component::proxmoxve::config::step::expose::data::disks_enable%]"
+          "disks_enable": "[%key:component::proxmoxve::config::step::expose::data::disks_enable%]",
+          "update_enable": "[%key:component::proxmoxve::config::step::expose::data::update_enable%]"
         },
         "data_description": {
-          "disks_enable": "[%key:component::proxmoxve::config::step::expose::data_description::disks_enable%]"
+          "disks_enable": "[%key:component::proxmoxve::config::step::expose::data_description::disks_enable%]",
+          "update_enable": "[%key:component::proxmoxve::config::step::expose::data_description::update_enable%]"
         }
       }
     },
