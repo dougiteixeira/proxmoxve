@@ -31,6 +31,7 @@ import homeassistant.util.dt as dt_util
 
 from . import async_migrate_old_unique_ids, device_info
 from .const import (
+    LOGGER,
     CONF_LXC,
     CONF_NODES,
     CONF_QEMU,
@@ -76,7 +77,7 @@ PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Disk free percentage",
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
         value_fn=lambda x: 1 - (x.disk_used / x.disk_total)
         if (UNDEFINED not in (x.disk_used, x.disk_total) and x.disk_total > 0)
         else 0,
@@ -114,7 +115,7 @@ PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Disk used percentage",
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
         value_fn=lambda x: (x.disk_used / x.disk_total)
         if (UNDEFINED not in (x.disk_used, x.disk_total) and x.disk_total > 0)
         else 0,
@@ -140,7 +141,7 @@ PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Memory free percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
         value_fn=lambda x: (x.memory_free / x.memory_total)
         if (UNDEFINED not in (x.memory_free, x.memory_total) and x.memory_total > 0)
         else 0,
@@ -177,7 +178,7 @@ PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Memory used percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
         value_fn=lambda x: (x.memory_used / x.memory_total)
         if (UNDEFINED not in (x.memory_used, x.memory_total) and x.memory_total > 0)
         else 0,
@@ -204,7 +205,7 @@ PROXMOX_SENSOR_SWAP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Swap free percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
         value_fn=lambda x: (x.swap_free / x.swap_total)
         if (UNDEFINED not in (x.swap_free, x.swap_total) and x.swap_total > 0)
         else 0,
@@ -242,7 +243,7 @@ PROXMOX_SENSOR_SWAP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Swap used percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x > 0 else 0,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
         value_fn=lambda x: (x.swap_used / x.swap_total)
         if (UNDEFINED not in (x.swap_used, x.swap_total) and x.swap_total > 0)
         else 0,
@@ -521,7 +522,7 @@ async def async_setup_sensors_nodes(
                                 coordinator.data, description.key, False
                             )
                         )
-                        and data_value != UNDEFINED
+                        #and data_value != UNDEFINED
                     )
                     or data_value == 0
                     or (
@@ -832,7 +833,7 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
         if (data := self.coordinator.data) is None:
             return None
 
-        if not getattr(data, self.entity_description.key, False):
+        if (not getattr(data, self.entity_description.key, False)) and getattr(data, self.entity_description.key, True) != 0:
             if value := self.entity_description.value_fn:
                 native_value = value(data)
             elif self.entity_description.key in (
