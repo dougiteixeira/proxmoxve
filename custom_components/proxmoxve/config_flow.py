@@ -398,20 +398,23 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                             entry_id=self.config_entry.entry_id,
                             device_identifier=identifier,
                         )
-             or not user_input.get(CONF_UPDATE_ENABLE):
+                        
+            if node not in (
+                node_selecition if node_selecition is not None else []
+            ) or not user_input.get(CONF_UPDATE_ENABLE):
                 coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][
                     COORDINATORS
                 ]
                 if f"{ProxmoxType.Update}_{node}" in coordinators:
-                    for coordinator_update in coordinators[f"{ProxmoxType.Update}_{node}"]:
-                        if (coordinator_data := coordinator_update.data) is None:
-                            continue
+                    coordinator_update = coordinators[f"{ProxmoxType.Update}_{node}"]
+                    if (coordinator_data := coordinator_update.data) is None:
+                        continue
 
-                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Update.upper()}_{node}"
-                        await self.async_remove_device(
-                            entry_id=self.config_entry.entry_id,
-                            device_identifier=identifier,
-                        )
+                    identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Update.upper()}_{node}"
+                    await self.async_remove_device(
+                        entry_id=self.config_entry.entry_id,
+                        device_identifier=identifier,
+                    )
 
         qemu_selecition = []
         if (

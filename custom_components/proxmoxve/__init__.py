@@ -39,6 +39,7 @@ from .api import ProxmoxClient, get_api
 from .const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
+    CONF_UPDATE_ENABLE,
     CONF_LXC,
     CONF_NODE,
     CONF_NODES,
