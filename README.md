@@ -100,6 +100,19 @@ Below is a summary of the permissions for each integration feature. I suggest yo
 |Get information about available package updates to display on sensors (integration does not trigger the update)|Management permission|HomeAssistant.Update|Sys.Modify|
 |Perform commands on VM/CT (start, shutdown, restart, suspend, resume and hibernate)|Management permission|HomeAssistant.VMPowerMgmt|VM.PowerMgmt|
 
+#### Disable update information to avoid needing Sys.Modify permission
+
+As Proxmox VE documentation states that `Sys.Modify` permissions should be handled with care, you can opt-out of polling the update information from your Proxmox instance to avoid permission errors.
+
+1. Navigate to your Home Assistant instance.
+2. In the sidebar, click Settings.
+3. From the Setup menu, select: Devices & Services.
+4. Search and select `Proxmox VE`.
+5. Click on `Configure` button of your instance
+6. Go to `Nodes, containers, …` setting
+7. Toggle `Enable update information` off
+8. Click `OK`
+
 ### Create Home Assistant Group
 
 Before creating the user, we need to create a group for the user.
