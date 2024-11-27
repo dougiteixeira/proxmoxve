@@ -127,10 +127,12 @@
             "nodes": "Nodes",
             "qemu": "Virtual Machines (QEMU)",
             "storage": "Storages",
-            "disks_enable": "Enable physical disk information"
+            "disks_enable": "Enable physical disk information",
+            "update_enable": "Enable update information"
           },
           "data_description": {
-            "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+            "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly.",
+            "update_enable": "If you do not want to grant Sys.Modify permissions, disable update information fetching here to prevent permission errors."
           }
         }
       },
