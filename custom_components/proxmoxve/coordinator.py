@@ -94,7 +94,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                     node_status = node_api["status"]
                     break
             if node_status == "":
-                LOGGER.warning("Node %s Status is %s", self.resource_id, node_status)
+                LOGGER.debug("Node %s status is %s", self.resource_id, node_status)
                 node_status = "offline"
 
         if node_status == "online":
@@ -523,7 +523,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
                     break
             if node_status == "":                                
                 node_status = "offline"
-            LOGGER.warning("Node %s Status is %s", self.node_name, node_status)    
+            LOGGER.debug("Node %s status is %s", self.node_name, node_status)    
 
         if node_status == "online":
             if self.node_name is not None:
