@@ -40,8 +40,9 @@ Adding Proxmox VE to your Home Assistant instance can be done via the UI using t
 [![image](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=proxmoxve)
 
 You can either use password or token based authentication. For user based authentication leave the 
-token name field empty. If you want to use token based authentication, fill the token name in the
-corresponding input field and put your token secret in the password field.
+token name field empty and make sure to set the correct realm to pve, pam or other. You can find this value
+in Proxmox under Datacenter -> Permissions -> Users -> Realm column. If you want to use token based
+authentication, fill the token name in the corresponding input field and put your token secret in the password field.
 
 ### Manual Configuration
 
