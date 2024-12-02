@@ -826,11 +826,6 @@ def poll_api(
 
     try:
         return get_api(proxmox, api_path)
-        ir.delete_issue(
-            hass,
-            DOMAIN,
-            f"{config_entry.entry_id}_{resource_id}_forbiden",
-        )
     except AuthenticationError as error:
         raise ConfigEntryAuthFailed from error
     except (
@@ -863,3 +858,8 @@ def poll_api(
             )
             return None
         raise UpdateFailed from error
+    ir.delete_issue(
+        hass,
+        DOMAIN,
+        f"{config_entry.entry_id}_{resource_id}_forbiden",
+    )
