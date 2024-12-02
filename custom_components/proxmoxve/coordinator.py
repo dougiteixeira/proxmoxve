@@ -825,11 +825,6 @@ def poll_api(
                 return "Unmapped"
 
     try:
-        ir.delete_issue(
-            hass,
-            DOMAIN,
-            f"{config_entry.entry_id}_{resource_id}_forbiden",
-        )
         return get_api(proxmox, api_path)
     except AuthenticationError as error:
         raise ConfigEntryAuthFailed from error
@@ -863,3 +858,9 @@ def poll_api(
             )
             return None
         raise UpdateFailed from error
+    else:
+        ir.delete_issue(
+            hass,
+            DOMAIN,
+            f"{config_entry.entry_id}_{resource_id}_forbiden",
+        )
