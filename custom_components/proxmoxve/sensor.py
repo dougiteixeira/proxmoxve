@@ -842,6 +842,8 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
                 ProxmoxKeyAPIParse.MEMORY_USED,
                 ProxmoxKeyAPIParse.DISK_USED,
                 ProxmoxKeyAPIParse.SWAP_USED,
+                "lxc_on",
+                "qemu_on",
             ):
                 return 0
             else:
