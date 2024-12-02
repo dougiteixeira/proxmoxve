@@ -849,6 +849,7 @@ def poll_api(
                 DOMAIN,
                 f"{config_entry.entry_id}_{resource_id}_forbiden",
                 is_fixable=False,
+                is_persistent=True,
                 severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_exception_forbiden",
                 translation_placeholders={
