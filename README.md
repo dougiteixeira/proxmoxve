@@ -172,3 +172,28 @@ In your Home Assistant configuration, use `homeassistant@pve` for the username a
    
    For the entity to appear enabled on the device page, it may be necessary to refresh the page.
    </details>
+
+
+## Translations
+
+You can help by adding missing translations when you are a native speaker. Or add a complete new language when there is no language file available.
+
+Proxmox VE Custom Integration uses Crowdin to make contributing easy.
+
+### Changing or adding to existing language
+
+First register and join the translation project:
+* If you don’t have a Crowdin account yet, create one at https://crowdin.com
+* Go to the [Proxmox VE Custom Integration project page](https://crowdin.com/project/proxmoxve-homeassistant)
+* Click Join.
+
+Next translate a string:
+* Select the language you want to contribute to from the dashboard.
+* Click Translate All.
+* Find the string you want to edit, missing translation are marked red.
+* Fill in or modify the translation and click Save.
+* Repeat for other translations.
+
+### Adding a new language
+
+[Create an Issue](https://github.com/dougiteixeira/proxmoxve/issues/new?template=new_language_request.yml&title=New+language) requesting a new language. We will do the necessary work to add the new translation to the integration and Crowdin site, when it's ready for you to contribute we'll comment on the issue you raised.

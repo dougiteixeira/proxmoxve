@@ -1,0 +1,12 @@
+name: New Language
+description: Submit a request for a new language to be created in Crowdin for translation.
+title: "New Language"
+labels: ["new-language"]
+body:
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      description: The language you would like to submit translations for.
+    validations:
+      required: true
