@@ -178,7 +178,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
                 else UNDEFINED,
                 status=api_status.get("status", "Offline"),
-                version=api_status["version"].get("version", UNDEFINED) 
+                version=api_status["version"].get("version", UNDEFINED)
                 if ("version" in api_status)
                 else UNDEFINED,
                 uptime=api_status.get("uptime", UNDEFINED),
@@ -207,7 +207,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 if (("qemu" in api_status) and "total" in api_status["qemu"])
                 else 0,
                 qemu_on_list=api_status["qemu"]["list"]
-                 if (("qemu" in api_status) and "list" in api_status["qemu"])
+                if (("qemu" in api_status) and "list" in api_status["qemu"])
                 else UNDEFINED,
                 lxc_on=api_status["lxc"]["total"]
                 if (("lxc" in api_status) and "total" in api_status["lxc"])
@@ -521,9 +521,9 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
                 if node_api[CONF_NODE] == self.node_name:
                     node_status = node_api["status"]
                     break
-            if node_status == "":                                
+            if node_status == "":
                 node_status = "offline"
-            LOGGER.debug("Node %s status is %s", self.node_name, node_status)    
+            LOGGER.debug("Node %s status is %s", self.node_name, node_status)
 
         if node_status == "online":
             if self.node_name is not None:
