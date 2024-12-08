@@ -189,10 +189,9 @@ async def async_setup_entry(
             continue
         for description in PROXMOX_BUTTON_VM:
             if (
-                ((api_category := description.api_category)
-                and ProxmoxType.QEMU in api_category)
-                or api_category is None
-            ):
+                (api_category := description.api_category)
+                and ProxmoxType.QEMU in api_category
+            ) or api_category is None:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
@@ -220,10 +219,9 @@ async def async_setup_entry(
             continue
         for description in PROXMOX_BUTTON_VM:
             if (
-                ((api_category := description.api_category)
-                and ProxmoxType.LXC in api_category)
-                or api_category is None
-            ):
+                (api_category := description.api_category)
+                and ProxmoxType.LXC in api_category
+            ) or api_category is None:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
