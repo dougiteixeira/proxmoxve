@@ -573,9 +573,7 @@ async def async_setup_sensors_nodes(
                         )
 
             coordinator_disks_data: ProxmoxDiskData
-            for coordinator_disk in (
-                coordinators.get(f"{ProxmoxType.Disk}_{node}", [])
-            ):
+            for coordinator_disk in coordinators.get(f"{ProxmoxType.Disk}_{node}", []):
                 if (coordinator_disks_data := coordinator_disk.data) is None:
                     continue
 
@@ -643,11 +641,7 @@ async def async_setup_sensors_qemu(
         for description in PROXMOX_SENSOR_QEMU:
             if description.api_category in (None, ProxmoxType.QEMU) and (
                 (
-                    (
-                        data_value := getattr(
-                            coordinator.data, description.key, False
-                        )
-                    )
+                    (data_value := getattr(coordinator.data, description.key, False))
                     and data_value != UNDEFINED
                 )
                 or data_value == 0
@@ -695,11 +689,7 @@ async def async_setup_sensors_lxc(
         for description in PROXMOX_SENSOR_LXC:
             if description.api_category in (None, ProxmoxType.LXC) and (
                 (
-                    (
-                        data_value := getattr(
-                            coordinator.data, description.key, False
-                        )
-                    )
+                    (data_value := getattr(coordinator.data, description.key, False))
                     and data_value != UNDEFINED
                 )
                 or data_value == 0
@@ -747,11 +737,7 @@ async def async_setup_sensors_storages(
         for description in PROXMOX_SENSOR_STORAGE:
             if description.api_category in (None, ProxmoxType.Storage) and (
                 (
-                    (
-                        data_value := getattr(
-                            coordinator.data, description.key, False
-                        )
-                    )
+                    (data_value := getattr(coordinator.data, description.key, False))
                     and data_value != UNDEFINED
                 )
                 or data_value == 0

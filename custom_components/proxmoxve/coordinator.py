@@ -112,9 +112,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             )
             if api_status is None:
                 msg = f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
-                raise UpdateFailed(
-                    msg
-                )
+                raise UpdateFailed(msg)
 
             api_status["status"] = node_api["status"]
             api_status["cpu"] = node_api["cpu"]
@@ -220,9 +218,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 else UNDEFINED,
             )
         msg = f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
-        raise UpdateFailed(
-            msg
-        )
+        raise UpdateFailed(msg)
 
 
 class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
@@ -751,9 +747,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                 )
 
         msg = f"Disk {self.resource_id} not found on node {self.node_name}."
-        raise UpdateFailed(
-            msg
-        )
+        raise UpdateFailed(msg)
 
 
 def update_device_via(

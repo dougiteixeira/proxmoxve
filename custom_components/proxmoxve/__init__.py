@@ -377,24 +377,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             "Unable to verify proxmox server SSL. Try using 'verify_ssl: false' "
             f"for proxmox instance {host}:{port}"
         )
-        raise ConfigEntryNotReady(
-            msg
-        ) from error
+        raise ConfigEntryNotReady(msg) from error
     except ConnectTimeout as error:
         msg = f"Connection to host {host} timed out during setup"
-        raise ConfigEntryNotReady(
-            msg
-        ) from error
+        raise ConfigEntryNotReady(msg) from error
     except RetryError as error:
         msg = f"Connection is unreachable to host {host}"
-        raise ConfigEntryNotReady(
-            msg
-        ) from error
+        raise ConfigEntryNotReady(msg) from error
     except connError as error:
         msg = f"Connection is unreachable to host {host}"
-        raise ConfigEntryNotReady(
-            msg
-        ) from error
+        raise ConfigEntryNotReady(msg) from error
     except ResourceException as error:
         raise ConfigEntryNotReady from error
 
