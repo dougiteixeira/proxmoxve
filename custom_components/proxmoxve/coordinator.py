@@ -825,7 +825,7 @@ def poll_api(
                 return "Unmapped"
 
     try:
-        return get_api(proxmox, api_path)
+        api_data = get_api(proxmox, api_path)
     except AuthenticationError as error:
         raise ConfigEntryAuthFailed from error
     except (
@@ -848,9 +848,12 @@ def poll_api(
                 severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_exception_forbiden",
                 translation_placeholders={
-                    "resource": f"{api_category.capitalize()} {resource_id}",
+                    "resource": f"{api_category.capitalize()} {resource_id.replace(f"{ProxmoxType.Update.capitalize()} ", "")}",
                     "user": config_entry.data[CONF_USERNAME],
-                    "permission": permission_to_resource(api_category, resource_id),
+                    "permission": permission_to_resource(
+                        api_category,
+                        resource_id.replace(f"{ProxmoxType.Update.capitalize()} ", ""),
+                    ),
                 },
             )
             LOGGER.debug(
@@ -863,3 +866,4 @@ def poll_api(
         DOMAIN,
         f"{config_entry.entry_id}_{resource_id}_forbiden",
     )
+    return api_data
