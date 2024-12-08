@@ -1,17 +1,10 @@
 {
   "name": "Proxmox VE Custom Integration",
-  "image": "mcr.microsoft.com/devcontainers/python:3.12",
-  "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/node:1": {},
-    "ghcr.io/devcontainers-contrib/features/poetry:2": {
-      "version": "latest"
-    },
-    "ghcr.io/devcontainers/features/rust:1": {}
-  },
+  "image": "mcr.microsoft.com/devcontainers/python:3.13",
   "postCreateCommand": "scripts/setup",
-  "runArgs": ["--network=host"],
-  "forwardPorts": [8123],
+  "forwardPorts": [
+    8123
+  ],
   "portsAttributes": {
     "8123": {
       "label": "Home Assistant",
@@ -48,5 +41,16 @@
       }
     }
   },
-  "remoteUser": "vscode"
+  "remoteUser": "vscode",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers-contrib/features/poetry:2": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/rust:1": {}
+  },
+  "runArgs": [
+    "--network=host"
+  ]
 }
