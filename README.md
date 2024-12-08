@@ -12,7 +12,8 @@ After configuring this integration, the following information is available:
  - Sensor entities of the selected node and virtual machines/containers. Some sensors are created disabled by default, you can enable them by accessing the entity's configuration.
  - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled, [see how to enable them here](https://github.com/dougiteixeira/proxmoxve/#some-entities-are-disabled-by-default-including-control-buttons-see-below-how-to-enable-them).
 
-> ⚠️ **Important:** See the section on Proxmox user permissions [here](https://github.com/dougiteixeira/proxmoxve#proxmox-permissions).
+> [!IMPORTANT]  
+> See the section on Proxmox user permissions [here](https://github.com/dougiteixeira/proxmoxve#proxmox-permissions).
 
 ## Install
 
@@ -66,6 +67,8 @@ logger:
 ```
 
 ## Example screenshot:
+<details><summary>Here are some screenshots of the integration</summary>
+ 
 * Node
 ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/e371b34e-0449-499f-878b-b5baacee8a5e)
 
@@ -77,8 +80,12 @@ logger:
 
 * Physical disks
 ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/f6174806-0ba8-4f60-ada7-cf5f29a1f629)
+</details>
 
 ## Proxmox Permissions
+
+> [!IMPORTANT]  
+> It is necessary to reload the integration after changing user/token permissions in Proxmox.
 
 To be able to obtain each type of integration information, the user used to connect must have the corresponding privilege.
 
@@ -88,7 +95,8 @@ The integration will create a repair for each resource that is exposed in the in
 
 When executing a command, if the user does not have the necessary permission, a repair will be created indicating the path and privilege necessary to execute it.
 
-The repairs created are informative, the responsibility for evaluating the risks involved in assigning the permissions to the user is the sole responsibility of the user.
+> [!CAUTION]
+> The permissions suggested in this documentation and in the created fixes are informative, the responsibility for assessing the risks involved in assigning permissions to the user is the sole responsibility of the user.
 
 ### Suggestion for creating permission roles for use with integration
 
