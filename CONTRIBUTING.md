@@ -40,7 +40,7 @@ Report a bug by [opening a new issue](../../issues/new/choose); it's that easy!
 - What actually happens
 - Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
 
-People *love* thorough bug reports. I'm not even kidding.
+People _love_ thorough bug reports. I'm not even kidding.
 
 ## Use a Consistent Coding Style
 

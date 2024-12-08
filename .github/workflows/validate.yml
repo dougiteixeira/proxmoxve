@@ -3,7 +3,7 @@ name: "Validate"
 on:
   workflow_dispatch:
   schedule:
-    - cron:  "0 0 * * *"
+    - cron: "0 0 * * *"
   push:
     branches:
       - "main"
@@ -16,11 +16,11 @@ jobs:
     name: "Hassfest Validation"
     runs-on: "ubuntu-latest"
     steps:
-        - name: "Checkout the repository"
-          uses: "actions/checkout@v4.2.2"
+      - name: "Checkout the repository"
+        uses: "actions/checkout@v4.2.2"
 
-        - name: "Run hassfest validation"
-          uses: "home-assistant/actions/hassfest@master"
+      - name: "Run hassfest validation"
+        uses: "home-assistant/actions/hassfest@master"
 
   # hacs: # https://github.com/hacs/action
   #   name: "HACS Validation"

@@ -1,10 +1,6 @@
 {
   "name": "Proxmox VE",
-  "domains": [
-    "binary_sensor",
-    "button",
-    "sensor"
-  ],
+  "domains": ["binary_sensor", "button", "sensor"],
   "iot_class": "local_push",
   "hide_default_branch": false,
   "homeassistant": "2024.1.0",

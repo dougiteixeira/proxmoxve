@@ -49,7 +49,7 @@ body:
       placeholder: "drag-and-drop the logs file here (do not copy-and-paste the content)"
       description: >-
         Debug log files help you track and understand your issue, please attach them here.
-        
+
         Please, you can follow the steps below:
           * [Enable integration debugging](https://www.home-assistant.io/docs/configuration/troubleshooting/#enabling-debug-logging).
           * Reload the integration configuration entry.
@@ -68,10 +68,10 @@ body:
         and <ins>drag-and-drop that file into the textbox below.</ins>**
 
         It generally allows pinpointing defects and thus resolving issues faster.
-        
+
         Please, you can follow the steps below:
           * [Download a diagnostic file](https://www.home-assistant.io/docs/configuration/troubleshooting/#download-diagnostics).
-          * Attach the diagnostic file here.          
+          * Attach the diagnostic file here.
   - type: textarea
     attributes:
       label: Additional information
