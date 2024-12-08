@@ -675,8 +675,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Confirm reauth dialog."""
         errors = {}
-        assert self._reauth_entry
-        if user_input is not None:
+        if self._reauth_entry and user_input is not None:
             host: str = str(self._reauth_entry.data[CONF_HOST])
             port: int = int(str(self._reauth_entry.data[CONF_PORT]))
             verify_ssl: bool = bool(self._reauth_entry.data[CONF_VERIFY_SSL])
