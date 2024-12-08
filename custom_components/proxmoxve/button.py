@@ -191,8 +191,7 @@ async def async_setup_entry(
             if (
                 (api_category := description.api_category)
                 and ProxmoxType.QEMU in api_category
-                or api_category is None
-            ):
+            ) or api_category is None:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
@@ -222,8 +221,7 @@ async def async_setup_entry(
             if (
                 (api_category := description.api_category)
                 and ProxmoxType.LXC in api_category
-                or api_category is None
-            ):
+            ) or api_category is None:
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
