@@ -60,7 +60,7 @@ SCHEMA_HOST_SSL: vol.Schema = vol.Schema(
 SCHEMA_HOST_AUTH: vol.Schema = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
-        vol.Optional(CONF_TOKEN_NAME, default=''): str,
+        vol.Optional(CONF_TOKEN_NAME, default=""): str,
         vol.Required(CONF_PASSWORD): str,
         vol.Optional(CONF_REALM, default=DEFAULT_REALM): str,
     }
