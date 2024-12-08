@@ -42,9 +42,25 @@ body:
     attributes:
       label: What version of Proxmox VE do you have the problem?
   - type: textarea
+    validations:
+      required: true
     attributes:
-      label: Diagnostics information
-      placeholder: "drag-and-drop the diagnostics data and logs file here (do not copy-and-paste the content)"
+      label: Logs file
+      placeholder: "drag-and-drop the logs file here (do not copy-and-paste the content)"
+      description: >-
+        Debug log files help you track and understand your issue, please attach them here.
+        
+        Please, you can follow the steps below:
+          * [Enable integration debugging](https://www.home-assistant.io/docs/configuration/troubleshooting/#enabling-debug-logging).
+          * Reload the integration configuration entry.
+          * [Disable integration debugging and download the generated log file](https://www.home-assistant.io/docs/configuration/troubleshooting/#disable-debug-logging-and-download-logs).
+          * Attach the generated log file here.
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Diagnostics file
+      placeholder: "drag-and-drop the diagnostics data here (do not copy-and-paste the content)"
       description: >-
         The integration provide the ability to download diagnostic data.
 
@@ -54,12 +70,8 @@ body:
         It generally allows pinpointing defects and thus resolving issues faster.
         
         Please, you can follow the steps below:
-          * [Enable integration debugging](https://www.home-assistant.io/docs/configuration/troubleshooting/#enabling-debug-logging).
-          * Reload the integration configuration entry.
           * [Download a diagnostic file](https://www.home-assistant.io/docs/configuration/troubleshooting/#download-diagnostics).
-          * [Disable integration debugging and download the generated log file](https://www.home-assistant.io/docs/configuration/troubleshooting/#disable-debug-logging-and-download-logs).
-          * Attach the diagnostic file and the generated log file here.
-          
+          * Attach the diagnostic file here.          
   - type: textarea
     attributes:
       label: Additional information
