@@ -152,6 +152,8 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     data=config_data,
                 )
 
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
                 return self.async_abort(reason="changes_successful")
 
         return self.async_show_form(
