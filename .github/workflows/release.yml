@@ -17,13 +17,28 @@ jobs:
       - name: "Checkout the repository"
         uses: "actions/checkout@v4.2.2"
 
+      - name: Adjust version number
+        shell: bash
+        run: |
+          version="${{ github.event.release.tag_name }}"
+          version="${version,,}"
+          version="${version#v}"
+          yq e -P -o=json \
+            -i ".version = \"${version}\"" \
+            "${{ github.workspace }}/custom_components/proxmoxve/manifest.json"
+
       - name: "ZIP the integration directory"
         shell: "bash"
         run: |
           cd "${{ github.workspace }}/custom_components/proxmoxve"
           zip proxmoxve.zip -r ./
 
+      - name: Sign release package
+        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        with:
+          inputs: ${{ github.workspace }}/custom_components/proxmoxve/proxmoxve.zip
+
       - name: "Upload the ZIP file to the release"
-        uses: "softprops/action-gh-release@v2.0.9"
+        uses: "softprops/action-gh-release@v2.1.0"
         with:
           files: ${{ github.workspace }}/custom_components/proxmoxve/proxmoxve.zip
