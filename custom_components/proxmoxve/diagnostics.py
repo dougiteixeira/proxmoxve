@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from attr import asdict
-from proxmoxer.core import ResourceException
-
 from homeassistant.components.diagnostics.util import async_redact_data
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
-from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+from proxmoxer.core import ResourceException
 
 from .api import get_api
 from .const import CONF_DISKS_ENABLE, COORDINATORS, DOMAIN, PROXMOX_CLIENT
@@ -25,6 +21,13 @@ from .coordinator import (
     ProxmoxStorageCoordinator,
     ProxmoxUpdateCoordinator,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.device_registry import DeviceEntry
 
 TO_REDACT_CONFIG = ["host", "username", "password"]
 
@@ -39,7 +42,6 @@ async def async_get_api_data_diagnostics(
     hass: HomeAssistant, config_entry: ConfigEntry
 ) -> dict[str, Any]:
     """Get API info for diagnostics."""
-
     proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
 
     proxmox = proxmox_client.get_api_client()
@@ -191,7 +193,6 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, config_entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-
     coordinators: dict[
         str,
         ProxmoxNodeCoordinator
@@ -283,7 +284,6 @@ async def async_get_device_diagnostics(
     hass: HomeAssistant, config_entry: ConfigEntry, device: DeviceEntry
 ) -> Mapping[str, Any]:
     """Return diagnostics for a device entry."""
-
     config_entry_diagnostics = await async_get_config_entry_diagnostics(
         hass, config_entry
     )

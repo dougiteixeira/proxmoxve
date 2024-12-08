@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+import homeassistant.helpers.config_validation as cv
 import proxmoxer
-from requests.exceptions import ConnectTimeout, SSLError
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.const import (
     CONF_BASE,
@@ -19,9 +17,10 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import device_registry as dr, issue_registry as ir, selector
-import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers import selector
+from requests.exceptions import ConnectTimeout, SSLError
 
 from .api import ProxmoxClient, get_api
 from .const import (
@@ -33,9 +32,9 @@ from .const import (
     CONF_QEMU,
     CONF_REALM,
     CONF_STORAGE,
+    CONF_TOKEN_NAME,
     CONF_VMS,
     COORDINATORS,
-    CONF_TOKEN_NAME,
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
@@ -45,6 +44,11 @@ from .const import (
     VERSION_REMOVE_YAML,
     ProxmoxType,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from homeassistant.data_entry_flow import FlowResult
 
 SCHEMA_HOST_BASE: vol.Schema = vol.Schema(
     {
@@ -170,7 +174,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         user_input: dict[str, Any] | None = None,
     ) -> FlowResult:
         """Handle the Node/QEMU/LXC selection step."""
-
         if user_input is None:
             old_nodes = []
             resource_nodes = []
@@ -344,7 +347,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         user_input: dict[str, Any],
     ) -> dict[str, Any]:
         """Process resource selection changes."""
-
         node_selecition = []
         if (
             CONF_NODES in user_input
@@ -486,7 +488,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, import_config: dict[str, Any]) -> FlowResult:
         """Import existing configuration."""
-
         errors = {}
 
         if f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}" in [
@@ -821,7 +822,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         node: str | None = None,
     ) -> FlowResult:
         """Handle the Node/QEMU/LXC selection step."""
-
         if user_input is None:
             if (proxmox_cliente := self._proxmox_client) is not None:
                 proxmox = proxmox_cliente.get_api_client()
