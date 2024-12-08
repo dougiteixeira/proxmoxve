@@ -96,7 +96,7 @@ The integration will create a repair for each resource that is exposed in the in
 When executing a command, if the user does not have the necessary permission, a repair will be created indicating the path and privilege necessary to execute it.
 
 > [!CAUTION]
-> The permissions suggested in this documentation and in the created fixes are informative, the responsibility for assessing the risks involved in assigning permissions to the user is the sole responsibility of the user.
+> The permissions suggested in this documentation and in the created repairs are informative, the responsibility for assessing the risks involved in assigning permissions to the user is the sole responsibility of the user.
 
 ### Suggestion for creating permission roles for use with integration
 
