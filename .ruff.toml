@@ -3,17 +3,36 @@
 target-version = "py312"
 
 [lint]
-select = [
-    "ALL",
-]
+select = ["ALL"]
 
 ignore = [
     "ANN101", # Missing type annotation for `self` in method
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
-    "D203", # no-blank-line-before-class (incompatible with formatter)
-    "D212", # multi-line-summary-first-line (incompatible with formatter)
+    "D203",   # no-blank-line-before-class (incompatible with formatter)
+    "D212",   # multi-line-summary-first-line (incompatible with formatter)
     "COM812", # incompatible with formatter
     "ISC001", # incompatible with formatter
+
+    # Temporary exceptions for Ruff implementation
+    "PERF401", # manual-list-comprehension
+    "EXE002",
+    "PLR0912",
+    "DTZ005",
+    "PLR2004",
+    "E722",
+    "F821",
+    "E501",
+    "PLR0915",
+    "FBT002",
+    "PLR0913",
+    "ANN001",
+    "SIM102",
+    "S105",
+    "ARG002",
+    "BLE001",
+    "PERF402",
+    "S101",
+    "ANN201",
 ]
 
 [lint.flake8-pytest-style]
