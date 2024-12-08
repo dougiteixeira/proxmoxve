@@ -6,6 +6,7 @@
     "sensor"
   ],
   "iot_class": "local_push",
+  "hide_default_branch": false,
   "homeassistant": "2024.1.0",
   "render_readme": true
 }
