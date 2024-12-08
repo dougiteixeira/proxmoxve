@@ -639,7 +639,7 @@ def device_info(
     resource_id: int | None = None,
     create: bool | None = False,
     cordinator_resource: ProxmoxDiskData | ProxmoxStorageData | None = None,
-):
+) -> DeviceInfo:
     """Return the Device Info."""
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 

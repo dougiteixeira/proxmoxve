@@ -32,7 +32,6 @@ ignore = [
     "BLE001",
     "PERF402",
     "S101",
-    "ANN201",
 ]
 
 [lint.flake8-pytest-style]
