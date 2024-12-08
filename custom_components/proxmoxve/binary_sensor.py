@@ -3,31 +3,32 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import TYPE_CHECKING, Final
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import UNDEFINED
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from . import COORDINATORS, DOMAIN, async_migrate_old_unique_ids, device_info
 from .const import (
     CONF_LXC,
     CONF_NODES,
     CONF_QEMU,
-    LOGGER,
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
 from .entity import ProxmoxEntity, ProxmoxEntityDescription
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.device_registry import DeviceInfo
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -102,7 +103,6 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up binary sensors."""
-
     async_add_entities(await async_setup_binary_sensors_nodes(hass, config_entry))
     async_add_entities(await async_setup_binary_sensors_qemu(hass, config_entry))
     async_add_entities(await async_setup_binary_sensors_lxc(hass, config_entry))
@@ -113,7 +113,6 @@ async def async_setup_binary_sensors_nodes(
     config_entry: ConfigEntry,
 ) -> list:
     """Set up binary sensors."""
-
     sensors = []
     migrate_unique_id_disks = []
 
@@ -206,7 +205,6 @@ async def async_setup_binary_sensors_qemu(
     config_entry: ConfigEntry,
 ) -> list:
     """Set up binary sensors."""
-
     sensors = []
 
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
@@ -246,7 +244,6 @@ async def async_setup_binary_sensors_lxc(
     config_entry: ConfigEntry,
 ) -> list:
     """Set up binary sensors."""
-
     sensors = []
 
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
@@ -331,5 +328,4 @@ class ProxmoxBinarySensorEntity(ProxmoxEntity, BinarySensorEntity):
     @property
     def available(self) -> bool:
         """Return sensor availability."""
-
         return super().available and self.coordinator.data is not None

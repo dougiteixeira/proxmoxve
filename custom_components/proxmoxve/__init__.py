@@ -3,18 +3,10 @@
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING
 
-from proxmoxer import AuthenticationError
-from proxmoxer.core import ResourceException
-from requests.exceptions import (
-    ConnectionError as connError,
-    ConnectTimeout,
-    RetryError,
-    SSLError,
-)
-from urllib3.exceptions import InsecureRequestWarning
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
@@ -24,16 +16,28 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
     Platform,
 )
-from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import (
     device_registry as dr,
+)
+from homeassistant.helpers import (
     entity_registry as er,
+)
+from homeassistant.helpers import (
     issue_registry as ir,
 )
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.typing import ConfigType
+from proxmoxer import AuthenticationError
+from proxmoxer.core import ResourceException
+from requests.exceptions import (
+    ConnectionError as connError,
+)
+from requests.exceptions import (
+    ConnectTimeout,
+    RetryError,
+    SSLError,
+)
+from urllib3.exceptions import InsecureRequestWarning
 
 from .api import ProxmoxClient, get_api
 from .const import (
@@ -45,9 +49,9 @@ from .const import (
     CONF_QEMU,
     CONF_REALM,
     CONF_STORAGE,
+    CONF_TOKEN_NAME,
     CONF_VMS,
     COORDINATORS,
-    CONF_TOKEN_NAME,
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
@@ -66,7 +70,12 @@ from .coordinator import (
     ProxmoxStorageCoordinator,
     ProxmoxUpdateCoordinator,
 )
-from .models import ProxmoxDiskData, ProxmoxStorageData
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.typing import ConfigType
+
+    from .models import ProxmoxDiskData, ProxmoxStorageData
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,
@@ -119,7 +128,6 @@ warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the platform."""
-
     # import to config flow
     if DOMAIN in config:
         LOGGER.warning(
@@ -339,7 +347,6 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up the platform."""
-
     hass.data.setdefault(DOMAIN, {})
     entry_data = config_entry.data
 
@@ -366,22 +373,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     except AuthenticationError as error:
         raise ConfigEntryAuthFailed from error
     except SSLError as error:
-        raise ConfigEntryNotReady(
+        msg = (
             "Unable to verify proxmox server SSL. Try using 'verify_ssl: false' "
             f"for proxmox instance {host}:{port}"
-        ) from error
+        )
+        raise ConfigEntryNotReady(msg) from error
     except ConnectTimeout as error:
-        raise ConfigEntryNotReady(
-            f"Connection to host {host} timed out during setup"
-        ) from error
+        msg = f"Connection to host {host} timed out during setup"
+        raise ConfigEntryNotReady(msg) from error
     except RetryError as error:
-        raise ConfigEntryNotReady(
-            f"Connection is unreachable to host {host}"
-        ) from error
+        msg = f"Connection is unreachable to host {host}"
+        raise ConfigEntryNotReady(msg) from error
     except connError as error:
-        raise ConfigEntryNotReady(
-            f"Connection is unreachable to host {host}"
-        ) from error
+        msg = f"Connection is unreachable to host {host}"
+        raise ConfigEntryNotReady(msg) from error
     except ResourceException as error:
         raise ConfigEntryNotReady from error
 
@@ -636,7 +641,6 @@ def device_info(
     cordinator_resource: ProxmoxDiskData | ProxmoxStorageData | None = None,
 ):
     """Return the Device Info."""
-
     coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
 
     host = config_entry.data[CONF_HOST]
@@ -740,7 +744,7 @@ def device_info(
 
 async def async_migrate_old_unique_ids(
     hass: HomeAssistant, platform: Platform, entities
-):
+) -> None:
     """Migration of the unique id of disk entities."""
     registry = er.async_get(hass)
     for entity in entities:

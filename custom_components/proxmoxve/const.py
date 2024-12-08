@@ -1,7 +1,7 @@
 """Constants for ProxmoxVE."""
 
-from enum import StrEnum
 import logging
+from enum import StrEnum
 
 DOMAIN = "proxmoxve"
 PROXMOX_CLIENTS = "proxmox_clients"

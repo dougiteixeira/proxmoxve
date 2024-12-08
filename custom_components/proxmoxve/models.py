@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import TYPE_CHECKING
 
-from homeassistant.helpers.typing import UndefinedType
+if TYPE_CHECKING:
+    from homeassistant.helpers.typing import UndefinedType
 
 
 @dataclasses.dataclass
