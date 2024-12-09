@@ -44,7 +44,7 @@
         },
         "abort": {
             "already_configured": "O dispositivo já está configurado",
-            "no_resources": "No resources were returned for this instance.",
+            "no_resources": "Nenhum recurso foi retornado para esta instância.",
             "reauth_successful": "A reautenticação foi bem sucedida"
         }
     },
