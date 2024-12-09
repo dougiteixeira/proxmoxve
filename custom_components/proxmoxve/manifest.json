@@ -12,7 +12,7 @@
     "proxmoxer"
   ],
   "requirements": [
-    "proxmoxer==2.0.1"
+    "proxmoxer==2.1.0"
   ],
   "version": "0.0.0"
 }
