@@ -175,6 +175,7 @@ In your Home Assistant configuration, use `homeassistant@pve` for the username a
 
 
 ## Translations
+[![Crowdin](https://badges.crowdin.net/proxmoxve-homeassistant/localized.svg)](https://crowdin.com/project/proxmoxve-homeassistant)
 
 You can help by adding missing translations when you are a native speaker. Or add a complete new language when there is no language file available.
 
