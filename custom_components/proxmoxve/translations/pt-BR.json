@@ -2,7 +2,7 @@
     "config": {
         "step": {
             "host": {
-                "description": "Informações d\\o host Proxmox",
+                "description": "Proxmox host information",
                 "data": {
                     "host": "Host",
                     "password": "Senha ou token",
@@ -118,7 +118,7 @@
                     "username": "Usuário",
                     "verify_ssl": "Verificar certificado SSL"
                 },
-                "description": "Informações do host Proxmox"
+                "description": ""
             },
             "change_expose": {
                 "description": "Selecione os nós da instância Proxmox, as máquinas virtuais (QEMU), contêineres (LXC) e armazenamentos que deseja expor",
