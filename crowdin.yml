@@ -8,4 +8,8 @@ files: [
     "source": "/custom_components/proxmoxve/translations/en.json",
     "translation": "/custom_components/proxmoxve/translations/%locale%.json"
   }
+],
+"pull_request_title": "Translations update from Crowdin"
+"pull_request_labels": [
+  "translations"
 ]
