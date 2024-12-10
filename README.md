@@ -1,5 +1,8 @@
 # Proxmox VE Custom Integration for Home Assistant
-![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/dfec7426-852d-41ea-b6c1-9bfd8cd1e8a8)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/5b5a8c5b-885b-4233-a858-2e78b97d8c74">
+  <img src="https://github.com/dougiteixeira/proxmoxve/assets/31328123/dfec7426-852d-41ea-b6c1-9bfd8cd1e8a8">
+</picture>
 
 
 [Proxmox VE](https://www.proxmox.com/en/) is an open-source server virtualization environment. This integration allows you to poll various data and controls from your instance.
@@ -29,10 +32,11 @@ Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
 * Click Install on the `Proxmox VE` integration.
 * Restart the Home Assistant.
 
-### Manual installation
-
-- Copy `proxmoxve`  folder from [latest release](https://github.com/dougiteixeira/proxmoxve/releases/latest) to [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations) in your config directory.
-- Restart the Home Assistant.
+<details><summary>Manual installation</summary>
+ 
+* Copy `proxmoxve`  folder from [latest release](https://github.com/dougiteixeira/proxmoxve/releases/latest) to [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations) in your config directory.
+* Restart the Home Assistant.
+</details>
 
 ## Configuration
 
@@ -40,12 +44,20 @@ Adding Proxmox VE to your Home Assistant instance can be done via the UI using t
 
 [![image](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=proxmoxve)
 
-You can either use password or token based authentication. For user based authentication leave the 
-token name field empty and make sure to set the correct realm to pve, pam or other. You can find this value
-in Proxmox under Datacenter -> Permissions -> Users -> Realm column. If you want to use token based
-authentication, fill the token name in the corresponding input field and put your token secret in the password field.
+> [!TIP]
+> It is recommended to use token-based authentication for greater integration stability.
+> 
+> In your Home Assistant configuration, enter the value defined in `Token ID` in the `Token name` field and enter the secret token value in the password field.
 
-### Manual Configuration
+> [!NOTE]
+> To use user-based authentication only, you must leave the `Token name` field empty in the configuration flow.
+
+> [!IMPORTANT]
+> It is important to correctly define the user's realm (`pam`, `pve` or other).
+>
+> You can check this in Proxmox under Datacenter > Permissions > Users > Realm column
+
+<details><summary>Manual Configuration</summary>
 
 If the button above doesn't work, you can also perform the following steps manually:
 
@@ -55,8 +67,17 @@ If the button above doesn't work, you can also perform the following steps manua
 * In the lower right corner, click the Add integration button.
 * In the list, search and select `Proxmox VE`.
 * Follow the on-screen instructions to complete the setup.
-
+</details>
+ 
 ## Debugging
+
+To enable debug logging for a specific integration, follow these steps:
+
+* Go to Settings > Devices & services.
+* Select the integration card to open the detail page of the integration for which you want to enable debug logging.
+* On the left side of the integration detail page, select Enable Debug Logging.
+
+<details><summary>If you prefer, you can configure debugging through the `configuration.yaml` file</summary>
 
 To enable debug for Proxmox VE integration, add following to your `configuration.yaml`:
 ```yaml
@@ -65,21 +86,33 @@ logger:
   logs:
     custom_components.proxmoxve: debug
 ```
+</details>
 
 ## Example screenshot:
-<details><summary>Here are some screenshots of the integration</summary>
- 
-* Node
+Here are some screenshots of the integration
+
+<details><summary>Node</summary>
+
 ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/e371b34e-0449-499f-878b-b5baacee8a5e)
 
-* VM (QEMU)
+</details>
+
+<details><summary>VM (QEMU)</summary>
+ 
 ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/8213b877-8b23-4c4a-917b-04f27bb3a886)
+ 
+</details>
 
-* Storage
+<details><summary>Storage</summary>
+ 
 ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/fb290802-95d7-4dcc-8538-d31636a2f6f8)
+ 
+</details>
 
-* Physical disks
+<details><summary>Physical disks</summary>
+ 
 ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/f6174806-0ba8-4f60-ada7-cf5f29a1f629)
+ 
 </details>
 
 ## Proxmox Permissions
@@ -144,9 +177,30 @@ Creating a dedicated user for Home Assistant, limited to only to the access just
 8. Ensure `Enabled` is checked and `Expire` is set to "never"
 9. Click `Add`
 
-In your Home Assistant configuration, use `homeassistant@pve` for the username and your chosen password for the password.
+### Create token for user (recommended)
 
-## Some entities are disabled by default (including control buttons), see below how to enable them.
+Creating a dedicated user token for Home Assistant, limited only to the newly created access, is the most recommended method.
+
+1. Click `Datacenter`
+2. Open `Permissions` and click `API Tokens`
+3. Click `Add`
+4. Select the user linked to the token
+5. Enter a name for the token in the `Token ID` field (e.g.,` homeassistant`)
+6. Uncheck the `Privilege Separation` option to unlink user permissions (in this case, unique permissions must be configured for the token)
+7. Select the Never option in the `Expire` field
+8. Ensure `Enabled` is checked and `Expire` is set to "never"
+9. Click `Add`
+10. Copy the secret token value
+
+> [!WARNING]
+> After closing the popup it is not possible to recover this value, if you lose the token value you must create a new token.
+
+> [!TIP]
+> In your Home Assistant configuration, enter the value defined in `Token ID` in the `Token name` field.
+
+## Disabled entities
+
+Some entities are disabled by default (including control buttons), see below how to enable them.
 
  <details><summary>A step by step to enable entities</summary>
   
