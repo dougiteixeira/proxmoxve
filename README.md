@@ -1,4 +1,4 @@
-# Proxmox VE Custom Integration Home Assistant
+# Proxmox VE Custom Integration for Home Assistant
 ![image](https://github.com/dougiteixeira/proxmoxve/assets/31328123/dfec7426-852d-41ea-b6c1-9bfd8cd1e8a8)
 
 
@@ -179,13 +179,13 @@ In your Home Assistant configuration, use `homeassistant@pve` for the username a
 
 You can help by adding missing translations when you are a native speaker. Or add a complete new language when there is no language file available.
 
-Proxmox VE Custom Integration uses Crowdin to make contributing easy.
+Proxmox VE Custom Integration uses [Crowdin](https://crowdin.com) to make contributing easy.
 
 ### Changing or adding to existing language
 
 First register and join the translation project:
 * If you don’t have a Crowdin account yet, create one at https://crowdin.com
-* Go to the [Proxmox VE Custom Integration project page](https://crowdin.com/project/proxmoxve-homeassistant)
+* Go to the [Proxmox VE Custom Integration for Home Assistant project page](https://crowdin.com/project/proxmoxve-homeassistant)
 * Click Join.
 
 Next translate a string:
