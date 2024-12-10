@@ -29,10 +29,11 @@ Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
 * Click Install on the `Proxmox VE` integration.
 * Restart the Home Assistant.
 
-### Manual installation
-
-- Copy `proxmoxve`  folder from [latest release](https://github.com/dougiteixeira/proxmoxve/releases/latest) to [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations) in your config directory.
-- Restart the Home Assistant.
+<details><summary>Manual installation</summary>
+ 
+* Copy `proxmoxve`  folder from [latest release](https://github.com/dougiteixeira/proxmoxve/releases/latest) to [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations) in your config directory.
+* Restart the Home Assistant.
+</details>
 
 ## Configuration
 
@@ -45,7 +46,7 @@ token name field empty and make sure to set the correct realm to pve, pam or oth
 in Proxmox under Datacenter -> Permissions -> Users -> Realm column. If you want to use token based
 authentication, fill the token name in the corresponding input field and put your token secret in the password field.
 
-### Manual Configuration
+[<details><summary>### Manual Configuration</summary>](#configuration-manual)
 
 If the button above doesn't work, you can also perform the following steps manually:
 
@@ -55,7 +56,8 @@ If the button above doesn't work, you can also perform the following steps manua
 * In the lower right corner, click the Add integration button.
 * In the list, search and select `Proxmox VE`.
 * Follow the on-screen instructions to complete the setup.
-
+</details>
+ 
 ## Debugging
 
 To enable debug for Proxmox VE integration, add following to your `configuration.yaml`:
