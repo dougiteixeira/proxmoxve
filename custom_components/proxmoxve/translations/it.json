@@ -14,7 +14,7 @@
                 }
             },
             "expose": {
-                "description": "Seleziona l'instanza Proxmox, le Macchine Virtuali (QEMU) e i Container (LXC) che vuoi esporre",
+                "description": "Seleziona l'istanza Proxmox, le Macchine Virtuali (QEMU) e i Container (LXC) che vuoi esporre",
                 "data": {
                     "nodes": "Nodi",
                     "qemu": "Macchine Virtuali (QEMU)",
@@ -45,7 +45,7 @@
         "abort": {
             "already_configured": "La periferica è gia configurata",
             "no_resources": "Nessuna risorsa in questa istanza",
-            "reauth_successful": "Re-autenticazione necessaria"
+            "reauth_successful": "Riautenticazione eseguita con successo"
         }
     },
     "issues": {
