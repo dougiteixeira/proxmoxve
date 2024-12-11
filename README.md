@@ -28,7 +28,9 @@ Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
 
 [![image](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dougiteixeira&repository=proxmoxve&category=integration)
 
-(If the button above doesn't work, add `https://github.com/dougiteixeira/proxmoxve` as a custom repository of type Integration in HACS.)
+> [!NOTE]
+> If the button above doesn't work, add `https://github.com/dougiteixeira/proxmoxve` as a custom repository of type Integration in HACS.
+
 * Click Install on the `Proxmox VE` integration.
 * Restart the Home Assistant.
 
