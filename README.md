@@ -13,7 +13,8 @@ After configuring this integration, the following information is available:
 
  - Binary sensor entities with the status of node and selected virtual machines/containers.
  - Sensor entities of the selected node and virtual machines/containers. Some sensors are created disabled by default, you can enable them by accessing the entity's configuration.
- - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled, [see how to enable them here](https://github.com/dougiteixeira/proxmoxve/#some-entities-are-disabled-by-default-including-control-buttons-see-below-how-to-enable-them).
+ - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled, [see how to enable them here](https://github.com/dougiteixeira/proxmoxve/#disabled-entities).
+
 
 > [!IMPORTANT]  
 > See the section on Proxmox user permissions [here](https://github.com/dougiteixeira/proxmoxve#proxmox-permissions).
