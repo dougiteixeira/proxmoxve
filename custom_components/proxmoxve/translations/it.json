@@ -31,7 +31,9 @@
                 "title": "Riautentica l'integrazione",
                 "data": {
                     "password": "Password o token",
-                    "username": "Nome utente"
+                    "username": "Nome utente",
+                    "token_name": "Token name",
+                    "realm": "Realm"
                 }
             }
         },
