@@ -31,7 +31,9 @@
                 "title": "Reautenticar Integração",
                 "data": {
                     "password": "Senha ou valor do token",
-                    "username": "Nome de utilizador"
+                    "username": "Nome de utilizador",
+                    "token_name": "Token name",
+                    "realm": "Realm"
                 }
             }
         },
