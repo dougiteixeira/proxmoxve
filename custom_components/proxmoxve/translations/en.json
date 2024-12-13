@@ -31,7 +31,9 @@
           "title": "Reauthenticate Integration",
           "data": {
             "password": "Password or token value",
-            "username": "Username"
+            "username": "Username",
+            "token_name": "Token name",
+            "realm": "Realm"
           }
         }
       },
