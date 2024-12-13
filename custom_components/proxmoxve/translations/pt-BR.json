@@ -32,8 +32,8 @@
                 "data": {
                     "password": "Senha ou token",
                     "username": "Usuário",
-                    "token_name": "Token name",
-                    "realm": "Realm"
+                    "token_name": "Nome do token",
+                    "realm": "Domínio"
                 }
             }
         },
