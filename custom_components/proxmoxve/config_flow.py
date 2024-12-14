@@ -854,14 +854,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     else:
                         resource_lxc[str(resource["vmid"])] = f"{resource['vmid']}"
                 if ("type" in resource) and (resource["type"] == ProxmoxType.Storage):
-                    if "storage" in resource:
-                        resource_storage[str(resource["storage"])] = (
-                            f"{resource['storage']} {resource['id']}"
-                        )
-                    else:
-                        resource_lxc[str(resource["storage"])] = (
-                            f"{resource['storage']}"
-                        )
+                    resource_storage[str(resource["id"])] = f"{resource['id']}"
 
             return self.async_show_form(
                 step_id="expose",
