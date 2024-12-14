@@ -77,9 +77,8 @@ SCHEMA_HOST_FULL: vol.Schema = SCHEMA_HOST_BASE.extend(SCHEMA_HOST_SSL.schema).e
 class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
     """Config flow options for ProxmoxVE."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+    def __init__(self) -> None:
         """Initialize ProxmoxVE options flow."""
-        self.config_entry: config_entries.ConfigEntry = config_entry
         self._proxmox_client: ProxmoxClient
         self._nodes: dict[str, Any] = {}
         self._host: str | None = None
@@ -926,6 +925,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
-    ) -> config_entries.OptionsFlow:
+    ) -> ProxmoxOptionsFlowHandler:
         """Options callback for Proxmox."""
-        return ProxmoxOptionsFlowHandler(config_entry)
+        return ProxmoxOptionsFlowHandler()
