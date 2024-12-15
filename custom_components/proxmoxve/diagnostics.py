@@ -12,7 +12,7 @@ from homeassistant.helpers import entity_registry as er
 from proxmoxer.core import ResourceException
 
 from .api import get_api
-from .const import CONF_DISKS_ENABLE, COORDINATORS, DOMAIN, PROXMOX_CLIENT
+from .const import CONF_DISKS_ENABLE, COORDINATORS, PROXMOX_CLIENT
 from .coordinator import (
     ProxmoxDiskCoordinator,
     ProxmoxLXCCoordinator,
@@ -42,7 +42,7 @@ async def async_get_api_data_diagnostics(
     hass: HomeAssistant, config_entry: ConfigEntry
 ) -> dict[str, Any]:
     """Get API info for diagnostics."""
-    proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
+    proxmox_client = config_entry.runtime_data[PROXMOX_CLIENT]
 
     proxmox = proxmox_client.get_api_client()
 
@@ -201,7 +201,7 @@ async def async_get_config_entry_diagnostics(
         | ProxmoxStorageCoordinator
         | ProxmoxUpdateCoordinator
         | ProxmoxDiskCoordinator,
-    ] = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
+    ] = config_entry.runtime_data[COORDINATORS]
 
     api_data = await async_get_api_data_diagnostics(hass, config_entry)
 

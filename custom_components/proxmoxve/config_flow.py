@@ -87,11 +87,9 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the Proxmox VE options."""
-        return await self.async_step_menu(user_input)
+        return await self.async_step_menu()
 
-    async def async_step_menu(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_menu(self) -> FlowResult:
         """Manage the Proxmox VE options - Menu."""
         return self.async_show_menu(
             step_id="menu",
@@ -182,17 +180,14 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 resource_nodes.append(node)
 
             old_qemu = []
-
             for qemu in self.config_entry.data[CONF_QEMU]:
                 old_qemu.append(str(qemu))
 
             old_lxc = []
-
             for lxc in self.config_entry.data[CONF_LXC]:
                 old_lxc.append(str(lxc))
 
             old_storage = []
-
             for storage in self.config_entry.data[CONF_STORAGE]:
                 old_storage.append(str(storage))
 
@@ -356,11 +351,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
         for node in self.config_entry.data[CONF_NODES]:
             if node not in node_selecition:
-                # Remove device disks
-                coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][
-                    COORDINATORS
-                ]
-
                 # Remove device node
                 identifier = (
                     f"{self.config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
@@ -378,9 +368,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             if node not in (
                 node_selecition if node_selecition is not None else []
             ) or not user_input.get(CONF_DISKS_ENABLE):
-                coordinators = self.hass.data[DOMAIN][self.config_entry.entry_id][
-                    COORDINATORS
-                ]
+                coordinators = self.config_entry.runtime_data[COORDINATORS]
                 if f"{ProxmoxType.Disk}_{node}" in coordinators:
                     for coordinator_disk in coordinators[f"{ProxmoxType.Disk}_{node}"]:
                         if (coordinator_data := coordinator_disk.data) is None:
@@ -513,7 +501,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         host: str = str(import_config.get(CONF_HOST))
         port: int = int(str(import_config.get(CONF_PORT)))
         user: str = str(import_config.get(CONF_USERNAME))
-        token_name: str = str(import_config.get(CONF_TOKEN_NAME))
         realm: str = str(import_config.get(CONF_REALM))
         password: str = str(import_config.get(CONF_PASSWORD))
         verify_ssl = import_config.get(CONF_VERIFY_SSL)
@@ -522,7 +509,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host=host,
             port=port,
             user=user,
-            token_name=token_name,
             realm=realm,
             password=password,
             verify_ssl=verify_ssl,
@@ -627,7 +613,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ir.async_create_issue(
                         self.hass,
                         DOMAIN,
-                        f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{import_config.get(CONF_NODE)}_import_node_not_exist",
+                        f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{node}_import_node_not_exist",
                         breaks_in_ha_version=VERSION_REMOVE_YAML,
                         is_fixable=False,
                         severity=ir.IssueSeverity.WARNING,
@@ -818,7 +804,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_expose(
         self,
         user_input: dict[str, Any] | None = None,
-        node: str | None = None,
     ) -> FlowResult:
         """Handle the Node/QEMU/LXC selection step."""
         if user_input is None:
