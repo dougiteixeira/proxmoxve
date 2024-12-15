@@ -587,7 +587,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 },
             )
 
-    hass.data[DOMAIN][config_entry.entry_id] = {
+    config_entry.runtime_data = {
         PROXMOX_CLIENT: proxmox_client,
         COORDINATORS: coordinators,
     }
@@ -608,9 +608,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
-    return unload_ok
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    return unload_ok  # noqa: RET504
 
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -641,7 +640,7 @@ def device_info(
     cordinator_resource: ProxmoxDiskData | ProxmoxStorageData | None = None,
 ):
     """Return the Device Info."""
-    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
+    coordinators = config_entry.runtime_data[COORDINATORS]
 
     host = config_entry.data[CONF_HOST]
     port = config_entry.data[CONF_PORT]

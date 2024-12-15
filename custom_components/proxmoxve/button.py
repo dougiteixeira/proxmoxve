@@ -14,7 +14,6 @@ from .const import (
     CONF_NODES,
     CONF_QEMU,
     COORDINATORS,
-    DOMAIN,
     LOGGER,
     PROXMOX_CLIENT,
     ProxmoxCommand,
@@ -149,8 +148,8 @@ async def async_setup_entry(
     """Set up button."""
     buttons = []
 
-    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
-    proxmox_client = hass.data[DOMAIN][config_entry.entry_id][PROXMOX_CLIENT]
+    coordinators = config_entry.runtime_data[COORDINATORS]
+    proxmox_client = config_entry.runtime_data[PROXMOX_CLIENT]
 
     for node in config_entry.data[CONF_NODES]:
         if f"{ProxmoxType.Node}_{node}" in coordinators:

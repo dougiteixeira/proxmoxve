@@ -13,7 +13,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.const import Platform
 from homeassistant.helpers.typing import UNDEFINED
 
-from . import COORDINATORS, DOMAIN, async_migrate_old_unique_ids, device_info
+from . import COORDINATORS, async_migrate_old_unique_ids, device_info
 from .const import (
     CONF_LXC,
     CONF_NODES,
@@ -116,7 +116,7 @@ async def async_setup_binary_sensors_nodes(
     sensors = []
     migrate_unique_id_disks = []
 
-    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
+    coordinators = config_entry.runtime_data[COORDINATORS]
 
     for node in config_entry.data[CONF_NODES]:
         if f"{ProxmoxType.Node}_{node}" in coordinators:
@@ -207,7 +207,7 @@ async def async_setup_binary_sensors_qemu(
     """Set up binary sensors."""
     sensors = []
 
-    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
+    coordinators = config_entry.runtime_data[COORDINATORS]
 
     for vm_id in config_entry.data[CONF_QEMU]:
         if f"{ProxmoxType.QEMU}_{vm_id}" in coordinators:
@@ -246,7 +246,7 @@ async def async_setup_binary_sensors_lxc(
     """Set up binary sensors."""
     sensors = []
 
-    coordinators = hass.data[DOMAIN][config_entry.entry_id][COORDINATORS]
+    coordinators = config_entry.runtime_data[COORDINATORS]
 
     for container_id in config_entry.data[CONF_LXC]:
         if f"{ProxmoxType.LXC}_{container_id}" in coordinators:
