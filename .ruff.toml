@@ -6,6 +6,8 @@ target-version = "py312"
 select = ["ALL"]
 
 ignore = [
+    "ARG001", # "unused-argument"
+    "ARG004",
     "ANN101", # Missing type annotation for `self` in method
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
     "D203",   # no-blank-line-before-class (incompatible with formatter)
