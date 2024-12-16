@@ -1,0 +1,21 @@
+-r requirements.txt
+colorlog~=6.9
+flake8~=7.1
+flake8-docstrings~=1.7
+fnv-hash-fast
+mypy~=1.13
+psutil-home-assistant==0.0.1
+pylint~=3.3
+pylint-strict-informational==0.1
+pytest>=7.2
+pytest-cov
+pytest-homeassistant-custom-component
+pytest-asyncio>=0.20
+tzdata
+ruff~=0.8
+anyio
+pytest-asyncio
+pytest-tornasync
+pytest-trio
+proxmoxer
+pre-commit
