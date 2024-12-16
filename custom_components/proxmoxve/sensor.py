@@ -34,7 +34,6 @@ from .const import (
     ProxmoxType,
 )
 from .entity import ProxmoxEntity, ProxmoxEntityDescription
-from .models import ProxmoxDiskData
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -44,6 +43,8 @@ if TYPE_CHECKING:
     from homeassistant.helpers.device_registry import DeviceInfo
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
     from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+
+    from .models import ProxmoxDiskData
 
 
 @dataclass(frozen=True, kw_only=True)
