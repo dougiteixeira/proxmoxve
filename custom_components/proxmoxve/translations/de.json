@@ -31,7 +31,9 @@
                 "title": "Integration erneut authentifizieren",
                 "data": {
                     "password": "Passwort oder Tokenwert",
-                    "username": "Benutzername"
+                    "username": "Benutzername",
+                    "token_name": "Token name",
+                    "realm": "Realm"
                 }
             }
         },

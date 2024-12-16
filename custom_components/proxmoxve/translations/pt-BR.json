@@ -31,7 +31,9 @@
                 "title": "Reautenticar Integração",
                 "data": {
                     "password": "Senha ou token",
-                    "username": "Usuário"
+                    "username": "Usuário",
+                    "token_name": "Nome do token",
+                    "realm": "Domínio"
                 }
             }
         },
@@ -98,7 +100,7 @@
             "title": "Erro de permissão para `{resource}`"
         },
         "resource_command_forbiden": {
-            "description": "O usuário `{user}` não tem permissões suficientes para executar o comando `{command}` no recurso `{resource}`.\n\nDica sobre as permissões necessárias:\n* `{permission}`\n\nPor favor, verifique a documentação e as permissões do usuário .",
+            "description": "O usuário `{user}` não tem permissões suficientes para executar o comando `{command}` no recurso `{resource}`.\n\nDica sobre as permissões necessárias:\n* `{permission}`\n\nPor favor, verifique a documentação e as permissões do usuário.",
             "title": "Erro de permissão para comando em `{resource}`"
         }
     },
@@ -230,10 +232,10 @@
                 "name": "Vida útil restante"
             },
             "lxc_on": {
-                "name": "Containers em execução",
+                "name": "Contêineres em execução",
                 "state_attributes": {
                     "lxc_on_list": {
-                        "name": "Lista de containers"
+                        "name": "Lista de contêineres"
                     }
                 }
             },
