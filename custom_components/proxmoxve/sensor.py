@@ -34,6 +34,7 @@ from .const import (
     ProxmoxType,
 )
 from .entity import ProxmoxEntity, ProxmoxEntityDescription
+from .models import ProxmoxDiskData
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
