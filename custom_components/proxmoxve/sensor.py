@@ -44,6 +44,8 @@ if TYPE_CHECKING:
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
     from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+    from .models import ProxmoxDiskData
+
 
 @dataclass(frozen=True, kw_only=True)
 class ProxmoxSensorEntityDescription(ProxmoxEntityDescription, SensorEntityDescription):
