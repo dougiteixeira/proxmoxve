@@ -602,13 +602,14 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             and CONF_NODES in import_config
             and (import_nodes := import_config.get(CONF_NODES)) is not None
         ):
-            import_config[CONF_NODES] = []
+            config = import_config.copy()
+            config[CONF_NODES] = []
             for node_data in import_nodes:
                 node = node_data[CONF_NODE]
                 if node in proxmox_nodes_host:
-                    import_config[CONF_NODES].append(node)
-                    import_config[CONF_QEMU] = node_data[CONF_VMS]
-                    import_config[CONF_LXC] = node_data[CONF_CONTAINERS]
+                    config[CONF_NODES].append(node)
+                    config[CONF_QEMU] = node_data[CONF_VMS]
+                    config[CONF_LXC] = node_data[CONF_CONTAINERS]
                 else:
                     ir.async_create_issue(
                         self.hass,
@@ -626,6 +627,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             "node": str(node),
                         },
                     )
+                    return self.async_abort(reason="import_failed")
 
         ir.async_create_issue(
             self.hass,
@@ -644,8 +646,8 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         return self.async_create_entry(
-            title=(f"{import_config.get(CONF_HOST)}:{import_config.get(CONF_PORT)}"),
-            data=import_config,
+            title=(f"{config.get(CONF_HOST)}:{config.get(CONF_PORT)}"),
+            data=config,
         )
 
     async def async_step_reauth(self, data: Mapping[str, Any]) -> FlowResult:
