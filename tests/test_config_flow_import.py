@@ -32,6 +32,7 @@ from .const import (
 
 async def test_flow_import_ok(hass: HomeAssistant) -> None:
     """Test import flow ok."""
+    conf = YAML_INPUT_OK[DOMAIN]
     with (
         patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
         patch(
@@ -43,18 +44,18 @@ async def test_flow_import_ok(hass: HomeAssistant) -> None:
         result = await hass.config_entries.flow.async_init(
             DOMAIN,
             context={"source": SOURCE_IMPORT},
-            data=YAML_INPUT_OK,
+            data=conf,
         )
 
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert "data" in result
-        assert result["data"][CONF_HOST] == YAML_INPUT_OK[CONF_HOST]
+        assert result["data"][CONF_HOST] == conf[CONF_HOST]
 
         issue_registry = ir.async_get(hass)
         assert (
             issue_registry.async_get_issue(
                 DOMAIN,
-                f"{YAML_INPUT_OK.get(CONF_HOST)}_{YAML_INPUT_OK.get(CONF_PORT)}_import_success",
+                f"{conf.get(CONF_HOST)}_{conf.get(CONF_PORT)}_import_success",
             )
             is not None
         )
@@ -62,6 +63,7 @@ async def test_flow_import_ok(hass: HomeAssistant) -> None:
 
 async def test_flow_import_error_node_not_exist(hass: HomeAssistant) -> None:
     """Test import error in case node not exist in Proxmox."""
+    conf = YAML_INPUT_NOT_EXIST[DOMAIN]
     with (
         patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
         patch(
@@ -71,18 +73,18 @@ async def test_flow_import_error_node_not_exist(hass: HomeAssistant) -> None:
     ):
         # imported config is identical to the one generated from config flow
         result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_IMPORT}, data=YAML_INPUT_NOT_EXIST
+            DOMAIN, context={"source": SOURCE_IMPORT}, data=conf
         )
 
         assert result["type"] == FlowResultType.ABORT
         assert result["reason"] == "import_failed"
 
         issue_registry = ir.async_get(hass)
-        for nodes in YAML_INPUT_NOT_EXIST.get(CONF_NODES):
+        for nodes in conf.get(CONF_NODES):
             assert (
                 issue_registry.async_get_issue(
                     DOMAIN,
-                    f"{YAML_INPUT_NOT_EXIST.get(CONF_HOST)}_{YAML_INPUT_NOT_EXIST.get(CONF_PORT)}_{nodes[CONF_NODE]}_import_node_not_exist",
+                    f"{conf.get(CONF_HOST)}_{conf.get(CONF_PORT)}_{nodes[CONF_NODE]}_import_node_not_exist",
                 )
                 is not None
             )
@@ -90,6 +92,7 @@ async def test_flow_import_error_node_not_exist(hass: HomeAssistant) -> None:
 
 async def test_flow_import_error_auth_error(hass: HomeAssistant) -> None:
     """Test import errors in case username or password are incorrect."""
+    conf = YAML_INPUT_OK[DOMAIN]
     with patch(
         "custom_components.proxmoxve.ProxmoxClient.build_client",
         side_effect=proxmoxer.backends.https.AuthenticationError("mock msg"),
@@ -97,7 +100,7 @@ async def test_flow_import_error_auth_error(hass: HomeAssistant) -> None:
     ):
         # imported config is identical to the one generated from config flow
         result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_IMPORT}, data=YAML_INPUT_OK
+            DOMAIN, context={"source": SOURCE_IMPORT}, data=conf
         )
 
         assert result["type"] == FlowResultType.ABORT
@@ -107,7 +110,7 @@ async def test_flow_import_error_auth_error(hass: HomeAssistant) -> None:
         assert (
             issue_registry.async_get_issue(
                 DOMAIN,
-                f"{YAML_INPUT_OK.get(CONF_HOST)}_{YAML_INPUT_OK.get(CONF_PORT)}_import_auth_error",
+                f"{conf.get(CONF_HOST)}_{conf.get(CONF_PORT)}_import_auth_error",
             )
             is not None
         )
@@ -115,6 +118,7 @@ async def test_flow_import_error_auth_error(hass: HomeAssistant) -> None:
 
 async def test_flow_import_error_ssl_rejection(hass: HomeAssistant) -> None:
     """Test import errors in case the SSL certificare is not present or is not valid or is expired."""
+    conf = YAML_INPUT_OK[DOMAIN]
     with patch(
         "custom_components.proxmoxve.ProxmoxClient.build_client",
         side_effect=SSLError,
@@ -132,7 +136,7 @@ async def test_flow_import_error_ssl_rejection(hass: HomeAssistant) -> None:
         assert (
             issue_registry.async_get_issue(
                 DOMAIN,
-                f"{YAML_INPUT_OK.get(CONF_HOST)}_{YAML_INPUT_OK.get(CONF_PORT)}_import_ssl_rejection",
+                f"{conf.get(CONF_HOST)}_{conf.get(CONF_PORT)}_import_ssl_rejection",
             )
             is not None
         )
@@ -140,6 +144,7 @@ async def test_flow_import_error_ssl_rejection(hass: HomeAssistant) -> None:
 
 async def test_flow_import_error_cant_connect(hass: HomeAssistant) -> None:
     """Test import errors in case the connection fails."""
+    conf = YAML_INPUT_OK[DOMAIN]
     with patch(
         "custom_components.proxmoxve.ProxmoxClient.build_client",
         side_effect=ConnectTimeout,
@@ -147,7 +152,7 @@ async def test_flow_import_error_cant_connect(hass: HomeAssistant) -> None:
     ):
         # imported config is identical to the one generated from config flow
         result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_IMPORT}, data=YAML_INPUT_OK
+            DOMAIN, context={"source": SOURCE_IMPORT}, data=conf
         )
 
         assert result["type"] == FlowResultType.ABORT
@@ -157,7 +162,7 @@ async def test_flow_import_error_cant_connect(hass: HomeAssistant) -> None:
         assert (
             issue_registry.async_get_issue(
                 DOMAIN,
-                f"{YAML_INPUT_OK.get(CONF_HOST)}_{YAML_INPUT_OK.get(CONF_PORT)}_import_cant_connect",
+                f"{conf.get(CONF_HOST)}_{conf.get(CONF_PORT)}_import_cant_connect",
             )
             is not None
         )
@@ -165,6 +170,7 @@ async def test_flow_import_error_cant_connect(hass: HomeAssistant) -> None:
 
 async def test_flow_import_error_general_error(hass: HomeAssistant) -> None:
     """Test import errors in case of an unknown exception occurs."""
+    conf = YAML_INPUT_OK[DOMAIN]
     with patch(
         "custom_components.proxmoxve.ProxmoxClient.build_client",
         side_effect=Exception,
@@ -172,7 +178,7 @@ async def test_flow_import_error_general_error(hass: HomeAssistant) -> None:
     ):
         # imported config is identical to the one generated from config flow
         result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_IMPORT}, data=YAML_INPUT_OK
+            DOMAIN, context={"source": SOURCE_IMPORT}, data=conf
         )
 
         assert result["type"] == FlowResultType.ABORT
@@ -182,7 +188,7 @@ async def test_flow_import_error_general_error(hass: HomeAssistant) -> None:
         assert (
             issue_registry.async_get_issue(
                 DOMAIN,
-                f"{YAML_INPUT_OK.get(CONF_HOST)}_{YAML_INPUT_OK.get(CONF_PORT)}_import_general_error",
+                f"{conf.get(CONF_HOST)}_{conf.get(CONF_PORT)}_import_general_error",
             )
             is not None
         )
@@ -190,9 +196,10 @@ async def test_flow_import_error_general_error(hass: HomeAssistant) -> None:
 
 async def test_flow_import_error_already_configured(hass: HomeAssistant) -> None:
     """Test import error in case entry already configured."""
+    conf = YAML_INPUT_OK[DOMAIN]
     entry = MockConfigEntry(
         domain=DOMAIN,
-        data=YAML_INPUT_OK,
+        data=conf,
     )
 
     entry.add_to_hass(hass)
@@ -207,7 +214,7 @@ async def test_flow_import_error_already_configured(hass: HomeAssistant) -> None
         result = await hass.config_entries.flow.async_init(
             DOMAIN,
             context={"source": SOURCE_IMPORT},
-            data=YAML_INPUT_OK,
+            data=conf,
         )
 
         assert result["type"] == FlowResultType.ABORT
@@ -217,7 +224,7 @@ async def test_flow_import_error_already_configured(hass: HomeAssistant) -> None
         assert (
             issue_registry.async_get_issue(
                 DOMAIN,
-                f"{YAML_INPUT_OK.get(CONF_HOST)}_{YAML_INPUT_OK.get(CONF_PORT)}_import_already_configured",
+                f"{conf.get(CONF_HOST)}_{conf.get(CONF_PORT)}_import_already_configured",
             )
             is not None
         )
