@@ -551,7 +551,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     for storage_id in config_entry.data[CONF_STORAGE]:
         if storage_id in [
-            (resource.get("id", None))
+            (resource.get("storage", None))
             for resource in (resources if resources is not None else [])
         ]:
             ir.async_delete_issue(
