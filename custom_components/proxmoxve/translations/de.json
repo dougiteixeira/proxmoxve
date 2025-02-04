@@ -313,7 +313,7 @@
                 "name": "Total updates",
                 "state_attributes": {
                     "updates_list": {
-                        "name": "Updates list"
+                        "name": "Liste der Updates"
                     }
                 }
             },
