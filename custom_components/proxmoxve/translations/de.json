@@ -16,14 +16,14 @@
             "expose": {
                 "description": "Wähle die Proxmox-Instanznodes und virtuellen Maschinen (QEMU) und Container (LXC) aus, die du freigeben möchtest",
                 "data": {
-                    "nodes": "Nodes",
+                    "nodes": "Knoten",
                     "qemu": "Virtuelle Maschinen (QEMU)",
                     "lxc": "Linux-Container (LXC)",
-                    "storage": "Storages",
-                    "disks_enable": "Enable physical disk information"
+                    "storage": "Speicher",
+                    "disks_enable": "Aktiviere physische Festplatteninformationen"
                 },
                 "data_description": {
-                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+                    "disks_enable": "Wenn du mit Disk-Ruhezustand arbeitest, musst du diese Integrationsoption deaktivieren, damit die Festplatten nicht unnötig reaktiviert werden."
                 }
             },
             "reauth_confirm": {
@@ -32,7 +32,7 @@
                 "data": {
                     "password": "Passwort oder Tokenwert",
                     "username": "Benutzername",
-                    "token_name": "Token name",
+                    "token_name": "Token Name",
                     "realm": "Realm"
                 }
             }
@@ -96,12 +96,12 @@
             "title": "Der Benutzer `{user}` verfügt nicht über die erforderlichen Berechtigungen"
         },
         "resource_exception_forbiden": {
-            "description": "User `{user}` does not have sufficient permissions to access resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-            "title": "Permissions error for `{resource}`"
+            "description": "Benutzer `{user}` hat nicht genügend Berechtigungen um auf Ressourcen zugreifen `{resource}`.\n\nTipp für benötigte Berechtigungen:\n* `{permission}`\n\nBitte überprüfen Sie die Dokumentation und die Benutzerberechtigungen.",
+            "title": "Berechtigungsfehler für `{resource}`"
         },
         "resource_command_forbiden": {
-            "description": "User `{user}` does not have sufficient permissions to execute command `{command}` on resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-            "title": "Permission error for `{resource}` command"
+            "description": "Benutzer `{user}` hat nicht genügend Berechtigungen, um den Befehl `{command}` auf Ressource `{resource}` auszuführen.\n\nTipp für benötigte Berechtigungen:\n* `{permission}`\n\nBitte überprüfen Sie die Dokumentation und die Benutzerberechtigungen.",
+            "title": "Berechtigungsfehler für `{resource}` Befehl"
         }
     },
     "options": {
@@ -126,13 +126,13 @@
                 "description": "Wähle die Proxmox-Instanznodes und virtuellen Maschinen (QEMU) und Container (LXC) aus, die du freigeben möchtest",
                 "data": {
                     "lxc": "Linux-Container (LXC)",
-                    "nodes": "Nodes",
+                    "nodes": "Knoten",
                     "qemu": "Virtuelle Maschinen (QEMU)",
-                    "storage": "Storages",
-                    "disks_enable": "Enable physical disk information"
+                    "storage": "Speicher",
+                    "disks_enable": "Aktiviere physische Festplatteninformationen"
                 },
                 "data_description": {
-                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+                    "disks_enable": "Wenn du mit Disk-Ruhezustand arbeitest, musst du diese Integrationsoption deaktivieren, damit die Festplatten nicht unnötig reaktiviert werden."
                 }
             }
         },
@@ -165,7 +165,7 @@
                 "name": "Gesundheit"
             },
             "update_avail": {
-                "name": "Updates packages"
+                "name": "Pakete aktualisieren"
             }
         },
         "button": {
@@ -211,10 +211,10 @@
                 "name": "Prozentsatz freier Speicherplatz"
             },
             "disk_rpm": {
-                "name": "Disk speed"
+                "name": "Festplattengeschwindigkeit"
             },
             "disk_size": {
-                "name": "Size"
+                "name": "Größe"
             },
             "disk_total": {
                 "name": "Gesamtspeicherplatz"
@@ -226,16 +226,16 @@
                 "name": "Prozentsatz belegter Speicherplatz"
             },
             "disk_wearout": {
-                "name": "Wearout"
+                "name": "Verschleiß"
             },
             "life_left": {
                 "name": "Life left"
             },
             "lxc_on": {
-                "name": "Containers running",
+                "name": "Container laufen",
                 "state_attributes": {
                     "lxc_on_list": {
-                        "name": "Containers list"
+                        "name": "Containerliste"
                     }
                 }
             },
@@ -261,34 +261,34 @@
                 "name": "Netzwerk Ausgang"
             },
             "node": {
-                "name": "Node"
+                "name": "Knoten"
             },
             "power_cycles": {
-                "name": "Power cycles"
+                "name": "Leistungszyklen"
             },
             "power_loss": {
-                "name": "Unexpected power loss"
+                "name": "Unerwarteter Stromverlust"
             },
             "power_hours": {
-                "name": "Power-on hours"
+                "name": "Betriebsstunden"
             },
             "qemu_on": {
                 "name": "Virtual machines running",
                 "state_attributes": {
                     "qemu_on_list": {
-                        "name": "Virtual machines list"
+                        "name": "Liste der virtuellen Maschinen"
                     }
                 }
             },
             "status_raw": {
                 "name": "Status",
                 "state": {
-                    "internal-error": "Internal error",
-                    "prelaunch": "Pre launch",
-                    "paused": "Paused",
-                    "stopped": "Stopped",
-                    "suspended": "Suspended",
-                    "running": "Running"
+                    "internal-error": "Interner Fehler",
+                    "prelaunch": "Vorstart",
+                    "paused": "Pausiert",
+                    "stopped": "Gestoppt",
+                    "suspended": "Ausgesetzt",
+                    "running": "Läuft"
                 }
             },
             "swap_free": {
@@ -307,10 +307,10 @@
                 "name": "Prozentsatz genutzter Auslagerungsspeicher"
             },
             "temperature": {
-                "name": "Temperature"
+                "name": "Temperatur"
             },
             "updates_total": {
-                "name": "Total updates",
+                "name": "Gesamte Updates",
                 "state_attributes": {
                     "updates_list": {
                         "name": "Liste der Updates"
