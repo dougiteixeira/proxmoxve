@@ -123,7 +123,7 @@
                 "description": "Informação do host Proxmox"
             },
             "change_expose": {
-                "description": "Selecione os nós e Máquinas Virtuais (QEMU) e Contentores (LXC) da instância Proxmox que deseja expor",
+                "description": "Select the Proxmox instance nodes and Virtual Machines (QEMU) and Containers (LXC) you want to expose",
                 "data": {
                     "lxc": "Contentores Linux (LXC)",
                     "nodes": "Nós",
