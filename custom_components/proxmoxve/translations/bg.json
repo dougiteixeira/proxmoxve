@@ -123,7 +123,7 @@
                 "description": "Proxmox хост информация"
             },
             "change_expose": {
-                "description": "Изберете възлите на инстанцията на Proxmox и виртуалните машини (QEMU) и контейнерите (LXC), които искате да изложите",
+                "description": "Select the Proxmox instance nodes and Virtual Machines (QEMU) and Containers (LXC) you want to expose",
                 "data": {
                     "lxc": "Линукс контейнери (LXC)",
                     "nodes": "Възли",
