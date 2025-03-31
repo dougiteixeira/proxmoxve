@@ -1,5 +1,5 @@
 -r requirements.txt
-flake8~=7.1
+flake8~=7.2
 flake8-docstrings~=1.7
 fnv-hash-fast
 mypy~=1.15
