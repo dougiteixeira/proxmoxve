@@ -20,6 +20,7 @@ from .coordinator import (
     ProxmoxQEMUCoordinator,
     ProxmoxStorageCoordinator,
     ProxmoxUpdateCoordinator,
+    ProxmoxZFSCoordinator,
 )
 
 if TYPE_CHECKING:
@@ -200,7 +201,8 @@ async def async_get_config_entry_diagnostics(
         | ProxmoxLXCCoordinator
         | ProxmoxStorageCoordinator
         | ProxmoxUpdateCoordinator
-        | ProxmoxDiskCoordinator,
+        | ProxmoxDiskCoordinator
+        | ProxmoxZFSCoordinator,
     ] = config_entry.runtime_data[COORDINATORS]
 
     api_data = await async_get_api_data_diagnostics(hass, config_entry)
@@ -244,6 +246,7 @@ async def async_get_config_entry_diagnostics(
                 ProxmoxStorageCoordinator,
                 ProxmoxUpdateCoordinator,
                 ProxmoxDiskCoordinator,
+                ProxmoxZFSCoordinator,
             )
             and (coordinator_data := coordinator.data) is not None
         ):
@@ -259,6 +262,7 @@ async def async_get_config_entry_diagnostics(
                         ProxmoxStorageCoordinator,
                         ProxmoxUpdateCoordinator,
                         ProxmoxDiskCoordinator,
+                        ProxmoxZFSCoordinator,
                     )
                     and (coordinator_sub_data := coordinator_sub.data) is not None
                 ):
@@ -274,9 +278,9 @@ async def async_get_config_entry_diagnostics(
         "proxmox_coordinators": async_redact_data(
             proxmox_coordinators, TO_REDACT_COORD
         ),
-        "api_response": async_redact_data(api_data, TO_REDACT_API)
-        if api_data is not None
-        else {},
+        "api_response": (
+            async_redact_data(api_data, TO_REDACT_API) if api_data is not None else {}
+        ),
     }
 
 

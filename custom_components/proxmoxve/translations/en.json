@@ -129,7 +129,8 @@
             "nodes": "Nodes",
             "qemu": "Virtual Machines (QEMU)",
             "storage": "Storages",
-            "disks_enable": "Enable physical disk information"
+            "disks_enable": "Enable physical disk information",
+            "zfs_enable": "Enable ZFS pool information"
           },
           "data_description": {
             "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
@@ -198,7 +199,7 @@
         },
         "wakeonlan": {
           "name": "Wake-on-LAN"
-        }  
+        }
       },
       "sensor": {
         "cpu_used": {
@@ -230,6 +231,21 @@
         },
         "life_left": {
           "name": "Life left"
+        },
+        "zfs_health": {
+          "name": "Health"
+        },
+        "zfs_free_perc": {
+          "name": "Pool free percentage"
+        },
+        "zfs_total": {
+          "name": "Pool total"
+        },
+        "zfs_used": {
+          "name": "Pool used"
+        },
+        "zfs_used_perc": {
+          "name": "Pool used percentage"
         },
         "lxc_on": {
           "name": "Containers running",

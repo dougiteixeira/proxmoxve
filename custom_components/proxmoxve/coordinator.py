@@ -32,6 +32,7 @@ from .models import (
     ProxmoxStorageData,
     ProxmoxUpdateData,
     ProxmoxVMData,
+    ProxmoxZFSData,
 )
 
 if TYPE_CHECKING:
@@ -175,47 +176,71 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         if node_status != "":
             return ProxmoxNodeData(
                 type=ProxmoxType.Node,
-                model=api_status["cpuinfo"]["model"]
-                if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
-                else UNDEFINED,
+                model=(
+                    api_status["cpuinfo"]["model"]
+                    if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
+                    else UNDEFINED
+                ),
                 status=api_status.get("status", "Offline"),
-                version=api_status["version"].get("version", UNDEFINED)
-                if ("version" in api_status)
-                else UNDEFINED,
+                version=(
+                    api_status["version"].get("version", UNDEFINED)
+                    if ("version" in api_status)
+                    else UNDEFINED
+                ),
                 uptime=api_status.get("uptime", UNDEFINED),
                 cpu=api_status.get("cpu", UNDEFINED),
                 disk_total=api_status.get("disk_max", UNDEFINED),
                 disk_used=api_status.get("disk_used", UNDEFINED),
-                memory_total=api_status["memory"]["total"]
-                if (("memory" in api_status) and "total" in api_status["memory"])
-                else UNDEFINED,
-                memory_used=api_status["memory"]["used"]
-                if (("memory" in api_status) and "used" in api_status["memory"])
-                else UNDEFINED,
-                memory_free=api_status["memory"]["free"]
-                if (("memory" in api_status) and "free" in api_status["memory"])
-                else UNDEFINED,
-                swap_total=api_status["swap"]["total"]
-                if (("swap" in api_status) and "total" in api_status["swap"])
-                else UNDEFINED,
-                swap_free=api_status["swap"]["free"]
-                if (("swap" in api_status) and "free" in api_status["swap"])
-                else UNDEFINED,
-                swap_used=api_status["swap"]["used"]
-                if (("swap" in api_status) and "used" in api_status["swap"])
-                else UNDEFINED,
-                qemu_on=api_status["qemu"]["total"]
-                if (("qemu" in api_status) and "total" in api_status["qemu"])
-                else 0,
-                qemu_on_list=api_status["qemu"]["list"]
-                if (("qemu" in api_status) and "list" in api_status["qemu"])
-                else UNDEFINED,
-                lxc_on=api_status["lxc"]["total"]
-                if (("lxc" in api_status) and "total" in api_status["lxc"])
-                else 0,
-                lxc_on_list=api_status["lxc"]["list"]
-                if (("lxc" in api_status) and "list" in api_status["lxc"])
-                else UNDEFINED,
+                memory_total=(
+                    api_status["memory"]["total"]
+                    if (("memory" in api_status) and "total" in api_status["memory"])
+                    else UNDEFINED
+                ),
+                memory_used=(
+                    api_status["memory"]["used"]
+                    if (("memory" in api_status) and "used" in api_status["memory"])
+                    else UNDEFINED
+                ),
+                memory_free=(
+                    api_status["memory"]["free"]
+                    if (("memory" in api_status) and "free" in api_status["memory"])
+                    else UNDEFINED
+                ),
+                swap_total=(
+                    api_status["swap"]["total"]
+                    if (("swap" in api_status) and "total" in api_status["swap"])
+                    else UNDEFINED
+                ),
+                swap_free=(
+                    api_status["swap"]["free"]
+                    if (("swap" in api_status) and "free" in api_status["swap"])
+                    else UNDEFINED
+                ),
+                swap_used=(
+                    api_status["swap"]["used"]
+                    if (("swap" in api_status) and "used" in api_status["swap"])
+                    else UNDEFINED
+                ),
+                qemu_on=(
+                    api_status["qemu"]["total"]
+                    if (("qemu" in api_status) and "total" in api_status["qemu"])
+                    else 0
+                ),
+                qemu_on_list=(
+                    api_status["qemu"]["list"]
+                    if (("qemu" in api_status) and "list" in api_status["qemu"])
+                    else UNDEFINED
+                ),
+                lxc_on=(
+                    api_status["lxc"]["total"]
+                    if (("lxc" in api_status) and "total" in api_status["lxc"])
+                    else 0
+                ),
+                lxc_on_list=(
+                    api_status["lxc"]["list"]
+                    if (("lxc" in api_status) and "list" in api_status["lxc"])
+                    else UNDEFINED
+                ),
             )
         msg = f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
         raise UpdateFailed(msg)
@@ -289,18 +314,22 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         return ProxmoxVMData(
             type=ProxmoxType.QEMU,
             node=node_name,
-            status=api_status["lock"]
-            if ("lock" in api_status and api_status["lock"] == "suspended")
-            else (api_status.get("status", UNDEFINED)),
+            status=(
+                api_status["lock"]
+                if ("lock" in api_status and api_status["lock"] == "suspended")
+                else (api_status.get("status", UNDEFINED))
+            ),
             name=api_status.get("name", UNDEFINED),
             health=api_status.get("qmpstatus", UNDEFINED),
             uptime=api_status.get("uptime", UNDEFINED),
             cpu=api_status.get("cpu", UNDEFINED),
             memory_total=api_status.get("maxmem", UNDEFINED),
             memory_used=api_status.get("mem", UNDEFINED),
-            memory_free=(api_status["maxmem"] - api_status["mem"])
-            if ("maxmem" in api_status and "mem" in api_status)
-            else UNDEFINED,
+            memory_free=(
+                (api_status["maxmem"] - api_status["mem"])
+                if ("maxmem" in api_status and "mem" in api_status)
+                else UNDEFINED
+            ),
             network_in=api_status.get("netin", UNDEFINED),
             network_out=api_status.get("netout", UNDEFINED),
             disk_total=api_status.get("maxdisk", UNDEFINED),
@@ -383,18 +412,22 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             cpu=api_status.get("cpu", UNDEFINED),
             memory_total=api_status.get("maxmem", UNDEFINED),
             memory_used=api_status.get("mem", UNDEFINED),
-            memory_free=(api_status["maxmem"] - api_status["mem"])
-            if ("maxmem" in api_status and "mem" in api_status)
-            else UNDEFINED,
+            memory_free=(
+                (api_status["maxmem"] - api_status["mem"])
+                if ("maxmem" in api_status and "mem" in api_status)
+                else UNDEFINED
+            ),
             network_in=api_status.get("netin", UNDEFINED),
             network_out=api_status.get("netout", UNDEFINED),
             disk_total=api_status.get("maxdisk", UNDEFINED),
             disk_used=api_status.get("disk", UNDEFINED),
             swap_total=api_status.get("maxswap", UNDEFINED),
             swap_used=api_status.get("swap", UNDEFINED),
-            swap_free=(api_status["maxswap"] - api_status["swap"])
-            if ("maxswap" in api_status and "swap" in api_status)
-            else UNDEFINED,
+            swap_free=(
+                (api_status["maxswap"] - api_status["swap"])
+                if ("maxswap" in api_status and "swap" in api_status)
+                else UNDEFINED
+            ),
         )
 
 
@@ -471,6 +504,64 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             disk_total=api_status.get("maxdisk", UNDEFINED),
             disk_used=api_status.get("disk", UNDEFINED),
             content=api_status.get("content", UNDEFINED),
+        )
+
+
+class ProxmoxZFSCoordinator(ProxmoxCoordinator):
+    """Proxmox VE ZFS data update coordinator."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        api_category: str,
+        node_name: str,
+        zfs_id: str,
+    ) -> None:
+        """Initialize the Proxmox ZFS coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            name=f"proxmox_coordinator_{api_category}_{zfs_id}",
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = zfs_id
+
+    async def _async_update_data(self) -> ProxmoxStorageData:
+        """Update data for Proxmox Update."""
+        api_path = f"nodes/{self.node_name}/disks/zfs"
+        pools = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            api_path,
+            ProxmoxType.ZFS,
+            self.resource_id,
+        )
+
+        pool_status = []
+        for pool in pools:
+            if pool["name"] == self.resource_id:
+                pool_status = pool
+
+        if pool_status is None:
+            msg = f"ZFS Pool {self.resource_id} unable to be found for Node {self.node_name}"
+            raise UpdateFailed(msg)
+
+        return ProxmoxZFSData(
+            type=ProxmoxType.ZFS,
+            node=self.node_name,
+            name=f"ZFS Pool {self.resource_id}",
+            health=pool_status.get("health", UNDEFINED),
+            size=pool_status.get("size", UNDEFINED),
+            alloc=pool_status.get("alloc", UNDEFINED),
+            free=pool_status.get("free", UNDEFINED),
         )
 
 
@@ -723,21 +814,25 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     serial=disk.get("serial", None),
                     model=disk.get("model", None),
                     disk_type=disk_type,
-                    disk_wearout=float(disk["wearout"])
-                    if (
-                        "wearout" in disk
-                        and disk_type.upper() in ("SSD", "NVME")
-                        and str(disk["wearout"]).upper() != "N/A"
-                    )
-                    else UNDEFINED,
+                    disk_wearout=(
+                        float(disk["wearout"])
+                        if (
+                            "wearout" in disk
+                            and disk_type.upper() in ("SSD", "NVME")
+                            and str(disk["wearout"]).upper() != "N/A"
+                        )
+                        else UNDEFINED
+                    ),
                     size=float(disk["size"]) if "size" in disk else UNDEFINED,
                     health=disk.get("health", UNDEFINED),
-                    disk_rpm=float(disk["rpm"])
-                    if (
-                        "rpm" in disk
-                        and disk_type.upper() not in ("SSD", "NVME", "USB", None)
-                    )
-                    else UNDEFINED,
+                    disk_rpm=(
+                        float(disk["rpm"])
+                        if (
+                            "rpm" in disk
+                            and disk_type.upper() not in ("SSD", "NVME", "USB", None)
+                        )
+                        else UNDEFINED
+                    ),
                     temperature_air=disk_attributes.get("temperature_air", UNDEFINED),
                     temperature=disk_attributes.get("temperature", UNDEFINED),
                     power_cycles=disk_attributes.get("power_cycles", UNDEFINED),
