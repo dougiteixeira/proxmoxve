@@ -12,6 +12,7 @@ CONF_NODES = "nodes"
 CONF_VMS = "vms"
 CONF_CONTAINERS = "containers"
 CONF_DISKS_ENABLE = "disks_enable"
+CONF_ZFS_ENABLE = "zfs_enable"
 
 COORDINATORS = "coordinators"
 
@@ -48,6 +49,7 @@ class ProxmoxType(StrEnum):
     Update = "update"
     Disk = "disk"
     Resources = "resources"
+    ZFS = "zfs"
 
 
 class ProxmoxCommand(StrEnum):
