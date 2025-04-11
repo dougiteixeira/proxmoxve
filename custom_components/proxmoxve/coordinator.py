@@ -30,9 +30,9 @@ from .models import (
     ProxmoxLXCData,
     ProxmoxNodeData,
     ProxmoxStorageData,
-    ProxmoxZFSData,
     ProxmoxUpdateData,
     ProxmoxVMData,
+    ProxmoxZFSData,
 )
 
 if TYPE_CHECKING:

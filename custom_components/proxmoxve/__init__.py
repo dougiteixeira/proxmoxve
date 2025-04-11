@@ -43,7 +43,6 @@ from .api import ProxmoxClient, get_api
 from .const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
-    CONF_ZFS_ENABLE,
     CONF_LXC,
     CONF_NODE,
     CONF_NODES,
@@ -52,6 +51,7 @@ from .const import (
     CONF_STORAGE,
     CONF_TOKEN_NAME,
     CONF_VMS,
+    CONF_ZFS_ENABLE,
     COORDINATORS,
     DEFAULT_PORT,
     DEFAULT_REALM,
@@ -65,12 +65,12 @@ from .const import (
 )
 from .coordinator import (
     ProxmoxDiskCoordinator,
-    ProxmoxZFSCoordinator,
     ProxmoxLXCCoordinator,
     ProxmoxNodeCoordinator,
     ProxmoxQEMUCoordinator,
     ProxmoxStorageCoordinator,
     ProxmoxUpdateCoordinator,
+    ProxmoxZFSCoordinator,
 )
 
 if TYPE_CHECKING:
@@ -737,7 +737,7 @@ def device_info(
             serial_number = cordinator_resource.serial
 
     elif api_category is ProxmoxType.ZFS:
-        name = f"{api_category.capitalize()} {node}: {resource_id}"
+        name = f"{api_category.upper()} {node}: {resource_id}"
         identifier = (
             f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
         )
@@ -746,7 +746,7 @@ def device_info(
             DOMAIN,
             f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
         )
-        model = api_category.capitalize()
+        model = api_category.upper()
         manufacturer = None
         serial_number = None
 
