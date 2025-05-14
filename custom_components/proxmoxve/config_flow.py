@@ -382,6 +382,16 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                             entry_id=self.config_entry.entry_id,
                             device_identifier=identifier,
                         )
+                if f"{ProxmoxType.ZFS}_{node}" in coordinators:
+                    for coordinator_zfs in coordinators[f"{ProxmoxType.ZFS}_{node}"]:
+                        if (coordinator_data := coordinator_zfs.data) is None:
+                            continue
+
+                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.ZFS.upper()}_{node}_{coordinator_data.path}"
+                        await self.async_remove_device(
+                            entry_id=self.config_entry.entry_id,
+                            device_identifier=identifier,
+                        )
 
         qemu_selecition = []
         if (

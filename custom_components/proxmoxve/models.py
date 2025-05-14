@@ -88,6 +88,19 @@ class ProxmoxStorageData:
 
 
 @dataclasses.dataclass
+class ProxmoxZFSData:
+    """Data parsed from the Proxmox API for ZFS."""
+
+    type: str
+    node: str
+    name: str
+    health: str | UndefinedType
+    size: float | UndefinedType
+    alloc: float | UndefinedType
+    free: float | UndefinedType
+
+
+@dataclasses.dataclass
 class ProxmoxUpdateData:
     """Data parsed from the Proxmox API for Updates."""
 

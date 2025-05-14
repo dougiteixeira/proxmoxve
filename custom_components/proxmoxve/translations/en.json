@@ -198,7 +198,7 @@
         },
         "wakeonlan": {
           "name": "Wake-on-LAN"
-        }  
+        }
       },
       "sensor": {
         "cpu_used": {
@@ -230,6 +230,21 @@
         },
         "life_left": {
           "name": "Life left"
+        },
+        "zfs_health": {
+          "name": "Health"
+        },
+        "zfs_free_perc": {
+          "name": "Free percentage"
+        },
+        "zfs_total": {
+          "name": "Total"
+        },
+        "zfs_used": {
+          "name": "Used"
+        },
+        "zfs_used_perc": {
+          "name": "Used percentage"
         },
         "lxc_on": {
           "name": "Containers running",
