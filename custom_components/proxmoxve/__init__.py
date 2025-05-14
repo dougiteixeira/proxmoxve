@@ -685,7 +685,7 @@ def device_info(
         name = f"{ProxmoxType.Node.capitalize()} {node}"
         identifier = f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
         url = f"https://{host}:{port}/#v1:0:=node/{node}"
-        via_device = ("", "")
+        via_device = None
         model = model_processor
 
     elif api_category is ProxmoxType.Disk:
