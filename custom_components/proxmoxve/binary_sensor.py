@@ -171,22 +171,6 @@ async def async_setup_binary_sensors_nodes(
 
                 for description in PROXMOX_BINARYSENSOR_DISKS:
                     if getattr(coordinator_disk.data, description.key, False):
-                        sensors.append(
-                            create_binary_sensor(
-                                coordinator=coordinator_disk,
-                                info_device=device_info(
-                                    hass=hass,
-                                    config_entry=config_entry,
-                                    api_category=ProxmoxType.Disk,
-                                    node=node,
-                                    resource_id=coordinator_data.path,
-                                    cordinator_resource=coordinator_data,
-                                ),
-                                description=description,
-                                resource_id=f"{node}_{coordinator_data.path}",
-                                config_entry=config_entry,
-                            )
-                        )
                         migrate_unique_id_disks.append(
                             {
                                 "old_unique_id": f"{config_entry.entry_id}_{coordinator_data.path}_{description.key}",
@@ -199,10 +183,26 @@ async def async_setup_binary_sensors_nodes(
                                 "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.disk_id}_{description.key}",
                             }
                         )
+                        await async_migrate_old_unique_ids(
+                            hass, Platform.BINARY_SENSOR, migrate_unique_id_disks
+                        )
 
-    await async_migrate_old_unique_ids(
-        hass, Platform.BINARY_SENSOR, migrate_unique_id_disks
-    )
+                        sensors.append(
+                            create_binary_sensor(
+                                coordinator=coordinator_disk,
+                                info_device=device_info(
+                                    hass=hass,
+                                    config_entry=config_entry,
+                                    api_category=ProxmoxType.Disk,
+                                    node=node,
+                                    resource_id=coordinator_data.disk_id,
+                                    cordinator_resource=coordinator_data,
+                                ),
+                                description=description,
+                                resource_id=f"{node}_{coordinator_data.path}",
+                                config_entry=config_entry,
+                            )
+                        )
     return sensors
 
 

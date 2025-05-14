@@ -637,7 +637,7 @@ async def async_setup_sensors_nodes(
                                     config_entry=config_entry,
                                     api_category=ProxmoxType.Disk,
                                     node=node,
-                                    resource_id=coordinator_disks_data.path,
+                                    resource_id=coordinator_disks_data.disk_id,
                                     cordinator_resource=coordinator_disks_data,
                                 ),
                                 description=description,
