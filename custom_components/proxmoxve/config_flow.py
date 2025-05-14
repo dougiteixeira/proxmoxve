@@ -189,7 +189,8 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
             old_storage = []
             for storage in self.config_entry.data[CONF_STORAGE]:
-                # Prevents old selections (from when you used just the name instead of the id) from being loaded into the options config flow
+                # Prevents old selections (from when you used just the name instead of the id)
+                # from being loaded into the options config flow
                 if storage[:8] == "storage/":
                     old_storage.append(str(storage))
 
