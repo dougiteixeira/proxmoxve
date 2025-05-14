@@ -641,7 +641,7 @@ async def async_setup_sensors_nodes(
                                     cordinator_resource=coordinator_disks_data,
                                 ),
                                 description=description,
-                                resource_id=f"{node}_{coordinator_disks_data.path}",
+                                resource_id=f"{node}_{coordinator_disks_data.disk_id}",
                                 config_entry=config_entry,
                             )
                         )

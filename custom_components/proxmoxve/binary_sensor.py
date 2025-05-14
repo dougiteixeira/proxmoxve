@@ -199,7 +199,7 @@ async def async_setup_binary_sensors_nodes(
                                     cordinator_resource=coordinator_data,
                                 ),
                                 description=description,
-                                resource_id=f"{node}_{coordinator_data.path}",
+                                resource_id=f"{node}_{coordinator_data.disk_id}",
                                 config_entry=config_entry,
                             )
                         )

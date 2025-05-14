@@ -448,11 +448,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     dev_reg = dr.async_get(hass)
                     device = dev_reg.async_get_or_create(
                         config_entry_id=config_entry.entry_id,
-                        new_identifiers={
+                        identifiers={
                             (
                                 DOMAIN,
                                 (
-                                    f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["path"]}"
+                                    f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["devpath"]}"
                                 ),
                             )
                         },
