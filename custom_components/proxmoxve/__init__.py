@@ -690,7 +690,7 @@ def device_info(
 
     elif api_category is ProxmoxType.Disk:
         model = cordinator_resource.model
-        name = f"{api_category.capitalize()} {node}: {model.replace('_', ' ')} ({resource_id})"
+        name = f"{api_category.capitalize()} {node}: {model.replace('_', ' ')}"
         identifier = (
             f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
         )
