@@ -445,6 +445,30 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
                 coordinators_disk = []
                 for disk in disks if disks is not None else []:
+                    dev_reg = dr.async_get(hass)
+                    device = dev_reg.async_get_or_create(
+                        config_entry_id=config_entry.entry_id,
+                        new_identifiers={
+                            (
+                                DOMAIN,
+                                (
+                                    f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["path"]}"
+                                ),
+                            )
+                        },
+                    )
+                    dev_reg.async_update_device(
+                        device_id=device.id,
+                        new_identifiers={
+                            (
+                                DOMAIN,
+                                (
+                                    f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["by_id_link"]}"
+                                ),
+                            )
+                        },
+                    )
+
                     coordinator_disk = ProxmoxDiskCoordinator(
                         hass=hass,
                         proxmox=proxmox,
