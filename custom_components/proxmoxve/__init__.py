@@ -51,7 +51,6 @@ from .const import (
     CONF_STORAGE,
     CONF_TOKEN_NAME,
     CONF_VMS,
-    CONF_ZFS_ENABLE,
     COORDINATORS,
     DEFAULT_PORT,
     DEFAULT_REALM,
@@ -459,7 +458,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     coordinators_disk.append(coordinator_disk)
                 coordinators[f"{ProxmoxType.Disk}_{node}"] = coordinators_disk
 
-            if config_entry.options.get(CONF_ZFS_ENABLE, True):
                 try:
                     pools = await hass.async_add_executor_job(
                         get_api, proxmox, f"nodes/{node}/disks/zfs"

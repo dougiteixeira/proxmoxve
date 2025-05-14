@@ -34,7 +34,6 @@ from .const import (
     CONF_STORAGE,
     CONF_TOKEN_NAME,
     CONF_VMS,
-    CONF_ZFS_ENABLE,
     COORDINATORS,
     DEFAULT_PORT,
     DEFAULT_REALM,
@@ -288,12 +287,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                                 CONF_DISKS_ENABLE, True
                             ),
                         ): selector.BooleanSelector(),
-                        vol.Optional(
-                            CONF_ZFS_ENABLE,
-                            default=self.config_entry.options.get(
-                                CONF_ZFS_ENABLE, True
-                            ),
-                        ): selector.BooleanSelector(),
                     }
                 ),
             )
@@ -313,10 +306,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             }
         )
 
-        options_data = {
-            CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
-            CONF_ZFS_ENABLE: user_input.get(CONF_ZFS_ENABLE),
-        }
+        options_data = {CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)}
 
         self.hass.config_entries.async_update_entry(
             self.config_entry, data=config_data, options=options_data
@@ -389,11 +379,6 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                             entry_id=self.config_entry.entry_id,
                             device_identifier=identifier,
                         )
-
-            if node not in (
-                node_selecition if node_selecition is not None else []
-            ) or not user_input.get(CONF_ZFS_ENABLE):
-                coordinators = self.config_entry.runtime_data[COORDINATORS]
                 if f"{ProxmoxType.ZFS}_{node}" in coordinators:
                     for coordinator_zfs in coordinators[f"{ProxmoxType.ZFS}_{node}"]:
                         if (coordinator_data := coordinator_zfs.data) is None:
@@ -880,10 +865,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_DISKS_ENABLE,
                             default=True,
                         ): selector.BooleanSelector(),
-                        vol.Optional(
-                            CONF_ZFS_ENABLE,
-                            default=True,
-                        ): selector.BooleanSelector(),
                     }
                 ),
             )
@@ -927,10 +908,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title=(f"{self._config[CONF_HOST]}:{self._config[CONF_PORT]}"),
             data=self._config,
-            options={
-                CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
-                CONF_ZFS_ENABLE: user_input.get(CONF_ZFS_ENABLE),
-            },
+            options={CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE)},
         )
 
     @staticmethod

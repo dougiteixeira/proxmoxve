@@ -133,66 +133,6 @@ PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         translation_key="disk_used_perc",
     ),
 )
-PROXMOX_SENSOR_ZFS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
-    ProxmoxSensorEntityDescription(
-        key="health",
-        name="Health",
-        icon="mdi:nas",
-        translation_key="zfs_health",
-    ),
-    ProxmoxSensorEntityDescription(
-        key="free_perc",
-        name="Pool free percentage",
-        icon="mdi:nas",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (
-            (x.free / x.size)
-            if (UNDEFINED not in (x.free, x.size) and x.size > 0)
-            else 0
-        ),
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
-        translation_key="zfs_free_perc",
-    ),
-    ProxmoxSensorEntityDescription(
-        key="size",
-        name="Pool total",
-        icon="mdi:nas",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-        translation_key="zfs_total",
-    ),
-    ProxmoxSensorEntityDescription(
-        key="alloc",
-        name="Pool used",
-        icon="mdi:nas",
-        native_unit_of_measurement=UnitOfInformation.BYTES,
-        device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
-        translation_key="zfs_used",
-    ),
-    ProxmoxSensorEntityDescription(
-        key="used_perc",
-        name="Pool used percentage",
-        icon="mdi:nas",
-        native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
-        value_fn=lambda x: (
-            (x.alloc / x.size)
-            if (UNDEFINED not in (x.alloc, x.size) and x.size > 0)
-            else 0
-        ),
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
-        translation_key="zfs_used_perc",
-    ),
-)
 PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.MEMORY_FREE,
@@ -561,6 +501,67 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ),
 )
 
+PROXMOX_SENSOR_ZFS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key="health",
+        name="Health",
+        icon="mdi:nas",
+        translation_key="zfs_health",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="free_perc",
+        name="Free percentage",
+        icon="mdi:nas",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
+        value_fn=lambda x: (
+            (x.free / x.size)
+            if (UNDEFINED not in (x.free, x.size) and x.size > 0)
+            else 0
+        ),
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        translation_key="zfs_free_perc",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="size",
+        name="Size",
+        icon="mdi:nas",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        translation_key="zfs_total",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="alloc",
+        name="Used",
+        icon="mdi:nas",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        translation_key="zfs_used",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="used_perc",
+        name="Used percentage",
+        icon="mdi:nas",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
+        value_fn=lambda x: (
+            (x.alloc / x.size)
+            if (UNDEFINED not in (x.alloc, x.size) and x.size > 0)
+            else 0
+        ),
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        translation_key="zfs_used_perc",
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -692,9 +693,6 @@ async def async_setup_sensors_nodes(
                                 "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_disks_data.path}_{description.key}",
                             }
                         )
-            await async_migrate_old_unique_ids(
-                hass, Platform.SENSOR, migrate_unique_id_disks
-            )
 
             coordinator_zfs_data: ProxmoxZFSData
             for coordinator_zfs in coordinators.get(f"{ProxmoxType.ZFS}_{node}", []):
@@ -734,6 +732,9 @@ async def async_setup_sensors_nodes(
                             )
                         )
 
+            await async_migrate_old_unique_ids(
+                hass, Platform.SENSOR, migrate_unique_id_disks
+            )
     return sensors
 
 
