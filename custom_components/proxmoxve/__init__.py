@@ -69,6 +69,7 @@ from .coordinator import (
     ProxmoxQEMUCoordinator,
     ProxmoxStorageCoordinator,
     ProxmoxUpdateCoordinator,
+    ProxmoxZFSCoordinator,
 )
 
 if TYPE_CHECKING:
@@ -398,7 +399,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         | ProxmoxLXCCoordinator
         | ProxmoxStorageCoordinator
         | ProxmoxUpdateCoordinator
-        | list[ProxmoxDiskCoordinator],
+        | list[ProxmoxDiskCoordinator]
+        | list[ProxmoxZFSCoordinator],
     ] = {}
     nodes_add_device = []
 
@@ -479,6 +481,27 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     await coordinator_disk.async_refresh()
                     coordinators_disk.append(coordinator_disk)
                 coordinators[f"{ProxmoxType.Disk}_{node}"] = coordinators_disk
+
+                try:
+                    pools = await hass.async_add_executor_job(
+                        get_api, proxmox, f"nodes/{node}/disks/zfs"
+                    )
+                except ResourceException as e:
+                    LOGGER.exception(e)
+                    continue
+
+                coordinators_zfs = []
+                for pool in pools if pools is not None else []:
+                    coordinator_zfs = ProxmoxZFSCoordinator(
+                        hass=hass,
+                        proxmox=proxmox,
+                        api_category=ProxmoxType.ZFS,
+                        node_name=node,
+                        zfs_id=pool["name"],
+                    )
+                    await coordinator_zfs.async_refresh()
+                    coordinators_zfs.append(coordinator_zfs)
+                coordinators[f"{ProxmoxType.ZFS}_{node}"] = coordinators_zfs
 
         else:
             ir.async_create_issue(
@@ -734,6 +757,20 @@ def device_info(
             )
             manufacturer = cordinator_resource.vendor
             serial_number = cordinator_resource.serial
+
+    elif api_category is ProxmoxType.ZFS:
+        name = f"{api_category.upper()} {node}: {resource_id}"
+        identifier = (
+            f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
+        )
+        url = f"https://{host}:{port}/#v1:0:=node/{node}:4:=zfs::::::"
+        via_device = (
+            DOMAIN,
+            f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
+        )
+        model = api_category.upper()
+        manufacturer = None
+        serial_number = None
 
     if create:
         device_registry = dr.async_get(hass)

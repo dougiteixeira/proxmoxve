@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
     from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-    from .models import ProxmoxDiskData
+    from .models import ProxmoxDiskData, ProxmoxZFSData
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -504,6 +504,67 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ),
 )
 
+PROXMOX_SENSOR_ZFS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key="health",
+        name="Health",
+        icon="mdi:nas",
+        translation_key="zfs_health",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="free_perc",
+        name="Free percentage",
+        icon="mdi:nas",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
+        value_fn=lambda x: (
+            (x.free / x.size)
+            if (UNDEFINED not in (x.free, x.size) and x.size > 0)
+            else 0
+        ),
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        translation_key="zfs_free_perc",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="size",
+        name="Size",
+        icon="mdi:nas",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        translation_key="zfs_total",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="alloc",
+        name="Used",
+        icon="mdi:nas",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        translation_key="zfs_used",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="used_perc",
+        name="Used percentage",
+        icon="mdi:nas",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
+        value_fn=lambda x: (
+            (x.alloc / x.size)
+            if (UNDEFINED not in (x.alloc, x.size) and x.size > 0)
+            else 0
+        ),
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        translation_key="zfs_used_perc",
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -645,6 +706,45 @@ async def async_setup_sensors_nodes(
                                 config_entry=config_entry,
                             )
                         )
+
+            coordinator_zfs_data: ProxmoxZFSData
+            for coordinator_zfs in coordinators.get(f"{ProxmoxType.ZFS}_{node}", []):
+                if (coordinator_zfs_data := coordinator_zfs.data) is None:
+                    continue
+
+                for description in PROXMOX_SENSOR_ZFS:
+                    if (
+                        (
+                            (
+                                data_value := getattr(
+                                    coordinator_zfs.data, description.key, False
+                                )
+                            )
+                            and data_value != UNDEFINED
+                        )
+                        or data_value == 0
+                        or (
+                            (value := description.value_fn) is not None
+                            and value(coordinator_zfs.data) is not None
+                        )
+                    ):
+                        sensors.append(
+                            create_sensor(
+                                coordinator=coordinator_zfs,
+                                info_device=device_info(
+                                    hass=hass,
+                                    config_entry=config_entry,
+                                    api_category=ProxmoxType.ZFS,
+                                    node=node,
+                                    resource_id=coordinator_zfs_data.name,
+                                    cordinator_resource=coordinator_zfs_data,
+                                ),
+                                description=description,
+                                resource_id=f"{node}_{coordinator_zfs_data.name}",
+                                config_entry=config_entry,
+                            )
+                        )
+
     return sensors
 
 

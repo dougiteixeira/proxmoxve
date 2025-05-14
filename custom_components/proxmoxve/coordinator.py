@@ -32,6 +32,7 @@ from .models import (
     ProxmoxStorageData,
     ProxmoxUpdateData,
     ProxmoxVMData,
+    ProxmoxZFSData,
 )
 
 if TYPE_CHECKING:
@@ -503,6 +504,64 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             disk_total=api_status.get("maxdisk", UNDEFINED),
             disk_used=api_status.get("disk", UNDEFINED),
             content=api_status.get("content", UNDEFINED),
+        )
+
+
+class ProxmoxZFSCoordinator(ProxmoxCoordinator):
+    """Proxmox VE ZFS data update coordinator."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        api_category: str,
+        node_name: str,
+        zfs_id: str,
+    ) -> None:
+        """Initialize the Proxmox ZFS coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            name=f"proxmox_coordinator_{api_category}_{zfs_id}",
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = zfs_id
+
+    async def _async_update_data(self) -> ProxmoxStorageData:
+        """Update data for Proxmox Update."""
+        api_path = f"nodes/{self.node_name}/disks/zfs"
+        pools = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            api_path,
+            ProxmoxType.ZFS,
+            self.resource_id,
+        )
+
+        pool_status = []
+        for pool in pools:
+            if pool["name"] == self.resource_id:
+                pool_status = pool
+
+        if pool_status is None:
+            msg = f"ZFS Pool {self.resource_id} unable to be found for Node {self.node_name}"
+            raise UpdateFailed(msg)
+
+        return ProxmoxZFSData(
+            type=ProxmoxType.ZFS,
+            node=self.node_name,
+            name=f"ZFS Pool {self.resource_id}",
+            health=pool_status.get("health", UNDEFINED),
+            size=pool_status.get("size", UNDEFINED),
+            alloc=pool_status.get("alloc", UNDEFINED),
+            free=pool_status.get("free", UNDEFINED),
         )
 
 
