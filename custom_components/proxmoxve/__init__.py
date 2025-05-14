@@ -450,7 +450,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         proxmox=proxmox,
                         api_category=ProxmoxType.Disk,
                         node_name=node,
-                        disk_id=disk["devpath"],
+                        disk_id=disk["by_id_link"],
                     )
                     await coordinator_disk.async_refresh()
                     coordinators_disk.append(coordinator_disk)
