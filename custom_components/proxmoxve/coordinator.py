@@ -463,7 +463,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             raise UpdateFailed(msg)
 
         storage_id = api_status["id"]
-        name = f"Storage {storage_id.replace("storage/", "")}"
+        name = f"Storage {storage_id.replace('storage/', '')}"
         return ProxmoxStorageData(
             type=ProxmoxType.Storage,
             node=node_name,
@@ -843,7 +843,7 @@ def poll_api(
                 severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_exception_forbiden",
                 translation_placeholders={
-                    "resource": f"{api_category.capitalize()} {resource_id.replace(f"{ProxmoxType.Update.capitalize()} ", "")}",
+                    "resource": f"{api_category.capitalize()} {resource_id.replace(f'{ProxmoxType.Update.capitalize()} ', '')}",
                     "user": config_entry.data[CONF_USERNAME],
                     "permission": permission_to_resource(
                         api_category,

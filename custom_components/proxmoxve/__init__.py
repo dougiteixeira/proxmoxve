@@ -668,7 +668,7 @@ def device_info(
             node = coordinator_data.node
 
         name = cordinator_resource.name
-        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{resource_id.replace("storage/", "")}"
+        identifier = f"{config_entry.entry_id}_{api_category.upper()}_{resource_id.replace('storage/', '')}"
         url = f"https://{host}:{port}/#v1:0:={resource_id}"
         via_device = (
             DOMAIN,
@@ -690,7 +690,7 @@ def device_info(
 
     elif api_category is ProxmoxType.Disk:
         model = cordinator_resource.model
-        name = f"{api_category.capitalize()} {node}: {model.replace("_"," ")} ({resource_id})"
+        name = f"{api_category.capitalize()} {node}: {model.replace('_', ' ')} ({resource_id})"
         identifier = (
             f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
         )
@@ -704,9 +704,9 @@ def device_info(
         else:
             disk_type = cordinator_resource.disk_type
             model = (
-                f"{disk_type.upper()} {model.replace("_"," ")} "
+                f"{disk_type.upper()} {model.replace('_', ' ')} "
                 if disk_type is not None
-                else f"{disk_type}{model.replace("_"," ")}"
+                else f"{disk_type}{model.replace('_', ' ')}"
             )
             manufacturer = cordinator_resource.vendor
             serial_number = cordinator_resource.serial
