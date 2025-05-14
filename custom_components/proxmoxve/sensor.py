@@ -16,6 +16,7 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     PERCENTAGE,
     REVOLUTIONS_PER_MINUTE,
+    EntityCategory,
     Platform,
     UnitOfInformation,
     UnitOfTemperature,
@@ -444,6 +445,7 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         translation_key="temperature",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ProxmoxSensorEntityDescription(
         key="temperature_air",
@@ -454,6 +456,7 @@ PROXMOX_SENSOR_DISKS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         translation_key="temperature_air",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ProxmoxSensorEntityDescription(
         key="power_cycles",
