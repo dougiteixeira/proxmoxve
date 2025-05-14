@@ -739,7 +739,7 @@ def device_info(
         identifier = (
             f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
         )
-        url = f"https://{host}:{port}/#v1:0:=node/{node}::2::::::"
+        url = f"https://{host}:{port}/#v1:0:=node/{node}:4:=zfs::::::"
         via_device = (
             DOMAIN,
             f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
