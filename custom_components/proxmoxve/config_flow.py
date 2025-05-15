@@ -476,6 +476,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 6
     _reauth_entry: config_entries.ConfigEntry | None = None
+    _reconfig_entry: config_entries.ConfigEntry | None = None
 
     def __init__(self) -> None:
         """Init for ProxmoxVE config flow."""
@@ -733,6 +734,83 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="reauth_confirm",
             data_schema=self.add_suggested_values_to_schema(
                 SCHEMA_HOST_AUTH, user_input or self._reauth_entry.data
+            ),
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle a flow initialized by a reconfig request."""
+
+        self._reconfig_entry = self._get_reconfigure_entry()
+        data = self._reconfig_entry.data
+
+        errors = {}
+
+        if user_input is not None:
+            host: str = str(user_input.get(CONF_HOST))
+            port: int = int(user_input.get(CONF_PORT))
+            user: str = str(user_input.get(CONF_USERNAME))
+            token_name: str = str(user_input.get(CONF_TOKEN_NAME))
+            realm: str = str(user_input.get(CONF_REALM))
+            password: str = str(user_input.get(CONF_PASSWORD))
+            verify_ssl = user_input.get(CONF_VERIFY_SSL)
+
+            try:
+                self._proxmox_client = ProxmoxClient(
+                    host=host,
+                    port=port,
+                    user=user,
+                    token_name=token_name,
+                    realm=realm,
+                    password=password,
+                    verify_ssl=verify_ssl,
+                )
+
+                await self.hass.async_add_executor_job(
+                    self._proxmox_client.build_client
+                )
+
+            except proxmoxer.AuthenticationError:
+                errors[CONF_USERNAME] = "auth_error"
+            except SSLError:
+                errors[CONF_VERIFY_SSL] = "ssl_rejection"
+            except ConnectTimeout:
+                errors[CONF_HOST] = "cant_connect"
+            except Exception:  # pylint: disable=broad-except
+                errors[CONF_BASE] = "general_error"
+
+            else:
+                config_data: dict[str, Any] = (
+                    self._reconfig_entry.data.copy()
+                    if self._reconfig_entry.data is not None
+                    else {}
+                )
+                config_data[CONF_HOST] = user_input.get(CONF_HOST)
+                config_data[CONF_PORT] = user_input.get(CONF_PORT)
+                config_data[CONF_USERNAME] = user_input.get(CONF_USERNAME)
+                config_data[CONF_TOKEN_NAME] = user_input.get(CONF_TOKEN_NAME)
+                config_data[CONF_PASSWORD] = user_input.get(CONF_PASSWORD)
+                config_data[CONF_REALM] = user_input.get(CONF_REALM)
+                config_data[CONF_VERIFY_SSL] = user_input.get(CONF_VERIFY_SSL)
+
+                self.hass.config_entries.async_update_entry(
+                    self._reconfig_entry,
+                    data=config_data,
+                )
+
+                await self.hass.config_entries.async_reload(
+                    self._reconfig_entry.entry_id
+                )
+
+                return self.async_abort(reason="reconfigure_successful")
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                SCHEMA_HOST_FULL,
+                data or user_input,
             ),
             errors=errors,
         )
