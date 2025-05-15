@@ -695,7 +695,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
     async def _async_update_data(self) -> ProxmoxDiskData:
         """Update data  for Proxmox Disk."""
         if self.node_name is not None:
-            api_path = f"nodes/{self.node_name!s}/disks/list"
+            api_path = f"nodes/{self.node_name}/disks/list"
             api_status = await self.hass.async_add_executor_job(
                 poll_api,
                 self.hass,
@@ -713,7 +713,8 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
             return ProxmoxDiskData(
                 type=ProxmoxType.Disk,
                 node=self.node_name,
-                path=self.resource_id,
+                disk_id=self.resource_id,
+                path=None,
                 disk_wearout=UNDEFINED,
                 vendor=None,
                 serial=None,
@@ -731,9 +732,9 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
             )
 
         for disk in api_status:
-            if disk["devpath"] == self.resource_id:
+            if disk["by_id_link"] == self.resource_id:
                 disk_attributes = {}
-                api_path = f"nodes/{self.node_name}/disks/smart?disk={self.resource_id}"
+                api_path = f"nodes/{self.node_name}/disks/smart?disk={disk["devpath"]}"
                 try:
                     disk_attributes_api = await self.hass.async_add_executor_job(
                         poll_api,
@@ -809,7 +810,8 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                 return ProxmoxDiskData(
                     type=ProxmoxType.Disk,
                     node=self.node_name,
-                    path=self.resource_id,
+                    disk_id=self.resource_id,
+                    path=disk["devpath"],
                     vendor=disk.get("vendor", None),
                     serial=disk.get("serial", None),
                     model=disk.get("model", None),

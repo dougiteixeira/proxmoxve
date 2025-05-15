@@ -117,6 +117,7 @@ class ProxmoxDiskData:
 
     type: str
     node: str
+    disk_id: str | None
     path: str
     serial: str | None
     model: str | None

@@ -377,7 +377,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                         if (coordinator_data := coordinator_disk.data) is None:
                             continue
 
-                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{coordinator_data.path}"
+                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{coordinator_data.disk_id}"
                         await self.async_remove_device(
                             entry_id=self.config_entry.entry_id,
                             device_identifier=identifier,
@@ -474,7 +474,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """ProxmoxVE Config Flow class."""
 
-    VERSION = 5
+    VERSION = 6
     _reauth_entry: config_entries.ConfigEntry | None = None
 
     def __init__(self) -> None:

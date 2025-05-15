@@ -319,6 +319,68 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                 remove_config_entry_id=config_entry.entry_id,
             )
 
+    if config_entry.version == 5:
+        entry_data = config_entry.data
+
+        host = entry_data[CONF_HOST]
+        port = entry_data[CONF_PORT]
+        user = entry_data[CONF_USERNAME]
+        token_name = entry_data[CONF_TOKEN_NAME]
+        realm = entry_data[CONF_REALM]
+        password = entry_data[CONF_PASSWORD]
+        verify_ssl = entry_data[CONF_VERIFY_SSL]
+
+        proxmox_client = ProxmoxClient(
+            host=host,
+            port=port,
+            user=user,
+            token_name=token_name,
+            realm=realm,
+            password=password,
+            verify_ssl=verify_ssl,
+        )
+        try:
+            await hass.async_add_executor_job(proxmox_client.build_client)
+        except ResourceException:
+            LOGGER.warning(
+                "Migration from version 5 to version 6 failed due to API connection"
+            )
+
+        proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
+
+        for node in config_entry.data.get(CONF_NODES):
+            try:
+                disks = await hass.async_add_executor_job(
+                    get_api, proxmox, f"nodes/{node}/disks/list"
+                )
+            except ResourceException:
+                continue
+
+            dev_reg = dr.async_get(hass)
+            for disk in disks if disks is not None else []:
+                device = dev_reg.async_get_or_create(
+                    config_entry_id=config_entry.entry_id,
+                    identifiers={
+                        (
+                            DOMAIN,
+                            (
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['devpath']}"
+                            ),
+                        )
+                    },
+                )
+                dev_reg.async_update_device(
+                    device_id=device.id,
+                    new_identifiers={
+                        (
+                            DOMAIN,
+                            (
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['by_id_link']}"
+                            ),
+                        )
+                    },
+                )
+
         data_new = {
             CONF_HOST: config_entry.data.get(CONF_HOST),
             CONF_PORT: config_entry.data.get(CONF_PORT),
@@ -336,7 +398,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             config_entry,
             data=data_new,
             options={},
-            version=5,
+            version=6,
             minor_version=1,
         )
 
@@ -452,7 +514,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         proxmox=proxmox,
                         api_category=ProxmoxType.Disk,
                         node_name=node,
-                        disk_id=disk["devpath"],
+                        disk_id=disk["by_id_link"],
                     )
                     await coordinator_disk.async_refresh()
                     coordinators_disk.append(coordinator_disk)
@@ -713,7 +775,7 @@ def device_info(
 
     elif api_category is ProxmoxType.Disk:
         model = cordinator_resource.model
-        name = f"{api_category.capitalize()} {node}: {model.replace('_', ' ')} ({resource_id})"
+        name = f"{api_category.capitalize()} {node}: {model.replace('_', ' ')}"
         identifier = (
             f"{config_entry.entry_id}_{api_category.upper()}_{node}_{resource_id}"
         )

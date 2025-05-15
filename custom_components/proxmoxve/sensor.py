@@ -674,6 +674,21 @@ async def async_setup_sensors_nodes(
                             and value(coordinator_disk.data) is not None
                         )
                     ):
+                        migrate_unique_id_disks.append(
+                            {
+                                "old_unique_id": f"{config_entry.entry_id}_{coordinator_disks_data.path}_{description.key}",
+                                "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_disks_data.disk_id}_{description.key}",
+                            }
+                        )
+                        migrate_unique_id_disks.append(
+                            {
+                                "old_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_disks_data.path}_{description.key}",
+                                "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_disks_data.disk_id}_{description.key}",
+                            }
+                        )
+                        await async_migrate_old_unique_ids(
+                            hass, Platform.SENSOR, migrate_unique_id_disks
+                        )
                         sensors.append(
                             create_sensor(
                                 coordinator=coordinator_disk,
@@ -682,19 +697,13 @@ async def async_setup_sensors_nodes(
                                     config_entry=config_entry,
                                     api_category=ProxmoxType.Disk,
                                     node=node,
-                                    resource_id=coordinator_disks_data.path,
+                                    resource_id=coordinator_disks_data.disk_id,
                                     cordinator_resource=coordinator_disks_data,
                                 ),
                                 description=description,
-                                resource_id=f"{node}_{coordinator_disks_data.path}",
+                                resource_id=f"{node}_{coordinator_disks_data.disk_id}",
                                 config_entry=config_entry,
                             )
-                        )
-                        migrate_unique_id_disks.append(
-                            {
-                                "old_unique_id": f"{config_entry.entry_id}_{coordinator_disks_data.path}_{description.key}",
-                                "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_disks_data.path}_{description.key}",
-                            }
                         )
 
             coordinator_zfs_data: ProxmoxZFSData
@@ -735,9 +744,6 @@ async def async_setup_sensors_nodes(
                             )
                         )
 
-            await async_migrate_old_unique_ids(
-                hass, Platform.SENSOR, migrate_unique_id_disks
-            )
     return sensors
 
 
