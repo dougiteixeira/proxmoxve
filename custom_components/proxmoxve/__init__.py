@@ -320,9 +320,35 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             )
 
     if config_entry.version == 5:
+        entry_data = config_entry.data
+
+        host = entry_data[CONF_HOST]
+        port = entry_data[CONF_PORT]
+        user = entry_data[CONF_USERNAME]
+        token_name = entry_data[CONF_TOKEN_NAME]
+        realm = entry_data[CONF_REALM]
+        password = entry_data[CONF_PASSWORD]
+        verify_ssl = entry_data[CONF_VERIFY_SSL]
+
+        proxmox_client = ProxmoxClient(
+            host=host,
+            port=port,
+            user=user,
+            token_name=token_name,
+            realm=realm,
+            password=password,
+            verify_ssl=verify_ssl,
+        )
+        try:
+            await hass.async_add_executor_job(proxmox_client.build_client)
+        except ResourceException:
+            LOGGER.warning(
+                "Migration from version 5 to version 6 failed due to API connection"
+            )
+
+        proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
+
         for node in config_entry.data.get(CONF_NODES):
-            proxmox_client = config_entry.data.get(PROXMOX_CLIENT)
-            proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
             try:
                 disks = await hass.async_add_executor_job(
                     get_api, proxmox, f"nodes/{node}/disks/list"
