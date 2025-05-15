@@ -356,8 +356,8 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             except ResourceException:
                 continue
 
+            dev_reg = dr.async_get(hass)
             for disk in disks if disks is not None else []:
-                dev_reg = dr.async_get(hass)
                 device = dev_reg.async_get_or_create(
                     config_entry_id=config_entry.entry_id,
                     identifiers={
@@ -398,7 +398,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             config_entry,
             data=data_new,
             options={},
-            version=5,
+            version=6,
             minor_version=1,
         )
 
