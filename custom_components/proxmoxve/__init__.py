@@ -319,6 +319,42 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                 remove_config_entry_id=config_entry.entry_id,
             )
 
+    if config_entry.version == 5:
+        for node in config_entry.data.get(CONF_NODES):
+            proxmox_client = config_entry.data.get(PROXMOX_CLIENT)
+            proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
+            try:
+                disks = await hass.async_add_executor_job(
+                    get_api, proxmox, f"nodes/{node}/disks/list"
+                )
+            except ResourceException:
+                continue
+
+            for disk in disks if disks is not None else []:
+                dev_reg = dr.async_get(hass)
+                device = dev_reg.async_get_or_create(
+                    config_entry_id=config_entry.entry_id,
+                    identifiers={
+                        (
+                            DOMAIN,
+                            (
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['devpath']}"
+                            ),
+                        )
+                    },
+                )
+                dev_reg.async_update_device(
+                    device_id=device.id,
+                    new_identifiers={
+                        (
+                            DOMAIN,
+                            (
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['by_id_link']}"
+                            ),
+                        )
+                    },
+                )
+
         data_new = {
             CONF_HOST: config_entry.data.get(CONF_HOST),
             CONF_PORT: config_entry.data.get(CONF_PORT),
@@ -447,30 +483,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
                 coordinators_disk = []
                 for disk in disks if disks is not None else []:
-                    dev_reg = dr.async_get(hass)
-                    device = dev_reg.async_get_or_create(
-                        config_entry_id=config_entry.entry_id,
-                        identifiers={
-                            (
-                                DOMAIN,
-                                (
-                                    f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["devpath"]}"
-                                ),
-                            )
-                        },
-                    )
-                    dev_reg.async_update_device(
-                        device_id=device.id,
-                        new_identifiers={
-                            (
-                                DOMAIN,
-                                (
-                                    f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["by_id_link"]}"
-                                ),
-                            )
-                        },
-                    )
-
                     coordinator_disk = ProxmoxDiskCoordinator(
                         hass=hass,
                         proxmox=proxmox,

@@ -674,7 +674,6 @@ async def async_setup_sensors_nodes(
                             and value(coordinator_disk.data) is not None
                         )
                     ):
-
                         migrate_unique_id_disks.append(
                             {
                                 "old_unique_id": f"{config_entry.entry_id}_{coordinator_disks_data.path}_{description.key}",
