@@ -231,6 +231,21 @@
             "life_left": {
                 "name": "Vida útil restante"
             },
+            "zfs_health": {
+                "name": "Integridade"
+            },
+            "zfs_free_perc": {
+                "name": "Percentual livre"
+            },
+            "zfs_total": {
+                "name": "Total"
+            },
+            "zfs_used": {
+                "name": "Em uso"
+            },
+            "zfs_used_perc": {
+                "name": "Percentual em uso"
+            },
             "lxc_on": {
                 "name": "Contêineres em execução",
                 "state_attributes": {
