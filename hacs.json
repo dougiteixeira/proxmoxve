@@ -9,4 +9,6 @@
   "hide_default_branch": false,
   "homeassistant": "2024.1.0",
   "render_readme": true
+  "zip_release": true,
+  "filename": "proxmoxve.zip"
 }
