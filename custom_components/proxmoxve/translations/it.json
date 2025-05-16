@@ -35,6 +35,18 @@
                     "token_name": "Token name",
                     "realm": "Realm"
                 }
+            },
+            "reconfigure": {
+                "description": "Proxmox host information",
+                "data": {
+                    "host": "Host",
+                    "password": "Password or token value",
+                    "token_name": "Token name",
+                    "port": "Port",
+                    "realm": "Realm",
+                    "username": "Username",
+                    "verify_ssl": "Verify SSL certificate"
+                }
             }
         },
         "error": {
@@ -47,7 +59,8 @@
         "abort": {
             "already_configured": "La periferica è gia configurata",
             "no_resources": "Nessuna risorsa in questa istanza",
-            "reauth_successful": "Riautenticazione eseguita con successo"
+            "reauth_successful": "Riautenticazione eseguita con successo",
+            "reconfigure_successful": "Reconfiguration completed successfully."
         }
     },
     "issues": {
