@@ -35,6 +35,18 @@
                     "token_name": "Token name",
                     "realm": "Realm"
                 }
+            },
+            "reconfigure": {
+                "description": "Proxmox host information",
+                "data": {
+                    "host": "Host",
+                    "password": "Password or token value",
+                    "token_name": "Token name",
+                    "port": "Port",
+                    "realm": "Realm",
+                    "username": "Username",
+                    "verify_ssl": "Verify SSL certificate"
+                }
             }
         },
         "error": {
@@ -47,7 +59,8 @@
         "abort": {
             "already_configured": "Устройството вече е настроено",
             "no_resources": "За тази инстанция не бяха върнати ресурси.",
-            "reauth_successful": "Повторното удостоверяване беше успешно"
+            "reauth_successful": "Повторното удостоверяване беше успешно",
+            "reconfigure_successful": "Reconfiguration completed successfully."
         }
     },
     "issues": {
