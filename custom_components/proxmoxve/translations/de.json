@@ -35,6 +35,18 @@
                     "token_name": "Token Name",
                     "realm": "Realm"
                 }
+            },
+            "reconfigure": {
+                "description": "Proxmox host information",
+                "data": {
+                    "host": "Host",
+                    "password": "Password or token value",
+                    "token_name": "Token name",
+                    "port": "Port",
+                    "realm": "Realm",
+                    "username": "Username",
+                    "verify_ssl": "Verify SSL certificate"
+                }
             }
         },
         "error": {
@@ -47,7 +59,8 @@
         "abort": {
             "already_configured": "Das Gerät ist bereits konfiguriert",
             "no_resources": "Es wurden keine Ressourcen für diese Instanz zurückgegeben.",
-            "reauth_successful": "Die erneute Authentifizierung war erfolgreich"
+            "reauth_successful": "Die erneute Authentifizierung war erfolgreich",
+            "reconfigure_successful": "Reconfiguration completed successfully."
         }
     },
     "issues": {
