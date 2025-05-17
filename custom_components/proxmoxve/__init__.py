@@ -375,7 +375,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                         (
                             DOMAIN,
                             (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['by_id_link']}"
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['by_id_link'] if 'by_id_link' in disk else disk['serial']}"
                             ),
                         )
                     },
@@ -514,7 +514,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         proxmox=proxmox,
                         api_category=ProxmoxType.Disk,
                         node_name=node,
-                        disk_id=disk["by_id_link"],
+                        disk_id=(
+                            disk["by_id_link"]
+                            if "by_id_link" in disk
+                            else disk["serial"]
+                        ),
                     )
                     await coordinator_disk.async_refresh()
                     coordinators_disk.append(coordinator_disk)
