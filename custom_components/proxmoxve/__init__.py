@@ -736,7 +736,6 @@ def device_info(
     proxmox_version = None
     manufacturer = None
     serial_number = None
-    via_device = None
     if api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
         coordinator = coordinators[f"{api_category}_{resource_id}"]
         if (coordinator_data := coordinator.data) is not None:
@@ -775,6 +774,7 @@ def device_info(
         name = f"{ProxmoxType.Node.capitalize()} {node}"
         identifier = f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
         url = f"https://{host}:{port}/#v1:0:=node/{node}"
+        via_device = None
         model = model_processor
 
     elif api_category is ProxmoxType.Disk:

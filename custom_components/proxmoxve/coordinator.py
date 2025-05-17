@@ -696,50 +696,15 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         """Update data  for Proxmox Disk."""
         if self.node_name is not None:
             api_path = f"nodes/{self.node_name}/disks/list"
-            api_status = [
-                {
-                    "by_id_link": "/dev/disk/by-id/nvme-nvme.144d-533237474e594148313039343533-53414d53554e47204d5a5650563235364844474c2d3030304831-00000001",
-                    "vendor": "unknown",
-                    "wearout": 57,
-                    "serial": "S27GNYAH109453",
-                    "osdid": -1,
-                    "gpt": 1,
-                    "used": "BIOS boot",
-                    "wwn": "nvme.144d-533237474e594148313039343533-53414d53554e47204d5a5650563235364844474c2d3030304831-00000001",
-                    "health": "PASSED",
-                    "osdid-list": None,
-                    "model": "SAMSUNG MZVPV256HDGL-000H1",
-                    "type": "nvme",
-                    "rpm": 0,
-                    "devpath": "/dev/nvme0n1",
-                    "size": 256060514304,
-                },
-                {
-                    "osdid": -1,
-                    "wearout": "N/A",
-                    "serial": "S6XDNS0T728613D",
-                    "vendor": "Samsung ",
-                    "gpt": 0,
-                    "health": "UNKNOWN",
-                    "osdid-list": None,
-                    "wwn": "unknown",
-                    "used": "ext4",
-                    "model": "PSSD_T7",
-                    "type": "ssd",
-                    "rpm": 0,
-                    "devpath": "/dev/sda",
-                    "size": 1000204886016,
-                },
-            ]
-            # api_status = await self.hass.async_add_executor_job(
-            #     poll_api,
-            #     self.hass,
-            #     self.config_entry,
-            #     self.proxmox,
-            #     api_path,
-            #     ProxmoxType.Disk,
-            #     self.resource_id,
-            # )
+            api_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Disk,
+                self.resource_id,
+            )
         else:
             msg = f"{self.resource_id} node not found"
             raise UpdateFailed(msg)
