@@ -742,7 +742,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle a flow initialized by a reconfig request."""
-
         self._reconfig_entry = self._get_reconfigure_entry()
         data = self._reconfig_entry.data
 
