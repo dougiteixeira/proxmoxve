@@ -375,7 +375,69 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                         (
                             DOMAIN,
                             (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['by_id_link'] if 'by_id_link' in disk else disk['serial']}"
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["wwn"] if "wwn" in disk else disk["by_id_link"] if "by_id_link" in disk else disk["serial"]}"
+                            ),
+                        )
+                    },
+                )
+
+    if config_entry.version == 6:
+        entry_data = config_entry.data
+
+        host = entry_data[CONF_HOST]
+        port = entry_data[CONF_PORT]
+        user = entry_data[CONF_USERNAME]
+        token_name = entry_data[CONF_TOKEN_NAME]
+        realm = entry_data[CONF_REALM]
+        password = entry_data[CONF_PASSWORD]
+        verify_ssl = entry_data[CONF_VERIFY_SSL]
+
+        proxmox_client = ProxmoxClient(
+            host=host,
+            port=port,
+            user=user,
+            token_name=token_name,
+            realm=realm,
+            password=password,
+            verify_ssl=verify_ssl,
+        )
+        try:
+            await hass.async_add_executor_job(proxmox_client.build_client)
+        except ResourceException:
+            LOGGER.warning(
+                "Migration from version 5 to version 6 failed due to API connection"
+            )
+
+        proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
+
+        for node in config_entry.data.get(CONF_NODES):
+            try:
+                disks = await hass.async_add_executor_job(
+                    get_api, proxmox, f"nodes/{node}/disks/list"
+                )
+            except ResourceException:
+                continue
+
+            dev_reg = dr.async_get(hass)
+            for disk in disks if disks is not None else []:
+                device = dev_reg.async_get_or_create(
+                    config_entry_id=config_entry.entry_id,
+                    identifiers={
+                        (
+                            DOMAIN,
+                            (
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["by_id_link"] if "by_id_link" in disk else disk["serial"]}"
+                            ),
+                        )
+                    },
+                )
+                dev_reg.async_update_device(
+                    device_id=device.id,
+                    new_identifiers={
+                        (
+                            DOMAIN,
+                            (
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["wwn"] if "wwn" in disk else disk["by_id_link"] if "by_id_link" in disk else disk["serial"]}"
                             ),
                         )
                     },
@@ -398,7 +460,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             config_entry,
             data=data_new,
             options={},
-            version=6,
+            version=7,
             minor_version=1,
         )
 
@@ -515,9 +577,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         api_category=ProxmoxType.Disk,
                         node_name=node,
                         disk_id=(
-                            disk["by_id_link"]
-                            if "by_id_link" in disk
-                            else disk["serial"]
+                            disk["wwn"]
+                            if "wwn" in disk
+                            else (
+                                disk["by_id_link"]
+                                if "by_id_link" in disk
+                                else disk["serial"]
+                            )
                         ),
                     )
                     await coordinator_disk.async_refresh()
