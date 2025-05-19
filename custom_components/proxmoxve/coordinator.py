@@ -732,8 +732,10 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
             )
 
         for disk in api_status:
-            if ("by_id_link" in disk and disk["by_id_link"] == self.resource_id) or (
-                "serial" in disk and disk["serial"] == self.resource_id
+            if (
+                ("wwn" in disk and disk["wwn"] == self.resource_id)
+                or ("by_id_link" in disk and disk["by_id_link"] == self.resource_id)
+                or ("serial" in disk and disk["serial"] == self.resource_id)
             ):
                 disk_attributes = {}
                 api_path = f"nodes/{self.node_name}/disks/smart?disk={disk["devpath"]}"
