@@ -37,15 +37,15 @@
                 }
             },
             "reconfigure": {
-                "description": "Proxmox host information",
+                "description": "Informações do host Proxmox",
                 "data": {
                     "host": "Host",
-                    "password": "Password or token value",
-                    "token_name": "Token name",
-                    "port": "Port",
-                    "realm": "Realm",
-                    "username": "Username",
-                    "verify_ssl": "Verify SSL certificate"
+                    "password": "Senha ou token",
+                    "token_name": "Nome do token",
+                    "port": "Porta",
+                    "realm": "Domínio",
+                    "username": "Usuário",
+                    "verify_ssl": "Verificar certificado SSL"
                 }
             }
         },
@@ -60,7 +60,7 @@
             "already_configured": "O dispositivo já está configurado",
             "no_resources": "Nenhum recurso foi retornado para esta instância.",
             "reauth_successful": "A reautenticação foi bem sucedida",
-            "reconfigure_successful": "Reconfiguration completed successfully."
+            "reconfigure_successful": "Reconfiguração finalizada com sucesso."
         }
     },
     "issues": {

@@ -1,0 +1,353 @@
+{
+    "config": {
+        "step": {
+            "host": {
+                "description": "Информация о хосте Proxmox",
+                "data": {
+                    "host": "Хост",
+                    "password": "Пароль или значение токена",
+                    "token_name": "Имя токена",
+                    "port": "Порт",
+                    "realm": "Домен аутентификации",
+                    "username": "Имя пользователя",
+                    "verify_ssl": "Проверять SSL-сертификат"
+                }
+            },
+            "expose": {
+                "description": "Выберите ноды Proxmox, виртуальные машины (QEMU), контейнеры (LXC) и хранилища для мониторинга",
+                "data": {
+                    "nodes": "Ноды",
+                    "qemu": "Виртуальные машины (QEMU)",
+                    "lxc": "Контейнеры Linux (LXC)",
+                    "storage": "Хранилища",
+                    "disks_enable": "Включить мониторинг физических дисков"
+                },
+                "data_description": {
+                    "disks_enable": "При использовании гибернации дисков отключите эту опцию, чтобы предотвратить их нежелательное пробуждение."
+                }
+            },
+            "reauth_confirm": {
+                "description": "Неверное имя пользователя или пароль.",
+                "title": "Повторная аутентификация интеграции",
+                "data": {
+                    "password": "Пароль или значение токена",
+                    "username": "Имя пользователя",
+                    "token_name": "Имя токена",
+                    "realm": "Домен аутентификации"
+                }
+            },
+            "reconfigure": {
+                "description": "Информация о хосте Proxmox",
+                "data": {
+                    "host": "Хост",
+                    "password": "Пароль или значение токена",
+                    "token_name": "Имя токена",
+                    "port": "Порт",
+                    "realm": "Домен аутентификации",
+                    "username": "Имя пользователя",
+                    "verify_ssl": "Проверять SSL-сертификат"
+                }
+            }
+        },
+        "error": {
+            "auth_error": "Ошибка аутентификации",
+            "cant_connect": "Не удалось подключиться",
+            "general_error": "Неожиданная ошибка",
+            "invalid_port": "Неверный номер порта",
+            "ssl_rejection": "Не удалось проверить SSL-сертификат"
+        },
+        "abort": {
+            "already_configured": "Устройство уже настроено",
+            "no_resources": "Для этого экземпляра не возвращены ресурсы",
+            "reauth_successful": "Повторная аутентификация прошла успешно",
+            "reconfigure_successful": "Перенастройка завершена успешно."
+        }
+    },
+    "issues": {
+        "import_success": {
+            "title": "{host}:{port} успешно импортирован из YAML-конфигурации",
+            "description": "Конфигурация YAML для экземпляра {host}:{port} интеграции {integration} (`{platform}`) была автоматически импортирована в интерфейс.\n\nМожно безопасно удалить из файла `configuration.yaml`."
+        },
+        "import_invalid_port": {
+            "title": "Ошибка импорта YAML-конфигурации для {host}:{port}",
+            "description": "Импорт конфигурации YAML для экземпляра {host}:{port} интеграции {integration} (`{platform}`) не удался из-за неверного порта.\n\nУдалите эту конфигурацию из `configuration.yaml`, перезапустите Home Assistant и настройте вручную."
+        },
+        "import_auth_error": {
+            "title": "Ошибка импорта YAML-конфигурации для {host}:{port}",
+            "description": "Импорт конфигурации YAML для экземпляра {host}:{port} интеграции {integration} (`{platform}`) не удался из-за ошибки аутентификации.\n\nУдалите эту конфигурацию из `configuration.yaml`, перезапустите Home Assistant и настройте вручную."
+        },
+        "import_ssl_rejection": {
+            "title": "Ошибка импорта YAML-конфигурации для {host}:{port}",
+            "description": "Импорт конфигурации YAML для экземпляра {host}:{port} интеграции {integration} (`{platform}`) не удался из-за ошибки SSL.\n\nУдалите эту конфигурацию из `configuration.yaml`, перезапустите Home Assistant и настройте вручную."
+        },
+        "import_cant_connect": {
+            "title": "Ошибка импорта YAML-конфигурации для {host}:{port}",
+            "description": "Импорт конфигурации YAML для экземпляра {host}:{port} интеграции {integration} (`{platform}`) не удался из-за ошибки подключения.\n\nУдалите эту конфигурацию из `configuration.yaml`, перезапустите Home Assistant и настройте вручную."
+        },
+        "import_general_error": {
+            "title": "Ошибка импорта YAML-конфигурации для {host}:{port}",
+            "description": "Импорт конфигурации YAML для экземпляра {host}:{port} интеграции {integration} (`{platform}`) не удался по неизвестной причине.\n\nУдалите эту конфигурацию из `configuration.yaml`, перезапустите Home Assistant и настройте вручную."
+        },
+        "import_already_configured": {
+            "title": "Экземпляр {host}:{port} уже существует в интерфейсе и может быть удалён",
+            "description": "Конфигурация YAML для экземпляра {host}:{port} интеграции {integration} (`{platform}`) уже существует в интерфейсе и была проигнорирована при импорте.\n\nУдалите эту конфигурацию из `configuration.yaml` и перезапустите Home Assistant."
+        },
+        "import_node_not_exist": {
+            "title": "Нода {node} не существует на {host}:{port}",
+            "description": "Нода {node} экземпляра {host}:{port} интеграции {integration} (`{platform}`), указанная в YAML-конфигурации, не существует и была проигнорирована при импорте.\n\nУдалите эту конфигурацию из `configuration.yaml` и перезапустите Home Assistant."
+        },
+        "yaml_deprecated": {
+            "title": "Конфигурация {integration} в YAML устарела",
+            "description": "Конфигурация {integration} (`{platform}`) в YAML устарела и будет удалена в версии {version}.\n\nИсправьте проблемы импорта и удалите YAML-конфигурацию из файла `configuration.yaml`."
+        },
+        "resource_nonexistent": {
+            "description": "{resource_type} {resource} не существует на ({host}:{port}), удалите это в настройках интеграции.\n\nТакже может быть вызвано недостаточными правами доступа к ресурсу.\n\nТребуемые права:\n* `{permission}`",
+            "title": "{resource_type} {resource} не существует"
+        },
+        "no_permissions": {
+            "description": "Пользователь `{user}` не имеет необходимых прав для всех функций.\n\nСледующие функции недоступны:\n`{errors}`\n\nПроверьте права пользователя, как указано в документации.",
+            "title": "Пользователь `{user}` не имеет необходимых прав"
+        },
+        "resource_exception_forbiden": {
+            "description": "Пользователь `{user}` не имеет достаточных прав для доступа к ресурсу `{resource}`.\n\nТребуемые права:\n* `{permission}`\n\nПроверьте документацию и права пользователя.",
+            "title": "Ошибка прав доступа для `{resource}`"
+        },
+        "resource_command_forbiden": {
+            "description": "Пользователь `{user}` не имеет достаточных прав для выполнения команды `{command}` на ресурсе `{resource}`.\n\nТребуемые права:\n* `{permission}`\n\nПроверьте документацию и права пользователя.",
+            "title": "Ошибка прав доступа для команды `{resource}`"
+        }
+    },
+    "options": {
+        "step": {
+            "menu": {
+                "menu_options": {
+                    "host_auth": "Изменить данные аутентификации хоста",
+                    "change_expose": "Добавить или удалить ноды, ВМ, контейнеры или хранилища"
+                }
+            },
+            "host_auth": {
+                "data": {
+                    "password": "Пароль или значение токена",
+                    "token_name": "Имя токена",
+                    "realm": "Домен аутентификации",
+                    "username": "Имя пользователя",
+                    "verify_ssl": "Проверять SSL-сертификат"
+                },
+                "description": "Информация о хосте Proxmox"
+            },
+            "change_expose": {
+                "description": "Выберите ноды Proxmox, виртуальные машины (QEMU) и контейнеры (LXC) для мониторинга",
+                "data": {
+                    "lxc": "Контейнеры Linux (LXC)",
+                    "nodes": "Ноды",
+                    "qemu": "Виртуальные машины (QEMU)",
+                    "storage": "Хранилища",
+                    "disks_enable": "Включить мониторинг физических дисков"
+                },
+                "data_description": {
+                    "disks_enable": "При использовании гибернации дисков отключите эту опцию, чтобы предотвратить их нежелательное пробуждение."
+                }
+            }
+        },
+        "error": {
+            "auth_error": "Ошибка аутентификации",
+            "cant_connect": "Не удалось подключиться",
+            "general_error": "Неожиданная ошибка",
+            "invalid_port": "Неверный номер порта",
+            "ssl_rejection": "Не удалось проверить SSL-сертификат"
+        },
+        "abort": {
+            "no_nodes": "Для хоста не возвращены ноды.",
+            "no_vms": "Для этой ноды нет виртуальных машин или контейнеров, запись конфигурации будет создана для ноды.",
+            "changes_successful": "Изменения успешно сохранены.",
+            "no_nodes_to_add": "Нет нод для добавления.",
+            "node_already_exists": "Выбранная нода уже существует.",
+            "auth_error": "Ошибка аутентификации",
+            "cant_connect": "Не удалось подключиться",
+            "general_error": "Неожиданная ошибка",
+            "invalid_port": "Неверный номер порта",
+            "ssl_rejection": "Не удалось проверить SSL-сертификат"
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "status": {
+                "name": "Статус"
+            },
+            "health": {
+                "name": "Состояние"
+            },
+            "update_avail": {
+                "name": "Наличие обновлений"
+            }
+        },
+        "button": {
+            "start_all": {
+                "name": "Запустить все"
+            },
+            "stop_all": {
+                "name": "Остановить все"
+            },
+            "shutdown": {
+                "name": "Выключение"
+            },
+            "reboot": {
+                "name": "Перезагрузка"
+            },
+            "start": {
+                "name": "Запуск"
+            },
+            "stop": {
+                "name": "Остановка"
+            },
+            "resume": {
+                "name": "Возобновить"
+            },
+            "suspend": {
+                "name": "Приостановить"
+            },
+            "reset": {
+                "name": "Сброс"
+            },
+            "wakeonlan": {
+                "name": "Wake-on-LAN"
+            }
+        },
+        "sensor": {
+            "cpu_used": {
+                "name": "Нагрузка CPU"
+            },
+            "disk_free": {
+                "name": "Свободно на диске"
+            },
+            "disk_free_perc": {
+                "name": "Процент свободного места"
+            },
+            "disk_rpm": {
+                "name": "Скорость диска"
+            },
+            "disk_size": {
+                "name": "Размер"
+            },
+            "disk_total": {
+                "name": "Всего места"
+            },
+            "disk_used": {
+                "name": "Занято места"
+            },
+            "disk_used_perc": {
+                "name": "Занято места (%)"
+            },
+            "disk_wearout": {
+                "name": "Износ"
+            },
+            "life_left": {
+                "name": "Остаточный ресурс"
+            },
+            "zfs_health": {
+                "name": "Состояние (ZFS)"
+            },
+            "zfs_free_perc": {
+                "name": "Свободно (ZFS)"
+            },
+            "zfs_total": {
+                "name": "Всего (ZFS)"
+            },
+            "zfs_used": {
+                "name": "Использовано (ZFS)"
+            },
+            "zfs_used_perc": {
+                "name": "Процент использования (ZFS)"
+            },
+            "lxc_on": {
+                "name": "Запущено контейнеров",
+                "state_attributes": {
+                    "lxc_on_list": {
+                        "name": "Список контейнеров"
+                    }
+                }
+            },
+            "memory_free": {
+                "name": "Свободная память"
+            },
+            "memory_free_perc": {
+                "name": "Процент свободной памяти"
+            },
+            "memory_total": {
+                "name": "Всего памяти"
+            },
+            "memory_used": {
+                "name": "Занято памяти"
+            },
+            "memory_used_perc": {
+                "name": "Занято памяти (%)"
+            },
+            "network_in": {
+                "name": "Входящий трафик"
+            },
+            "network_out": {
+                "name": "Исходящий трафик"
+            },
+            "node": {
+                "name": "Нода"
+            },
+            "power_cycles": {
+                "name": "Циклы включения"
+            },
+            "power_loss": {
+                "name": "Неожиданные отключения"
+            },
+            "power_hours": {
+                "name": "Часы работы"
+            },
+            "qemu_on": {
+                "name": "Запущено виртуальных машин",
+                "state_attributes": {
+                    "qemu_on_list": {
+                        "name": "Список виртуальных машин"
+                    }
+                }
+            },
+            "status_raw": {
+                "name": "Статус",
+                "state": {
+                    "internal-error": "Внутренняя ошибка",
+                    "prelaunch": "Подготовка к запуску",
+                    "paused": "Пауза",
+                    "stopped": "Остановлено",
+                    "suspended": "Зависло",
+                    "running": "Работает"
+                }
+            },
+            "swap_free": {
+                "name": "Свободно в swap"
+            },
+            "swap_free_perc": {
+                "name": "Процент свободного swap"
+            },
+            "swap_total": {
+                "name": "Всего swap"
+            },
+            "swap_used": {
+                "name": "Использовано swap"
+            },
+            "swap_used_perc": {
+                "name": "Процент использования swap"
+            },
+            "temperature": {
+                "name": "Температура"
+            },
+            "updates_total": {
+                "name": "Всего обновлений",
+                "state_attributes": {
+                    "updates_list": {
+                        "name": "Список обновлений"
+                    }
+                }
+            },
+            "uptime": {
+                "name": "Последняя перезагрузка"
+            }
+        }
+    }
+}
