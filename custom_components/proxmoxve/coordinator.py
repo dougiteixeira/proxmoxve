@@ -733,7 +733,11 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
 
         for disk in api_status:
             if (
-                ("wwn" in disk and disk["wwn"] == self.resource_id)
+                (
+                    "wwn" in disk
+                    and disk["wwn"] != "unknown"
+                    and disk["wwn"] == self.resource_id
+                )
                 or ("by_id_link" in disk and disk["by_id_link"] == self.resource_id)
                 or ("serial" in disk and disk["serial"] == self.resource_id)
             ):

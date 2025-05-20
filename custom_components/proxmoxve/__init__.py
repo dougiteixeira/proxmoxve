@@ -375,7 +375,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                         (
                             DOMAIN,
                             (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["wwn"] if "wwn" in disk else disk["by_id_link"] if "by_id_link" in disk else disk["serial"]}"
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["wwn"] if ("wwn" in disk and disk["wwn"] != 'unknown') else disk["by_id_link"] if "by_id_link" in disk else disk["serial"]}"
                             ),
                         )
                     },
@@ -437,7 +437,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                         (
                             DOMAIN,
                             (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["wwn"] if "wwn" in disk else disk["by_id_link"] if "by_id_link" in disk else disk["serial"]}"
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk["wwn"] if ("wwn" in disk and disk["wwn"] != 'unknown') else disk["by_id_link"] if "by_id_link" in disk else disk["serial"]}"
                             ),
                         )
                     },
@@ -578,7 +578,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         node_name=node,
                         disk_id=(
                             disk["wwn"]
-                            if "wwn" in disk
+                            if ("wwn" in disk and disk["wwn"] != "unknown")
                             else (
                                 disk["by_id_link"]
                                 if "by_id_link" in disk
