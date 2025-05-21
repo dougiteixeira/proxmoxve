@@ -1,0 +1,353 @@
+{
+    "config": {
+        "step": {
+            "host": {
+                "description": "Informations sur l'hôte Proxmox",
+                "data": {
+                    "host": "Hôte",
+                    "password": "Mot de passe ou valeur du jeton",
+                    "token_name": "Nom du jeton",
+                    "port": "Port",
+                    "realm": "Domaine",
+                    "username": "Nom d'utilisateur",
+                    "verify_ssl": "Vérifier le certificat SSL"
+                }
+            },
+            "expose": {
+                "description": "Sélectionnez les nœuds de l'instance Proxmox, les machines virtuelles (QEMU), les conteneurs (LXC) et les stockages que vous souhaitez exposer",
+                "data": {
+                    "nodes": "Nœuds",
+                    "qemu": "Machines virtuelles (QEMU)",
+                    "lxc": "Conteneurs Linux (LXC)",
+                    "storage": "Stockages",
+                    "disks_enable": "Activer les informations sur les disques physiques"
+                },
+                "data_description": {
+                    "disks_enable": "Si vous utilisez l'hibernation des disques, vous devez désactiver cette option de l'intégration afin qu'elle ne provoque pas une réactivation intempestive des disques."
+                }
+            },
+            "reauth_confirm": {
+                "description": "Le nom d'utilisateur ou le mot de passe est invalide.",
+                "title": "Réauthentifier l'intégration",
+                "data": {
+                    "password": "Mot de passe ou valeur du jeton",
+                    "username": "Nom d'utilisateur",
+                    "token_name": "Nom du jeton",
+                    "realm": "Domaine"
+                }
+            },
+            "reconfigure": {
+                "description": "Informations sur l'hôte Proxmox",
+                "data": {
+                    "host": "Hôte",
+                    "password": "Mot de passe ou valeur du jeton",
+                    "token_name": "Nom du jeton",
+                    "port": "Port",
+                    "realm": "Domaine",
+                    "username": "Nom d'utilisateur",
+                    "verify_ssl": "Vérifier le certificat SSL"
+                }
+            },
+            "error": {
+                "auth_error": "Authentification invalide",
+                "cant_connect": "Échec de la connexion",
+                "general_error": "Erreur inattendue",
+                "invalid_port": "Numéro de port invalide",
+                "ssl_rejection": "Impossible de vérifier le certificat SSL"
+            },
+            "abort": {
+                "already_configured": "L'appareil est déjà configuré",
+                "no_resources": "Aucune ressource n'a été retournée pour cette instance.",
+                "reauth_successful": "Réauthentification réussie",
+                "reconfigure_successful": "Reconfiguration terminée avec succès."
+            }
+        },
+        "issues": {
+            "import_success": {
+                "title": "{host}:{port} a été importé depuis la configuration YAML",
+                "description": "La configuration YAML de l'instance {host}:{port} de {integration} (`{platform}`) a été automatiquement importée dans l'interface utilisateur.\n\nVous pouvez la supprimer en toute sécurité de votre fichier `configuration.yaml`."
+            },
+            "import_invalid_port": {
+                "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+                "description": "L'importation de la configuration YAML de l'instance {host}:{port} de {integration} (`{platform}`) a échoué en raison d'un port invalide.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et la configurer manuellement."
+            },
+            "import_auth_error": {
+                "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+                "description": "L'importation de la configuration YAML de l'instance {host}:{port} de {integration} (`{platform}`) a échoué en raison d'une erreur d'authentification.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et la configurer manuellement."
+            },
+            "import_ssl_rejection": {
+                "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+                "description": "L'importation de la configuration YAML de l'instance {host}:{port} de {integration} (`{platform}`) a échoué en raison d'un rejet SSL.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et la configurer manuellement."
+            },
+            "import_cant_connect": {
+                "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+                "description": "L'importation de la configuration YAML de l'instance {host}:{port} de {integration} (`{platform}`) a échoué en raison d'un échec de connexion.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et la configurer manuellement."
+            },
+            "import_general_error": {
+                "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+                "description": "L'importation de la configuration YAML de l'instance {host}:{port} de {integration} (`{platform}`) a échoué en raison d'une erreur inconnue.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et la configurer manuellement."
+            },
+            "import_already_configured": {
+                "title": "L'instance {host}:{port} existe déjà dans l'interface utilisateur, peut être supprimée",
+                "description": "La configuration YAML de l'instance {host}:{port} de {integration} (`{platform}`) existe déjà dans l'interface utilisateur et a été ignorée lors de l'importation.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml` et redémarrer Home Assistant."
+            },
+            "import_node_not_exist": {
+                "title": "Le nœud {node} n'existe pas dans {host}:{port}",
+                "description": "Le nœud {node} de l'instance {host}:{port} de {integration} (`{platform}`) présent dans la configuration YAML n'existe pas dans cette instance et a été ignoré lors de l'importation.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml` et redémarrer Home Assistant."
+            },
+            "yaml_deprecated": {
+                "title": "La configuration de {integration} en YAML est obsolète",
+                "description": "La configuration de {integration} (`{platform}`) en YAML est obsolète et doit être supprimée dans {version}.\n\nCorrigez les problèmes d'importation et supprimez la configuration YAML de votre fichier `configuration.yaml`."
+            },
+            "resource_nonexistent": {
+                "description": "{resource_type} {resource} n'existe pas sur ({host}:{port}), supprimez-le dans les options de l'intégration.\n\nCela peut également être causé par un manque de permissions de l'utilisateur pour accéder à la ressource.\n\nConseil sur les permissions requises :\n* `{permission}`",
+                "title": "{resource_type} {resource} n'existe pas"
+            },
+            "no_permissions": {
+                "description": "L'utilisateur `{user}` n'a pas les permissions requises pour toutes les fonctionnalités.\n\nLes fonctionnalités suivantes ne sont pas accessibles par l'utilisateur :\n`{errors}`\n\nVérifiez les permissions de l'utilisateur comme décrit dans la documentation.",
+                "title": "L'utilisateur `{user}` n'a pas les permissions requises"
+            },
+            "resource_exception_forbiden": {
+                "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour accéder à la ressource `{resource}`.\n\nConseil sur les permissions requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les permissions de l'utilisateur.",
+                "title": "Erreur de permissions pour `{resource}`"
+            },
+            "resource_command_forbiden": {
+                "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour exécuter la commande `{command}` sur la ressource `{resource}`.\n\nConseil sur les permissions requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les permissions de l'utilisateur.",
+                "title": "Erreur de permissions pour la commande sur `{resource}`"
+            }
+        },
+        "options": {
+            "step": {
+                "menu": {
+                    "menu_options": {
+                        "host_auth": "Modifier les informations d'authentification de l'hôte",
+                        "change_expose": "Ajouter ou supprimer des nœuds, VM, conteneurs ou stockages"
+                    }
+                },
+                "host_auth": {
+                    "data": {
+                        "password": "Mot de passe ou valeur du jeton",
+                        "token_name": "Nom du jeton",
+                        "realm": "Domaine",
+                        "username": "Nom d'utilisateur",
+                        "verify_ssl": "Vérifier le certificat SSL"
+                    },
+                    "description": "Informations sur l'hôte Proxmox"
+                },
+                "change_expose": {
+                    "description": "Sélectionnez les nœuds de l'instance Proxmox, les machines virtuelles (QEMU) et les conteneurs (LXC) que vous souhaitez exposer",
+                    "data": {
+                        "lxc": "Conteneurs Linux (LXC)",
+                        "nodes": "Nœuds",
+                        "qemu": "Machines virtuelles (QEMU)",
+                        "storage": "Stockages",
+                        "disks_enable": "Activer les informations sur les disques physiques"
+                    },
+                    "data_description": {
+                        "disks_enable": "Si vous utilisez l'hibernation des disques, vous devez désactiver cette option de l'intégration afin qu'elle ne provoque pas une réactivation intempestive des disques."
+                    }
+                }
+            },
+            "error": {
+                "auth_error": "Authentification invalide",
+                "cant_connect": "Échec de la connexion",
+                "general_error": "Erreur inattendue",
+                "invalid_port": "Numéro de port invalide",
+                "ssl_rejection": "Impossible de vérifier le certificat SSL"
+            },
+            "abort": {
+                "no_nodes": "Aucun nœud n'a été retourné pour l'hôte.",
+                "no_vms": "Il n'y a pas de machines virtuelles ou de conteneurs pour ce nœud, l'entrée de configuration sera créée pour le nœud.",
+                "changes_successful": "Modifications enregistrées avec succès.",
+                "no_nodes_to_add": "Aucun nœud à ajouter.",
+                "node_already_exists": "Le nœud sélectionné existe déjà.",
+                "auth_error": "Authentification invalide",
+                "cant_connect": "Échec de la connexion",
+                "general_error": "Erreur inattendue",
+                "invalid_port": "Numéro de port invalide",
+                "ssl_rejection": "Impossible de vérifier le certificat SSL"
+            }
+        },
+        "entity": {
+            "binary_sensor": {
+                "status": {
+                    "name": "Statut"
+                },
+                "health": {
+                    "name": "Santé"
+                },
+                "update_avail": {
+                    "name": "Mises à jour des paquets"
+                }
+            }
+        },
+        "button": {
+            "start_all": {
+                "name": "Démarrer tout"
+            },
+            "stop_all": {
+                "name": "Arrêter tout"
+            },
+            "shutdown": {
+                "name": "Éteindre"
+            },
+            "reboot": {
+                "name": "Redémarrer"
+            },
+            "start": {
+                "name": "Démarrer"
+            },
+            "stop": {
+                "name": "Arrêter"
+            },
+            "resume": {
+                "name": "Reprendre"
+            },
+            "suspend": {
+                "name": "Suspendre"
+            },
+            "reset": {
+                "name": "Réinitialiser"
+            },
+            "wakeonlan": {
+                "name": "Wake-on-LAN"
+            }
+        },
+        "sensor": {
+            "cpu_used": {
+                "name": "CPU utilisé"
+            },
+            "disk_free": {
+                "name": "Espace disque libre"
+            },
+            "disk_free_perc": {
+                "name": "Pourcentage d’espace disque libre"
+            },
+            "disk_rpm": {
+                "name": "Vitesse du disque"
+            },
+            "disk_size": {
+                "name": "Taille"
+            },
+            "disk_total": {
+                "name": "Disque total"
+            },
+            "disk_used": {
+                "name": "Espace disque utilisé"
+            },
+            "disk_used_perc": {
+                "name": "Pourcentage d’espace disque utilisé"
+            },
+            "disk_wearout": {
+                "name": "Usure"
+            },
+            "life_left": {
+                "name": "Durée de vie restante"
+            },
+            "zfs_health": {
+                "name": "Santé"
+            },
+            "zfs_free_perc": {
+                "name": "Pourcentage libre"
+            },
+            "zfs_total": {
+                "name": "Total"
+            },
+            "zfs_used": {
+                "name": "Utilisé"
+            },
+            "zfs_used_perc": {
+                "name": "Pourcentage utilisé"
+            },
+            "lxc_on": {
+                "name": "Conteneurs en cours d’exécution",
+                "state_attributes": {
+                    "lxc_on_list": {
+                        "name": "Liste des conteneurs"
+                    }
+                }
+            },
+            "memory_free": {
+                "name": "Mémoire libre"
+            },
+            "memory_free_perc": {
+                "name": "Pourcentage de mémoire libre"
+            },
+            "memory_total": {
+                "name": "Mémoire totale"
+            },
+            "memory_used": {
+                "name": "Mémoire utilisée"
+            },
+            "memory_used_perc": {
+                "name": "Pourcentage de mémoire utilisée"
+            },
+            "network_in": {
+                "name": "Entrée réseau"
+            },
+            "network_out": {
+                "name": "Sortie réseau"
+            },
+            "node": {
+                "name": "Nœud"
+            },
+            "power_cycles": {
+                "name": "Cycles d'alimentation"
+            },
+            "power_loss": {
+                "name": "Perte d'alimentation inattendue"
+            },
+            "power_hours": {
+                "name": "Heures sous tension"
+            },
+            "qemu_on": {
+                "name": "Machines virtuelles en cours d’exécution",
+                "state_attributes": {
+                    "qemu_on_list": {
+                        "name": "Liste des machines virtuelles"
+                    }
+                }
+            },
+            "status_raw": {
+                "name": "Statut",
+                "state": {
+                    "internal-error": "Erreur interne",
+                    "prelaunch": "Pré-lancement",
+                    "paused": "En pause",
+                    "stopped": "Arrêté",
+                    "suspended": "Suspendu",
+                    "running": "En cours d'exécution"
+                }
+            },
+            "swap_free": {
+                "name": "Swap libre"
+            },
+            "swap_free_perc": {
+                "name": "Pourcentage de swap libre"
+            },
+            "swap_total": {
+                "name": "Swap total"
+            },
+            "swap_used": {
+                "name": "Swap utilisé"
+            },
+            "swap_used_perc": {
+                "name": "Pourcentage de swap utilisé"
+            },
+            "temperature": {
+                "name": "Température"
+            },
+            "updates_total": {
+                "name": "Total des mises à jour",
+                "state_attributes": {
+                    "updates_list": {
+                        "name": "Liste des mises à jour"
+                    }
+                }
+            },
+            "uptime": {
+                "name": "Dernier démarrage"
+            }
+        }
+    }
+}
