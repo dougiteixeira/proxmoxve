@@ -50,50 +50,50 @@
             }
         },
         "error": {
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "auth_error": "Authentification incorrecte",
+            "cant_connect": "Echec de la connexion",
+            "general_error": "Erreur innatendue",
+            "invalid_port": "Numéro de port invalide",
+            "ssl_rejection": "Impossible de vérifier le certificat SSL"
         },
         "abort": {
-            "already_configured": "Device is already configured",
-            "no_resources": "No resources were returned for this instance.",
-            "reauth_successful": "Re-authentication was successful",
-            "reconfigure_successful": "Reconfiguration completed successfully."
+            "already_configured": "L'appareil est déjà configuré",
+            "no_resources": "Aucune ressource n'a été retournée pour cette instance.",
+            "reauth_successful": "La réauthentification a réussi",
+            "reconfigure_successful": "Reconfiguration terminée avec succès."
         }
     },
     "issues": {
         "import_success": {
-            "title": "{host}:{port} was imported from YAML configuration",
-            "description": "The YAML configuration of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file."
+            "title": "{host}:{port} a été importé depuis la configuration YAML",
+            "description": "La configuration YAML de {host}:{port} instance de {integration} (`{platform}`) a été importée automatiquement dans l'interface utilisateur.\n\nPeut être enlevé en toute sécurité de votre fichier `configuration.yaml`."
         },
         "import_invalid_port": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to invalid port.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison d'un port invalide.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_auth_error": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to authentication error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison d'un port invalide.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_ssl_rejection": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to SSL rejection.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison du rejet SSL.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et la configurer manuellement."
         },
         "import_cant_connect": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to connection failed.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison d'un échec de la connexion.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_general_error": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to unknown error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: l'instance{port} de {integration} (`{platform}`) a échoué en raison d'une erreur inconnue.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_already_configured": {
-            "title": "The instance {host}:{port} already exists in the UI, can be removed",
-            "description": "The YAML configuration of instace {host}:{port} of {integration} (`{platform}`) already exists in the UI and was ignored on import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+            "title": "L'instance {host}:{port} existe déjà dans l'interface utilisateur et peut être supprimée",
+            "description": "La configuration YAML de l'instace {host}:{port} de {integration} (`{platform}`) existe déjà dans l'interface utilisateur et a été ignorée lors de l'importation.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml` et redémarrer Home Assistant."
         },
         "import_node_not_exist": {
-            "title": "Node {node} does not exist in {host}:{port}",
+            "title": "Le noeud {node} n'existe pas dans {host}:{port}",
             "description": "The {node} of the {host}:{port} instance of {integration} (`{platform}`) present in the YAML configuration does not exist in this instance and was ignored in the import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
         },
         "yaml_deprecated": {
