@@ -50,70 +50,70 @@
             }
         },
         "error": {
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "auth_error": "Authentification incorrecte",
+            "cant_connect": "Echec de la connexion",
+            "general_error": "Erreur innatendue",
+            "invalid_port": "Numéro de port invalide",
+            "ssl_rejection": "Impossible de vérifier le certificat SSL"
         },
         "abort": {
-            "already_configured": "Device is already configured",
-            "no_resources": "No resources were returned for this instance.",
-            "reauth_successful": "Re-authentication was successful",
-            "reconfigure_successful": "Reconfiguration completed successfully."
+            "already_configured": "L'appareil est déjà configuré",
+            "no_resources": "Aucune ressource n'a été retournée pour cette instance.",
+            "reauth_successful": "La réauthentification a réussi",
+            "reconfigure_successful": "Reconfiguration terminée avec succès."
         }
     },
     "issues": {
         "import_success": {
-            "title": "{host}:{port} was imported from YAML configuration",
-            "description": "The YAML configuration of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file."
+            "title": "{host}:{port} a été importé depuis la configuration YAML",
+            "description": "La configuration YAML de {host}:{port} instance de {integration} (`{platform}`) a été importée automatiquement dans l'interface utilisateur.\n\nPeut être enlevé en toute sécurité de votre fichier `configuration.yaml`."
         },
         "import_invalid_port": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to invalid port.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison d'un port invalide.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_auth_error": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to authentication error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison d'un port invalide.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_ssl_rejection": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to SSL rejection.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison du rejet SSL.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et la configurer manuellement."
         },
         "import_cant_connect": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to connection failed.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison d'un échec de la connexion.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_general_error": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to unknown error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: l'instance{port} de {integration} (`{platform}`) a échoué en raison d'une erreur inconnue.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_already_configured": {
-            "title": "The instance {host}:{port} already exists in the UI, can be removed",
-            "description": "The YAML configuration of instace {host}:{port} of {integration} (`{platform}`) already exists in the UI and was ignored on import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+            "title": "L'instance {host}:{port} existe déjà dans l'interface utilisateur et peut être supprimée",
+            "description": "La configuration YAML de l'instace {host}:{port} de {integration} (`{platform}`) existe déjà dans l'interface utilisateur et a été ignorée lors de l'importation.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml` et redémarrer Home Assistant."
         },
         "import_node_not_exist": {
-            "title": "Node {node} does not exist in {host}:{port}",
-            "description": "The {node} of the {host}:{port} instance of {integration} (`{platform}`) present in the YAML configuration does not exist in this instance and was ignored in the import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+            "title": "Le nœud {node} n'existe pas dans {host}:{port}",
+            "description": "Le nœud {node} de la {host}:{port} instance de {integration} (`{platform}`) présente dans la configuration YAML n'existe pas dans cette instance et a été ignorée dans l'importation.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml` et redémarrer Home Assistant."
         },
         "yaml_deprecated": {
-            "title": "Configuration of the {integration} in YAML is deprecated",
-            "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in {version}.\n\nResolve the import issues and remove the YAML configuration from your `configuration.yaml` file."
+            "title": "La configuration de l' {integration} dans YAML est obsolète",
+            "description": "La configuration de l' {integration} (`{platform}`) dans YAML est obsolète et devrait être supprimée dans {version}.\n\nRésoudre les problèmes d'importation et supprimer la configuration YAML de votre fichier `configuration.yaml`."
         },
         "resource_nonexistent": {
             "description": "{resource_type} {resource} does not exist on ({host}:{port}), remove it in integration options.\n\nThis can also be caused if the user doesn't have enough permission to access the resource.\n\nTip on required permissions:\n* `{permission}`",
-            "title": "{resource_type} {resource} does not exist"
+            "title": "{resource_type} {resource} n'existe pas"
         },
         "no_permissions": {
-            "description": "The user `{user}` does not have the required permissions for all features.\n\nThe following features are not accessible by the user:\n`{errors}`\n\nCheck the user permissions as described in the documentation.",
-            "title": "User `{user}` does not have the required permissions"
+            "description": "L'utilisateur `{user}` n'a pas les permissions requises pour toutes les fonctionnalités.\n\nLes fonctionnalités suivantes ne sont pas accessibles par l'utilisateur :\n`{errors}`\n\nVérifiez les permissions de l'utilisateur telles que décrites dans la documentation.",
+            "title": "L'utilisateur `{user}` n'a pas les permissions requises"
         },
         "resource_exception_forbiden": {
-            "description": "User `{user}` does not have sufficient permissions to access resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-            "title": "Permissions error for `{resource}`"
+            "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour accéder à la ressource `{resource}`.\n\nAstuce sur les autorisations requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",
+            "title": "Erreur d'autorisation pour `{resource}`"
         },
         "resource_command_forbiden": {
-            "description": "User `{user}` does not have sufficient permissions to execute command `{command}` on resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
+            "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour accéder à la ressource `{resource}`.\n\nAstuce sur les autorisations requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",
             "title": "Permission error for `{resource}` command"
         }
     },
@@ -122,7 +122,7 @@
             "menu": {
                 "menu_options": {
                     "host_auth": "Change host authentication information",
-                    "change_expose": "Add or remove Nodes, VMs, Containers or Storages"
+                    "change_expose": ""
                 }
             },
             "host_auth": {
@@ -142,7 +142,7 @@
                     "nodes": "Nodes",
                     "qemu": "Virtual Machines (QEMU)",
                     "storage": "Storages",
-                    "disks_enable": "Enable physical disk information"
+                    "disks_enable": "Activer les informations du disque physique"
                 },
                 "data_description": {
                     "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
@@ -163,7 +163,7 @@
             "no_nodes_to_add": "No nodes to add.",
             "node_already_exists": "The selected node already exists.",
             "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
+            "cant_connect": "Échec de la connexion",
             "general_error": "Unexpected error",
             "invalid_port": "Invalid port number",
             "ssl_rejection": "Could not verify the SSL certificate"
@@ -201,10 +201,10 @@
                 "name": "Stop"
             },
             "resume": {
-                "name": "Resume"
+                "name": "Reprise"
             },
             "suspend": {
-                "name": "Suspend"
+                "name": "Suspendre"
             },
             "reset": {
                 "name": "Reset"
@@ -236,7 +236,7 @@
                 "name": "Disk used"
             },
             "disk_used_perc": {
-                "name": "Disk used percentage"
+                "name": "Disque utilisé en pourcentage"
             },
             "disk_wearout": {
                 "name": "Wearout"
@@ -263,12 +263,12 @@
                 "name": "Containers running",
                 "state_attributes": {
                     "lxc_on_list": {
-                        "name": "Containers list"
+                        "name": "Listes des conteneurs"
                     }
                 }
             },
             "memory_free": {
-                "name": "Memory free"
+                "name": "Mémoire libre"
             },
             "memory_free_perc": {
                 "name": "Memory free percentage"
@@ -289,7 +289,7 @@
                 "name": "Network out"
             },
             "node": {
-                "name": "Node"
+                "name": "Nœuds"
             },
             "power_cycles": {
                 "name": "Power cycles"
@@ -332,7 +332,7 @@
                 "name": "Swap used"
             },
             "swap_used_perc": {
-                "name": "Swap used percentage"
+                "name": "Cache utilisée en pourcentage"
             },
             "temperature": {
                 "name": "Temperature"
@@ -346,7 +346,7 @@
                 }
             },
             "uptime": {
-                "name": "Last boot"
+                "name": "Dernier démarrage"
             }
         }
     }
