@@ -1,0 +1,353 @@
+{
+    "config": {
+        "step": {
+            "host": {
+                "description": "Informació del servidor de Proxmox",
+                "data": {
+                    "host": "Host",
+                    "password": "Contrasenya o valor de token",
+                    "token_name": "Nom del token",
+                    "port": "Port",
+                    "realm": "Domini",
+                    "username": "Nom d’usuari",
+                    "verify_ssl": "Verifica el certificat SSL"
+                }
+            },
+            "expose": {
+                "description": "Seleccioneu els nodes d'instància de Proxmox, Màquines Virtuals (QEMU), Contenidors (LXC) i Emmagatzematges que voleu exposar",
+                "data": {
+                    "nodes": "Nodes",
+                    "qemu": "Maquines Virtuals (QEMU)",
+                    "lxc": "Contenidors Linux (LXC)",
+                    "storage": "Emmagatzematges",
+                    "disks_enable": "Habilita la informació del disc físic"
+                },
+                "data_description": {
+                    "disks_enable": "Si treballeu amb hibernació de disc, heu de desactivar aquesta opció d'integració perquè no faci que els discs es reactivin indegudament."
+                }
+            },
+            "reauth_confirm": {
+                "description": "El nom d'usuari o la contrasenya no són vàlids.",
+                "title": "Reauthentica la integració",
+                "data": {
+                    "password": "Contrasenya o valor de token",
+                    "username": "Nom d’usuari",
+                    "token_name": "Nom del token",
+                    "realm": "Domini"
+                }
+            },
+            "reconfigure": {
+                "description": "Informació del servidor de Proxmox",
+                "data": {
+                    "host": "Servidor",
+                    "password": "Contrasenya o valor de token",
+                    "token_name": "Nom del token",
+                    "port": "Port",
+                    "realm": "Domini",
+                    "username": "Nom d’usuari",
+                    "verify_ssl": "Verifica el certificat SSL"
+                }
+            }
+        },
+        "error": {
+            "auth_error": "Autenticació invàlida",
+            "cant_connect": "Error de connexió",
+            "general_error": "S'ha produït un error inesperat",
+            "invalid_port": "Número de port no vàlid",
+            "ssl_rejection": "No s'ha pogut verificar el certificat SSL"
+        },
+        "abort": {
+            "already_configured": "El dispositiu ja està configurat",
+            "no_resources": "No s'han retornat recursos per a aquesta instància.",
+            "reauth_successful": "La reautenticació ha estat correcta",
+            "reconfigure_successful": "La reconfiguració s'ha completat correctament."
+        }
+    },
+    "issues": {
+        "import_success": {
+            "title": "{host}:{port} s'ha importat des de la configuració YAML",
+            "description": "La configuració YAML de la instància {host}:{port} de {integration} ({platform}) s'ha importat automàticament a la interfície d'usuari.\n\nEs pot eliminar amb seguretat del fitxer 'configuration.yaml'."
+        },
+        "import_invalid_port": {
+            "title": "Error en importar la configuració YAML des de {host}:{port}",
+            "description": "La importació de la configuració YAML de la instància {host}:{port} de {integration} ({platform}) ha fallat a causa d’un port no vàlid.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml, reiniciar Home Assistant i configurar-la manualment."
+        },
+        "import_auth_error": {
+            "title": "Error en importar la configuració YAML des de {host}:{port}",
+            "description": "La importació de la configuració YAML de la instància {host}:{port} de {integration} ({platform}) ha fallat a causa d’un error d’autenticació.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml, reiniciar Home Assistant i configurar-la manualment."
+        },
+        "import_ssl_rejection": {
+            "title": "Error en importar la configuració YAML des de {host}:{port}",
+            "description": "La importació de la configuració YAML de la instància {host}:{port} de {integration} ({platform}) ha fallat a causa d’un port no vàlid.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml, reiniciar Home Assistant i configurar-la manualment."
+        },
+        "import_cant_connect": {
+            "title": "Error en importar la configuració YAML des de {host}:{port}",
+            "description": "La importació de la configuració YAML de la instància {host}:{port} de {integration} ({platform}) ha fallat a causa d’un port no vàlid.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml, reiniciar Home Assistant i configurar-la manualment."
+        },
+        "import_general_error": {
+            "title": "Error en importar la configuració YAML des de {host}:{port}",
+            "description": "La importació de la configuració YAML de la instància {host}:{port} de {integration} ({platform}) ha fallat a causa d’un port no vàlid.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml, reiniciar Home Assistant i configurar-la manualment."
+        },
+        "import_already_configured": {
+            "title": "La instància {host}:{port} ja existeix a la interfície d’usuari i es pot eliminar",
+            "description": "La configuració YAML de la instància {host}:{port} de {integration} ({platform}) ja existeix a la interfície d’usuari i s’ha ignorat en la importació.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml i reiniciar Home Assistant."
+        },
+        "import_node_not_exist": {
+            "title": "El node {node} no existeix a {host}:{port}",
+            "description": "La configuració YAML de la instància {host}:{port} de {integration} ({platform}) ja existeix a la interfície d’usuari i s’ha ignorat en la importació.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml i reiniciar Home Assistant."
+        },
+        "yaml_deprecated": {
+            "title": "La configuració de {integration} en YAML està obsoleta",
+            "description": "La configuració de {integration} ({platform}) en YAML està obsoleta i s’hauria d’eliminar a la versió {version}.\n\nResol els problemes d’importació i elimina la configuració YAML del fitxer configuration.yaml."
+        },
+        "resource_nonexistent": {
+            "description": "El {resource_type} {resource} no existeix a ({host}:{port}), elimina’l a les opcions de la integració.\n\nAixò també pot ser causat perquè l’usuari no té permisos suficients per accedir al recurs.\n\nConsell sobre els permisos requerits:\n\n{permission}",
+            "title": "El {resource_type} {resource} no existeix"
+        },
+        "no_permissions": {
+            "description": "L’usuari {user} no té els permisos requerits per a totes les funcionalitats.\n\nLes següents funcionalitats no són accessibles per a l’usuari:\n{errors}\n\nComprova els permisos de l’usuari tal com s’explica a la documentació.",
+            "title": "L’usuari {user} no té els permisos requerits"
+        },
+        "resource_exception_forbiden": {
+            "description": "L’usuari {user} no té permisos suficients per accedir al recurs {resource}.\n\nConsell sobre els permisos requerits:\n\n{permission}\nSi us plau, comprova la documentació i els permisos de l’usuari.",
+            "title": "Error de permisos per a {resource}"
+        },
+        "resource_command_forbiden": {
+            "description": "L’usuari {user} no té permisos suficients per executar la comanda {command} sobre el recurs {resource}.\n\nConsell sobre els permisos requerits:\n\n{permission}\nSi us plau, comprova la documentació i els permisos de l’usuari.",
+            "title": "Error de permisos per a la comanda {resource}"
+        }
+    },
+    "options": {
+        "step": {
+            "menu": {
+                "menu_options": {
+                    "host_auth": "Canviar la informació d’autenticació de l’amfitrió",
+                    "change_expose": "Afegir o eliminar nodes, màquines virtuals, contenidors o emmagatzematges"
+                }
+            },
+            "host_auth": {
+                "data": {
+                    "password": "Valor de la contrasenya o del token",
+                    "token_name": "Nom del token",
+                    "realm": "Domini",
+                    "username": "Nom d'usuari",
+                    "verify_ssl": "Verifica el certificat SSL"
+                },
+                "description": "Proxmox host information"
+            },
+            "change_expose": {
+                "description": "Selecciona els nodes de la instància Proxmox, les màquines virtuals (QEMU) i els contenidors (LXC) que vols exposar",
+                "data": {
+                    "lxc": "Linux Containers (LXC)",
+                    "nodes": "Nodes",
+                    "qemu": "Virtual Machines (QEMU)",
+                    "storage": "Storages",
+                    "disks_enable": "Enable physical disk information"
+                },
+                "data_description": {
+                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+                }
+            }
+        },
+        "error": {
+            "auth_error": "Invalid authentication",
+            "cant_connect": "Failed to connect",
+            "general_error": "Unexpected error",
+            "invalid_port": "Invalid port number",
+            "ssl_rejection": "Could not verify the SSL certificate"
+        },
+        "abort": {
+            "no_nodes": "No nodes were returned for the host.",
+            "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
+            "changes_successful": "Changes saved successfully.",
+            "no_nodes_to_add": "No nodes to add.",
+            "node_already_exists": "The selected node already exists.",
+            "auth_error": "Invalid authentication",
+            "cant_connect": "Failed to connect",
+            "general_error": "Unexpected error",
+            "invalid_port": "Invalid port number",
+            "ssl_rejection": "Could not verify the SSL certificate"
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "status": {
+                "name": "Status"
+            },
+            "health": {
+                "name": "Health"
+            },
+            "update_avail": {
+                "name": "Updates packages"
+            }
+        },
+        "button": {
+            "start_all": {
+                "name": "Start all"
+            },
+            "stop_all": {
+                "name": "Stop all"
+            },
+            "shutdown": {
+                "name": "Shutdown"
+            },
+            "reboot": {
+                "name": "Reboot"
+            },
+            "start": {
+                "name": "Start"
+            },
+            "stop": {
+                "name": "Stop"
+            },
+            "resume": {
+                "name": "Resume"
+            },
+            "suspend": {
+                "name": "Suspend"
+            },
+            "reset": {
+                "name": "Reset"
+            },
+            "wakeonlan": {
+                "name": "Wake-on-LAN"
+            }
+        },
+        "sensor": {
+            "cpu_used": {
+                "name": "CPU used"
+            },
+            "disk_free": {
+                "name": "Disk free"
+            },
+            "disk_free_perc": {
+                "name": "Disk free percentage"
+            },
+            "disk_rpm": {
+                "name": "Disk speed"
+            },
+            "disk_size": {
+                "name": "Size"
+            },
+            "disk_total": {
+                "name": "Disk total"
+            },
+            "disk_used": {
+                "name": "Disk used"
+            },
+            "disk_used_perc": {
+                "name": "Disk used percentage"
+            },
+            "disk_wearout": {
+                "name": "Wearout"
+            },
+            "life_left": {
+                "name": "Vida restant"
+            },
+            "zfs_health": {
+                "name": "Salut"
+            },
+            "zfs_free_perc": {
+                "name": "Percentatge lliure"
+            },
+            "zfs_total": {
+                "name": "Total"
+            },
+            "zfs_used": {
+                "name": "Utilitzat"
+            },
+            "zfs_used_perc": {
+                "name": "Percentatge utilitzat"
+            },
+            "lxc_on": {
+                "name": "Contenidors funcionant",
+                "state_attributes": {
+                    "lxc_on_list": {
+                        "name": "Llista de contenidors"
+                    }
+                }
+            },
+            "memory_free": {
+                "name": "Memòria lliure"
+            },
+            "memory_free_perc": {
+                "name": "Percentatge de memòria lliure"
+            },
+            "memory_total": {
+                "name": "Memòria total"
+            },
+            "memory_used": {
+                "name": "Memòria utilitzada"
+            },
+            "memory_used_perc": {
+                "name": "Percentatge de memòria utilitzada"
+            },
+            "network_in": {
+                "name": "Entrada de xarxa"
+            },
+            "network_out": {
+                "name": "Sortida de xarxa"
+            },
+            "node": {
+                "name": "Node"
+            },
+            "power_cycles": {
+                "name": "Cicles de potència"
+            },
+            "power_loss": {
+                "name": "Pèrdua d’energia inesperada"
+            },
+            "power_hours": {
+                "name": "Hores de funcionament"
+            },
+            "qemu_on": {
+                "name": "Màquines virtuals en execució",
+                "state_attributes": {
+                    "qemu_on_list": {
+                        "name": "Llista de màquines virtuals"
+                    }
+                }
+            },
+            "status_raw": {
+                "name": "Estat",
+                "state": {
+                    "internal-error": "Error intern",
+                    "prelaunch": "Rellançament",
+                    "paused": "Pausat",
+                    "stopped": "Parat",
+                    "suspended": "Suspès",
+                    "running": "Funcionant"
+                }
+            },
+            "swap_free": {
+                "name": "Intercanvi lliure"
+            },
+            "swap_free_perc": {
+                "name": "Percentatge d'intercanvi lliure"
+            },
+            "swap_total": {
+                "name": "Intercanvi total"
+            },
+            "swap_used": {
+                "name": "Intercanvi utilitzat"
+            },
+            "swap_used_perc": {
+                "name": "Percentatge d'intercanvi utilitzat"
+            },
+            "temperature": {
+                "name": "Temperatura"
+            },
+            "updates_total": {
+                "name": "Actualitzacions totals",
+                "state_attributes": {
+                    "updates_list": {
+                        "name": "Llista d'actualitzacions"
+                    }
+                }
+            },
+            "uptime": {
+                "name": "Última encesa"
+            }
+        }
+    }
+}
