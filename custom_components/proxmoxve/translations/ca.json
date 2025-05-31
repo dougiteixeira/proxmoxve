@@ -133,113 +133,113 @@
                     "username": "Nom d'usuari",
                     "verify_ssl": "Verifica el certificat SSL"
                 },
-                "description": "Proxmox host information"
+                "description": "Informació del servidor de Proxmox"
             },
             "change_expose": {
                 "description": "Selecciona els nodes de la instància Proxmox, les màquines virtuals (QEMU) i els contenidors (LXC) que vols exposar",
                 "data": {
-                    "lxc": "Linux Containers (LXC)",
+                    "lxc": "Contenidors Linux (LXC)",
                     "nodes": "Nodes",
-                    "qemu": "Virtual Machines (QEMU)",
-                    "storage": "Storages",
-                    "disks_enable": "Enable physical disk information"
+                    "qemu": "Maquines Virtuals (QEMU)",
+                    "storage": "Emmagatzematges",
+                    "disks_enable": "Habilita la informació del disc físic"
                 },
                 "data_description": {
-                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+                    "disks_enable": "Si treballeu amb hibernació de disc, heu de desactivar aquesta opció d'integració perquè no faci que els discs es reactivin indegudament."
                 }
             }
         },
         "error": {
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "auth_error": "Autenticació invàlida",
+            "cant_connect": "Error de connexió",
+            "general_error": "S'ha produït un error inesperat",
+            "invalid_port": "Número de port no vàlid",
+            "ssl_rejection": "No s'ha pogut verificar el certificat SSL"
         },
         "abort": {
-            "no_nodes": "No nodes were returned for the host.",
-            "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
-            "changes_successful": "Changes saved successfully.",
-            "no_nodes_to_add": "No nodes to add.",
-            "node_already_exists": "The selected node already exists.",
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "no_nodes": "No s’han obtingut nodes per al servidor.",
+            "no_vms": "No hi ha màquines virtuals ni contenidors per a aquest node; l’entrada de configuració es crearà per al node.",
+            "changes_successful": "Els canvis s'han desat correctament.",
+            "no_nodes_to_add": "No hi ha nodes per afegir.",
+            "node_already_exists": "El node seleccionat ja existeix.",
+            "auth_error": "Autenticació invàlida",
+            "cant_connect": "Error de connexió",
+            "general_error": "S'ha produït un error inesperat",
+            "invalid_port": "Número de port no vàlid",
+            "ssl_rejection": "No s'ha pogut verificar el certificat SSL"
         }
     },
     "entity": {
         "binary_sensor": {
             "status": {
-                "name": "Status"
+                "name": "Estat"
             },
             "health": {
-                "name": "Health"
+                "name": "Salut"
             },
             "update_avail": {
-                "name": "Updates packages"
+                "name": "Actualitzacions de paquets"
             }
         },
         "button": {
             "start_all": {
-                "name": "Start all"
+                "name": "Iniciar totes"
             },
             "stop_all": {
-                "name": "Stop all"
+                "name": "Atura tot"
             },
             "shutdown": {
-                "name": "Shutdown"
+                "name": "Apagar"
             },
             "reboot": {
-                "name": "Reboot"
+                "name": "Reiniciar"
             },
             "start": {
-                "name": "Start"
+                "name": "Iniciar"
             },
             "stop": {
-                "name": "Stop"
+                "name": "Aturar"
             },
             "resume": {
-                "name": "Resume"
+                "name": "Continuar"
             },
             "suspend": {
-                "name": "Suspend"
+                "name": "Suspendre"
             },
             "reset": {
-                "name": "Reset"
+                "name": "Reiniciar"
             },
             "wakeonlan": {
-                "name": "Wake-on-LAN"
+                "name": "Activació per LAN (Wake-On-LAN)"
             }
         },
         "sensor": {
             "cpu_used": {
-                "name": "CPU used"
+                "name": "CPU utilitzada"
             },
             "disk_free": {
-                "name": "Disk free"
+                "name": "Disc lliure"
             },
             "disk_free_perc": {
-                "name": "Disk free percentage"
+                "name": "Percentatge d'intercanvi lliure"
             },
             "disk_rpm": {
-                "name": "Disk speed"
+                "name": "Velocitat del disc"
             },
             "disk_size": {
-                "name": "Size"
+                "name": "Mida"
             },
             "disk_total": {
-                "name": "Disk total"
+                "name": "Disc total"
             },
             "disk_used": {
-                "name": "Disk used"
+                "name": "Disc utilitzat"
             },
             "disk_used_perc": {
-                "name": "Disk used percentage"
+                "name": "Percentatge d'intercanvi utilitzat"
             },
             "disk_wearout": {
-                "name": "Wearout"
+                "name": "Desgast"
             },
             "life_left": {
                 "name": "Vida restant"
