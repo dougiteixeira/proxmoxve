@@ -2,7 +2,7 @@
 flake8~=7.2
 flake8-docstrings~=1.7
 fnv-hash-fast
-mypy~=1.15
+mypy~=1.16
 psutil-home-assistant==0.0.1
 pylint~=3.3
 pylint-strict-informational==0.1
