@@ -159,20 +159,20 @@
         "abort": {
             "no_nodes": "No nodes were returned for the host.",
             "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
-            "changes_successful": "Changes saved successfully.",
-            "no_nodes_to_add": "No nodes to add.",
-            "node_already_exists": "The selected node already exists.",
+            "changes_successful": "Modifications enregistrées avec succès.",
+            "no_nodes_to_add": "Aucun nœud à ajouter.",
+            "node_already_exists": "Le nœud sélectionné existe déjà.",
             "auth_error": "Invalid authentication",
             "cant_connect": "Échec de la connexion",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "general_error": "Erreur inattendue",
+            "invalid_port": "Numéro de port invalide",
+            "ssl_rejection": "Impossible de vérifier le certificat SSL"
         }
     },
     "entity": {
         "binary_sensor": {
             "status": {
-                "name": "Status"
+                "name": "État"
             },
             "health": {
                 "name": "Health"
@@ -183,22 +183,22 @@
         },
         "button": {
             "start_all": {
-                "name": "Start all"
+                "name": "Tout démarrer"
             },
             "stop_all": {
-                "name": "Stop all"
+                "name": "Tout stopper"
             },
             "shutdown": {
-                "name": "Shutdown"
+                "name": "Éteindre"
             },
             "reboot": {
-                "name": "Reboot"
+                "name": "Redémarrer"
             },
             "start": {
-                "name": "Start"
+                "name": "Démarrer"
             },
             "stop": {
-                "name": "Stop"
+                "name": "Stopper"
             },
             "resume": {
                 "name": "Reprise"
@@ -210,30 +210,30 @@
                 "name": "Reset"
             },
             "wakeonlan": {
-                "name": "Wake-on-LAN"
+                "name": "Réveil par réseau (WOL)"
             }
         },
         "sensor": {
             "cpu_used": {
-                "name": "CPU used"
+                "name": "CPU utilisé"
             },
             "disk_free": {
-                "name": "Disk free"
+                "name": "Disque libre"
             },
             "disk_free_perc": {
-                "name": "Disk free percentage"
+                "name": "Disque libre en pourcentage"
             },
             "disk_rpm": {
-                "name": "Disk speed"
+                "name": "Disque vitesse de rotation"
             },
             "disk_size": {
-                "name": "Size"
+                "name": "Capacité"
             },
             "disk_total": {
-                "name": "Disk total"
+                "name": "Disque espace total"
             },
             "disk_used": {
-                "name": "Disk used"
+                "name": "Disque utilisé"
             },
             "disk_used_perc": {
                 "name": "Disque utilisé en pourcentage"
@@ -245,19 +245,19 @@
                 "name": "Life left"
             },
             "zfs_health": {
-                "name": "Health"
+                "name": "État"
             },
             "zfs_free_perc": {
-                "name": "Free percentage"
+                "name": "Libre en pourcentage"
             },
             "zfs_total": {
                 "name": "Total"
             },
             "zfs_used": {
-                "name": "Used"
+                "name": "Utilisé"
             },
             "zfs_used_perc": {
-                "name": "Used percentage"
+                "name": "Utilisé en pourcentage"
             },
             "lxc_on": {
                 "name": "Containers running",
