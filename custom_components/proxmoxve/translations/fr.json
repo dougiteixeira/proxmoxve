@@ -50,303 +50,303 @@
             }
         },
         "error": {
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "auth_error": "Authentification incorrecte",
+            "cant_connect": "Echec de la connexion",
+            "general_error": "Erreur innatendue",
+            "invalid_port": "Numéro de port invalide",
+            "ssl_rejection": "Impossible de vérifier le certificat SSL"
         },
         "abort": {
-            "already_configured": "Device is already configured",
-            "no_resources": "No resources were returned for this instance.",
-            "reauth_successful": "Re-authentication was successful",
-            "reconfigure_successful": "Reconfiguration completed successfully."
+            "already_configured": "L'appareil est déjà configuré",
+            "no_resources": "Aucune ressource n'a été retournée pour cette instance.",
+            "reauth_successful": "La réauthentification a réussi",
+            "reconfigure_successful": "Reconfiguration terminée avec succès."
         }
     },
     "issues": {
         "import_success": {
-            "title": "{host}:{port} was imported from YAML configuration",
-            "description": "The YAML configuration of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file."
+            "title": "{host}:{port} a été importé depuis la configuration YAML",
+            "description": "La configuration YAML de {host}:{port} instance de {integration} (`{platform}`) a été importée automatiquement dans l'interface utilisateur.\n\nPeut être enlevé en toute sécurité de votre fichier `configuration.yaml`."
         },
         "import_invalid_port": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to invalid port.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison d'un port invalide.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_auth_error": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to authentication error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison d'un port invalide.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_ssl_rejection": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to SSL rejection.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison du rejet SSL.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et la configurer manuellement."
         },
         "import_cant_connect": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to connection failed.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: L'instance{port} de {integration} (`{platform}`) a échoué en raison d'un échec de la connexion.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_general_error": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to unknown error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Erreur lors de l'importation de la configuration YAML depuis {host}:{port}",
+            "description": "Importation de la configuration YAML depuis {host}: l'instance{port} de {integration} (`{platform}`) a échoué en raison d'une erreur inconnue.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml`, redémarrer Home Assistant et le configurer manuellement."
         },
         "import_already_configured": {
-            "title": "The instance {host}:{port} already exists in the UI, can be removed",
-            "description": "The YAML configuration of instace {host}:{port} of {integration} (`{platform}`) already exists in the UI and was ignored on import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+            "title": "L'instance {host}:{port} existe déjà dans l'interface utilisateur et peut être supprimée",
+            "description": "La configuration YAML de l'instace {host}:{port} de {integration} (`{platform}`) existe déjà dans l'interface utilisateur et a été ignorée lors de l'importation.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml` et redémarrer Home Assistant."
         },
         "import_node_not_exist": {
-            "title": "Node {node} does not exist in {host}:{port}",
-            "description": "The {node} of the {host}:{port} instance of {integration} (`{platform}`) present in the YAML configuration does not exist in this instance and was ignored in the import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+            "title": "Le nœud {node} n'existe pas dans {host}:{port}",
+            "description": "Le nœud {node} de la {host}:{port} instance de {integration} (`{platform}`) présente dans la configuration YAML n'existe pas dans cette instance et a été ignorée dans l'importation.\n\nVous devez supprimer cette configuration de votre fichier `configuration.yaml` et redémarrer Home Assistant."
         },
         "yaml_deprecated": {
-            "title": "Configuration of the {integration} in YAML is deprecated",
-            "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in {version}.\n\nResolve the import issues and remove the YAML configuration from your `configuration.yaml` file."
+            "title": "La configuration de l' {integration} dans YAML est obsolète",
+            "description": "La configuration de l' {integration} (`{platform}`) dans YAML est obsolète et devrait être supprimée dans {version}.\n\nRésoudre les problèmes d'importation et supprimer la configuration YAML de votre fichier `configuration.yaml`."
         },
         "resource_nonexistent": {
-            "description": "{resource_type} {resource} does not exist on ({host}:{port}), remove it in integration options.\n\nThis can also be caused if the user doesn't have enough permission to access the resource.\n\nTip on required permissions:\n* `{permission}`",
-            "title": "{resource_type} {resource} does not exist"
+            "description": "La ressource {resource_type} {resource} n'existe pas à ({host}:{port}), supprimez-la dans les options de l'intégration.\n\nIl est possible que ce problème soit causé par une permission manquante de l'utilisateur pour accéder à cette ressource.\n\nPour information, les permissions requises sont :\n* `{permission}`",
+            "title": "{resource_type} {resource} n'existe pas"
         },
         "no_permissions": {
-            "description": "The user `{user}` does not have the required permissions for all features.\n\nThe following features are not accessible by the user:\n`{errors}`\n\nCheck the user permissions as described in the documentation.",
-            "title": "User `{user}` does not have the required permissions"
+            "description": "L'utilisateur `{user}` n'a pas les permissions requises pour toutes les fonctionnalités.\n\nLes fonctionnalités suivantes ne sont pas accessibles par l'utilisateur :\n`{errors}`\n\nVérifiez les permissions de l'utilisateur telles que décrites dans la documentation.",
+            "title": "L'utilisateur `{user}` n'a pas les permissions requises"
         },
         "resource_exception_forbiden": {
-            "description": "User `{user}` does not have sufficient permissions to access resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-            "title": "Permissions error for `{resource}`"
+            "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour accéder à la ressource `{resource}`.\n\nAstuce sur les autorisations requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",
+            "title": "Erreur d'autorisation pour `{resource}`"
         },
         "resource_command_forbiden": {
-            "description": "User `{user}` does not have sufficient permissions to execute command `{command}` on resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-            "title": "Permission error for `{resource}` command"
+            "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour accéder à la ressource `{resource}`.\n\nAstuce sur les autorisations requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",
+            "title": "Erreur de permission pour la commande sur `{resource}`"
         }
     },
     "options": {
         "step": {
             "menu": {
                 "menu_options": {
-                    "host_auth": "Change host authentication information",
-                    "change_expose": "Add or remove Nodes, VMs, Containers or Storages"
+                    "host_auth": "Changer les informations de connexion à l'hôte",
+                    "change_expose": ""
                 }
             },
             "host_auth": {
                 "data": {
-                    "password": "Password or token value",
-                    "token_name": "Token name",
-                    "realm": "Realm",
-                    "username": "Username",
-                    "verify_ssl": "Verify SSL certificate"
+                    "password": "Mot de passe ou code du jeton",
+                    "token_name": "Nom du jeton",
+                    "realm": "Royaume",
+                    "username": "Nom d'utilisateur",
+                    "verify_ssl": "Vérifier le certificat SSL"
                 },
-                "description": "Proxmox host information"
+                "description": "Information de l'hôte Proxmox"
             },
             "change_expose": {
-                "description": "Select the Proxmox instance nodes and Virtual Machines (QEMU) and Containers (LXC) you want to expose",
+                "description": "Sélectionner les nœuds, machines virtuelles (QEMU) et conteneurs (LXC) de l'instance Proxmox que vous souhaitez exposer",
                 "data": {
-                    "lxc": "Linux Containers (LXC)",
-                    "nodes": "Nodes",
-                    "qemu": "Virtual Machines (QEMU)",
-                    "storage": "Storages",
-                    "disks_enable": "Enable physical disk information"
+                    "lxc": "Conteneurs Linux (LXC)",
+                    "nodes": "Nœuds",
+                    "qemu": "Machines virtuelles (QEMU)",
+                    "storage": "Stockages",
+                    "disks_enable": "Activer les informations du disque physique"
                 },
                 "data_description": {
-                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+                    "disks_enable": "Si vous avez activé la mise en veille des disques durs, vous devriez désactiver cette option pour éviter que l'intégration les relance de manière intempestive."
                 }
             }
         },
         "error": {
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "auth_error": "Identifiants incorrects",
+            "cant_connect": "Impossible de se connecter",
+            "general_error": "Erreur inattendue",
+            "invalid_port": "Numéro de port invalide",
+            "ssl_rejection": "Impossible de vérifier le certificat SSL"
         },
         "abort": {
-            "no_nodes": "No nodes were returned for the host.",
-            "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
-            "changes_successful": "Changes saved successfully.",
-            "no_nodes_to_add": "No nodes to add.",
-            "node_already_exists": "The selected node already exists.",
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "no_nodes": "L'hôte n'a retourné aucun nœud.",
+            "no_vms": "Ce nœud n'a aucune machine virtuelle ou conteneur, l'entrée de configuration va être créée pour le nœud.",
+            "changes_successful": "Modifications enregistrées avec succès.",
+            "no_nodes_to_add": "Aucun nœud à ajouter.",
+            "node_already_exists": "Le nœud sélectionné existe déjà.",
+            "auth_error": "Authentification incorrecte",
+            "cant_connect": "Échec de la connexion",
+            "general_error": "Erreur inattendue",
+            "invalid_port": "Numéro de port invalide",
+            "ssl_rejection": "Impossible de vérifier le certificat SSL"
         }
     },
     "entity": {
         "binary_sensor": {
             "status": {
-                "name": "Status"
+                "name": "État"
             },
             "health": {
                 "name": "Health"
             },
             "update_avail": {
-                "name": "Updates packages"
+                "name": "Mises à jour de paquets"
             }
         },
         "button": {
             "start_all": {
-                "name": "Start all"
+                "name": "Tout démarrer"
             },
             "stop_all": {
-                "name": "Stop all"
+                "name": "Tout stopper"
             },
             "shutdown": {
-                "name": "Shutdown"
+                "name": "Éteindre"
             },
             "reboot": {
-                "name": "Reboot"
+                "name": "Redémarrer"
             },
             "start": {
-                "name": "Start"
+                "name": "Démarrer"
             },
             "stop": {
-                "name": "Stop"
+                "name": "Stopper"
             },
             "resume": {
-                "name": "Resume"
+                "name": "Reprise"
             },
             "suspend": {
-                "name": "Suspend"
+                "name": "Suspendre"
             },
             "reset": {
-                "name": "Reset"
+                "name": "Réinitialiser"
             },
             "wakeonlan": {
-                "name": "Wake-on-LAN"
+                "name": "Réveil par réseau (WOL)"
             }
         },
         "sensor": {
             "cpu_used": {
-                "name": "CPU used"
+                "name": "CPU utilisé"
             },
             "disk_free": {
-                "name": "Disk free"
+                "name": "Disque libre"
             },
             "disk_free_perc": {
-                "name": "Disk free percentage"
+                "name": "Disque libre en pourcentage"
             },
             "disk_rpm": {
-                "name": "Disk speed"
+                "name": "Disque vitesse de rotation"
             },
             "disk_size": {
-                "name": "Size"
+                "name": "Capacité"
             },
             "disk_total": {
-                "name": "Disk total"
+                "name": "Disque espace total"
             },
             "disk_used": {
-                "name": "Disk used"
+                "name": "Disque utilisé"
             },
             "disk_used_perc": {
-                "name": "Disk used percentage"
+                "name": "Disque utilisé en pourcentage"
             },
             "disk_wearout": {
                 "name": "Wearout"
             },
             "life_left": {
-                "name": "Life left"
+                "name": "Vie restante"
             },
             "zfs_health": {
-                "name": "Health"
+                "name": "État"
             },
             "zfs_free_perc": {
-                "name": "Free percentage"
+                "name": "Libre en pourcentage"
             },
             "zfs_total": {
                 "name": "Total"
             },
             "zfs_used": {
-                "name": "Used"
+                "name": "Utilisé"
             },
             "zfs_used_perc": {
-                "name": "Used percentage"
+                "name": "Utilisé en pourcentage"
             },
             "lxc_on": {
-                "name": "Containers running",
+                "name": "Conteneurs en cours d'exécution",
                 "state_attributes": {
                     "lxc_on_list": {
-                        "name": "Containers list"
+                        "name": "Listes des conteneurs"
                     }
                 }
             },
             "memory_free": {
-                "name": "Memory free"
+                "name": "Mémoire libre"
             },
             "memory_free_perc": {
-                "name": "Memory free percentage"
+                "name": "Mémoire libre en pourcentage"
             },
             "memory_total": {
-                "name": "Memory total"
+                "name": "Mémoire totale"
             },
             "memory_used": {
-                "name": "Memory used"
+                "name": "Mémoire utilisée"
             },
             "memory_used_perc": {
-                "name": "Memory used percentage"
+                "name": "Mémoire utilisée en pourcentage"
             },
             "network_in": {
-                "name": "Network in"
+                "name": "Réseau descendant"
             },
             "network_out": {
-                "name": "Network out"
+                "name": "Réseau montant"
             },
             "node": {
-                "name": "Node"
+                "name": "Nœuds"
             },
             "power_cycles": {
-                "name": "Power cycles"
+                "name": "Nombre d'allumages"
             },
             "power_loss": {
                 "name": "Unexpected power loss"
             },
             "power_hours": {
-                "name": "Power-on hours"
+                "name": "Heures de fonctionnement"
             },
             "qemu_on": {
-                "name": "Virtual machines running",
+                "name": "Machines virtuelles actives",
                 "state_attributes": {
                     "qemu_on_list": {
-                        "name": "Virtual machines list"
+                        "name": "Liste des machines virtuelles"
                     }
                 }
             },
             "status_raw": {
                 "name": "Status",
                 "state": {
-                    "internal-error": "Internal error",
-                    "prelaunch": "Pre launch",
-                    "paused": "Paused",
-                    "stopped": "Stopped",
-                    "suspended": "Suspended",
-                    "running": "Running"
+                    "internal-error": "Erreur interne",
+                    "prelaunch": "Pré-démarrage",
+                    "paused": "En pause",
+                    "stopped": "Arrêté",
+                    "suspended": "Suspendu",
+                    "running": "Démarré"
                 }
             },
             "swap_free": {
-                "name": "Swap free"
+                "name": "Espace d'échange libre"
             },
             "swap_free_perc": {
-                "name": "Swap free percentage"
+                "name": "Espace d'échange libre en pourcentage"
             },
             "swap_total": {
-                "name": "Swap total"
+                "name": "Espace d'échange total"
             },
             "swap_used": {
-                "name": "Swap used"
+                "name": "Espace d'échange utilisé"
             },
             "swap_used_perc": {
-                "name": "Swap used percentage"
+                "name": "Cache utilisée en pourcentage"
             },
             "temperature": {
-                "name": "Temperature"
+                "name": "Température"
             },
             "updates_total": {
-                "name": "Total updates",
+                "name": "Nombre total de mises à jour",
                 "state_attributes": {
                     "updates_list": {
-                        "name": "Updates list"
+                        "name": "Liste des mises à jour"
                     }
                 }
             },
             "uptime": {
-                "name": "Last boot"
+                "name": "Dernier démarrage"
             }
         }
     }
