@@ -1,0 +1,368 @@
+{
+  "config": {
+    "step": {
+      "host": {
+        "description": "请输入 Proxmox 主机连接信息",
+        "data": {
+          "host": "主机地址",
+          "password": "密码或令牌值",
+          "token_name": "API 令牌名称",
+          "port": "端口号",
+          "realm": "认证域",
+          "username": "用户名",
+          "verify_ssl": "验证 SSL 证书"
+        }
+      },
+      "expose": {
+        "description": "选择要接入 Home Assistant 的节点、虚拟机、容器及存储",
+        "data": {
+          "nodes": "节点",
+          "qemu": "虚拟机 (QEMU)",
+          "lxc": "Linux 容器 (LXC)",
+          "storage": "存储",
+          "disks_enable": "启用物理磁盘监控",
+          "tasks_enable": "监控任务失败"
+        },
+        "data_description": {
+          "disks_enable": "若使用磁盘休眠功能，请禁用此选项以避免意外唤醒磁盘。",
+          "tasks_enable": "监测并报告过去 24 小时内选定节点的失败任务。"
+        }
+      },
+      "reauth_confirm": {
+        "description": "用户名或密码不正确，请重新验证",
+        "title": "重新认证集成",
+        "data": {
+          "password": "密码或令牌值",
+          "username": "用户名",
+          "token_name": "API 令牌名称",
+          "realm": "认证域"
+        }
+      },
+      "reconfigure": {
+        "description": "更新 Proxmox 主机连接配置",
+        "data": {
+          "host": "主机地址",
+          "password": "密码或令牌值",
+          "token_name": "API 令牌名称",
+          "port": "端口号",
+          "realm": "认证域",
+          "username": "用户名",
+          "verify_ssl": "验证 SSL 证书"
+        }
+      }
+    },
+    "error": {
+      "auth_error": "身份验证失败，请检查用户名/密码或 API 令牌",
+      "cant_connect": "无法连接到 Proxmox 主机，请检查网络连接",
+      "general_error": "发生未知错误，请查看日志或稍后重试",
+      "invalid_port": "端口号无效，请输入 1-65535 之间的数字",
+      "ssl_rejection": "SSL 证书验证失败，请确保证书有效或禁用验证"
+    },
+    "abort": {
+      "already_configured": "此设备已配置完成",
+      "no_resources": "此实例未返回任何资源",
+      "reauth_successful": "重新认证成功",
+      "reconfigure_successful": "重新配置完成"
+    }
+  },
+  "issues": {
+    "import_success": {
+      "title": "成功导入 {host}:{port} 的 YAML 配置",
+      "description": "{host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置已成功导入到 UI 中。\n\n现在可以安全地从 `configuration.yaml` 文件中删除相应配置。"
+    },
+    "import_invalid_port": {
+      "title": "YAML 配置导入失败：{host}:{port}",
+      "description": "因端口号无效，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+    },
+    "import_auth_error": {
+      "title": "YAML 配置导入失败：{host}:{port}",
+      "description": "因身份验证错误，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+    },
+    "import_ssl_rejection": {
+      "title": "YAML 配置导入失败：{host}:{port}",
+      "description": "因 SSL 证书验证失败，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+    },
+    "import_cant_connect": {
+      "title": "YAML 配置导入失败：{host}:{port}",
+      "description": "因连接失败，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+    },
+    "import_general_error": {
+      "title": "YAML 配置导入失败：{host}:{port}",
+      "description": "因未知错误，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+    },
+    "import_already_configured": {
+      "title": "实例 {host}:{port} 已在 UI 中配置完成",
+      "description": "{host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置已存在于 UI 中，导入时已跳过。\n\n请从 `configuration.yaml` 中删除此配置并重启 Home Assistant。"
+    },
+    "import_node_not_exist": {
+      "title": "节点 {node} 在 {host}:{port} 中不存在",
+      "description": "YAML 配置中指定的节点 {node} 在 {host}:{port} 实例中不存在，导入时已忽略。\n\n请从 `configuration.yaml` 中删除此配置并重启 Home Assistant。"
+    },
+    "yaml_deprecated": {
+      "title": "{integration} 的 YAML 配置方式已弃用",
+      "description": "{platform} 的 {integration} 集成 YAML 配置方式已弃用，将在 {version} 版本中移除。\n\n请解决导入问题并从 `configuration.yaml` 中删除 YAML 配置。"
+    },
+    "resource_nonexistent": {
+      "description": "{resource_type} {resource} 在实例 {host}:{port} 中不存在，请在集成选项中移除。\n\n也可能是用户没有足够的权限访问该资源。\n\n所需权限提示：\n* `{permission}`",
+      "title": "{resource_type} {resource} 不存在"
+    },
+    "no_permissions": {
+      "description": "用户 `{user}` 缺少访问所有功能所需的权限。\n\n以下功能无法访问：\n`{errors}`\n\n请参考文档检查用户权限设置。",
+      "title": "用户 `{user}` 权限不足"
+    },
+    "resource_exception_forbiden": {
+      "description": "用户 `{user}` 没有足够权限访问资源 `{resource}`。\n\n所需权限提示：\n* `{permission}`\n\n请检查文档中的权限要求并调整用户权限。",
+      "title": "访问 `{resource}` 的权限错误"
+    },
+    "resource_command_forbiden": {
+      "description": "用户 `{user}` 没有足够权限对资源 `{resource}` 执行命令 `{command}`。\n\n所需权限提示：\n* `{permission}`\n\n请检查文档中的权限要求并调整用户权限。",
+      "title": "执行 `{command}` 命令的权限错误"
+    }
+  },
+  "options": {
+    "step": {
+      "menu": {
+        "menu_options": {
+          "host_auth": "修改主机认证信息",
+          "change_expose": "管理接入的资源"
+        }
+      },
+      "host_auth": {
+        "data": {
+          "password": "密码或令牌值",
+          "token_name": "API 令牌名称",
+          "realm": "认证域",
+          "username": "用户名",
+          "verify_ssl": "验证 SSL 证书"
+        },
+        "description": "更新 Proxmox 主机认证信息"
+      },
+      "change_expose": {
+        "description": "选择要接入的节点、虚拟机、容器及存储",
+        "data": {
+          "lxc": "Linux 容器 (LXC)",
+          "nodes": "节点",
+          "qemu": "虚拟机 (QEMU)",
+          "storage": "存储",
+          "disks_enable": "启用物理磁盘监控",
+          "tasks_enable": "监控任务失败"
+        },
+        "data_description": {
+          "disks_enable": "若使用磁盘休眠功能，请禁用此选项以避免意外唤醒磁盘。",
+          "tasks_enable": "监测并报告过去 24 小时内选定节点的失败任务。"
+        }
+      }
+    },
+    "error": {
+      "auth_error": "身份验证失败，请检查用户名/密码或 API 令牌",
+      "cant_connect": "无法连接到 Proxmox 主机，请检查网络连接",
+      "general_error": "发生未知错误，请查看日志或稍后重试",
+      "invalid_port": "端口号无效，请输入 1-65535 之间的数字",
+      "ssl_rejection": "SSL 证书验证失败，请确保证书有效或禁用验证"
+    },
+    "abort": {
+      "no_nodes": "主机未返回任何节点",
+      "no_vms": "此节点没有虚拟机或容器，配置条目将为节点创建",
+      "changes_successful": "更改已成功保存",
+      "no_nodes_to_add": "没有可添加的节点",
+      "node_already_exists": "所选节点已存在",
+      "auth_error": "身份验证失败",
+      "cant_connect": "连接失败",
+      "general_error": "未知错误",
+      "invalid_port": "无效的端口号",
+      "ssl_rejection": "SSL 证书验证失败"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "status": {
+        "name": "状态"
+      },
+      "health": {
+        "name": "健康状态"
+      },
+      "update_avail": {
+        "name": "可用更新"
+      }
+    },
+    "button": {
+      "start_all": {
+        "name": "批量启动"
+      },
+      "stop_all": {
+        "name": "批量停止"
+      },
+      "shutdown": {
+        "name": "关机"
+      },
+      "reboot": {
+        "name": "重启"
+      },
+      "start": {
+        "name": "启动"
+      },
+      "stop": {
+        "name": "停止"
+      },
+      "resume": {
+        "name": "恢复"
+      },
+      "suspend": {
+        "name": "挂起"
+      },
+      "reset": {
+        "name": "重置"
+      },
+      "wakeonlan": {
+        "name": "网络唤醒"
+      }
+    },
+    "sensor": {
+      "cpu_used": {
+        "name": "CPU 使用率"
+      },
+      "disk_free": {
+        "name": "可用磁盘空间"
+      },
+      "disk_free_perc": {
+        "name": "磁盘可用百分比"
+      },
+      "disk_rpm": {
+        "name": "磁盘转速"
+      },
+      "disk_size": {
+        "name": "磁盘容量"
+      },
+      "disk_total": {
+        "name": "磁盘总空间"
+      },
+      "disk_used": {
+        "name": "已用磁盘空间"
+      },
+      "disk_used_perc": {
+        "name": "磁盘使用百分比"
+      },
+      "disk_wearout": {
+        "name": "磁盘损耗度"
+      },
+      "failed_tasks_count": {
+        "name": "失败任务数",
+        "state_attributes": {
+          "recent_failures": {
+            "name": "近期失败"
+          },
+          "last_failure_time": {
+            "name": "最后失败时间"
+          }
+        }
+      },
+      "life_left": {
+        "name": "剩余寿命"
+      },
+      "zfs_health": {
+        "name": "ZFS 健康状态"
+      },
+      "zfs_free_perc": {
+        "name": "ZFS 可用百分比"
+      },
+      "zfs_total": {
+        "name": "ZFS 总空间"
+      },
+      "zfs_used": {
+        "name": "ZFS 已用空间"
+      },
+      "zfs_used_perc": {
+        "name": "ZFS 使用百分比"
+      },
+      "lxc_on": {
+        "name": "运行中的容器",
+        "state_attributes": {
+          "lxc_on_list": {
+            "name": "容器列表"
+          }
+        }
+      },
+      "memory_free": {
+        "name": "可用内存"
+      },
+      "memory_free_perc": {
+        "name": "内存可用百分比"
+      },
+      "memory_total": {
+        "name": "内存总量"
+      },
+      "memory_used": {
+        "name": "已用内存"
+      },
+      "memory_used_perc": {
+        "name": "内存使用率"
+      },
+      "network_in": {
+        "name": "网络下载"
+      },
+      "network_out": {
+        "name": "网络上传"
+      },
+      "node": {
+        "name": "节点"
+      },
+      "power_cycles": {
+        "name": "电源循环次数"
+      },
+      "power_loss": {
+        "name": "意外断电次数"
+      },
+      "power_hours": {
+        "name": "通电时长"
+      },
+      "qemu_on": {
+        "name": "运行中的虚拟机",
+        "state_attributes": {
+          "qemu_on_list": {
+            "name": "虚拟机列表"
+          }
+        }
+      },
+      "status_raw": {
+        "name": "运行状态",
+        "state": {
+          "internal-error": "内部错误",
+          "prelaunch": "预启动",
+          "paused": "已暂停",
+          "stopped": "已停止",
+          "suspended": "已挂起",
+          "running": "运行中"
+        }
+      },
+      "swap_free": {
+        "name": "可用交换空间"
+      },
+      "swap_free_perc": {
+        "name": "交换空间可用百分比"
+      },
+      "swap_total": {
+        "name": "交换空间总量"
+      },
+      "swap_used": {
+        "name": "已用交换空间"
+      },
+      "swap_used_perc": {
+        "name": "交换空间使用率"
+      },
+      "temperature": {
+        "name": "温度"
+      },
+      "updates_total": {
+        "name": "可用更新总数",
+        "state_attributes": {
+          "updates_list": {
+            "name": "更新列表"
+          }
+        }
+      },
+      "uptime": {
+        "name": "运行时长"
+      }
+    }
+  }
+}
