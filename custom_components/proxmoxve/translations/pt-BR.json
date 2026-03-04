@@ -21,11 +21,11 @@
                     "lxc": "Contêiners Linux (LXC)",
                     "storage": "Armazenamentos",
                     "disks_enable": "Habilitar informações dos discos físicos",
-                    "tasks_enable": "Monitor failed tasks"
+                    "tasks_enable": "Monitorar tarefas que falharam"
                 },
                 "data_description": {
                     "disks_enable": "Se você trabalha com a hibernação dos discos, você deverá desabilitar esta opção da integração para que não cause a reativação dos discos indevidamente.",
-                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
+                    "tasks_enable": "Rastrear e reportar tarefas que falharam nas últimas 24 horas nos nós selecionados."
                 }
             },
             "reauth_confirm": {
@@ -145,11 +145,11 @@
                     "qemu": "Maquinas Virtuais (QEMU)",
                     "storage": "Armazenamentos",
                     "disks_enable": "Habilitar informações dos discos físicos",
-                    "tasks_enable": "Monitor failed tasks"
+                    "tasks_enable": "Monitorar tarefas que falharam"
                 },
                 "data_description": {
                     "disks_enable": "Se você trabalha com a hibernação dos discos, você deverá desabilitar esta opção da integração para que não cause a reativação dos discos indevidamente.",
-                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
+                    "tasks_enable": "Rastrear e reportar tarefas que falharam nas últimas 24 horas nos nós selecionados."
                 }
             }
         },
@@ -246,13 +246,13 @@
                 "name": "Desgaste"
             },
             "failed_tasks_count": {
-                "name": "Failed tasks",
+                "name": "Tarefas que falharam",
                 "state_attributes": {
                     "recent_failures": {
-                        "name": "Recent failures"
+                        "name": "Falhas recentes"
                     },
                     "last_failure_time": {
-                        "name": "Last failure time"
+                        "name": "Hora da última falha"
                     }
                 }
             },
