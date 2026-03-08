@@ -1,17 +1,4 @@
 -r requirements.txt
-flake8~=7.3
-flake8-docstrings~=1.7
-fnv-hash-fast
-mypy~=1.19
-psutil-home-assistant==0.0.1
-pylint~=4.0
-pylint-strict-informational==0.1
-pytest>=7.2
-pytest-cov
+pytest
 pytest-homeassistant-custom-component
-pytest-asyncio>=0.20
-tzdata
-anyio
-pytest-tornasync
-pytest-trio
-pre-commit
+pytest-cov
