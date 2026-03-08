@@ -2,5 +2,5 @@ colorlog==6.10.1
 homeassistant==2025.5.2
 pip>=21.3.1
 proxmoxer==2.2.0
-ruff==0.14.9
+ruff==0.15.4
 pre-commit
