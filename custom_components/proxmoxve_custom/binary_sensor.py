@@ -13,7 +13,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.const import Platform
 from homeassistant.helpers.typing import UNDEFINED
 
-from . import COORDINATORS, async_migrate_old_unique_ids, device_info
+from . import COORDINATORS, device_info
 from .const import (
     CONF_LXC,
     CONF_NODES,
@@ -114,7 +114,6 @@ async def async_setup_binary_sensors_nodes(
 ) -> list:
     """Set up binary sensors."""
     sensors = []
-    migrate_unique_id_disks = []
 
     coordinators = config_entry.runtime_data[COORDINATORS]
 
@@ -171,22 +170,6 @@ async def async_setup_binary_sensors_nodes(
 
                 for description in PROXMOX_BINARYSENSOR_DISKS:
                     if getattr(coordinator_disk.data, description.key, False):
-                        migrate_unique_id_disks.append(
-                            {
-                                "old_unique_id": f"{config_entry.entry_id}_{coordinator_data.path}_{description.key}",
-                                "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.disk_id}_{description.key}",
-                            }
-                        )
-                        migrate_unique_id_disks.append(
-                            {
-                                "old_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.path}_{description.key}",
-                                "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.disk_id}_{description.key}",
-                            }
-                        )
-                        await async_migrate_old_unique_ids(
-                            hass, Platform.BINARY_SENSOR, migrate_unique_id_disks
-                        )
-
                         sensors.append(
                             create_binary_sensor(
                                 coordinator=coordinator_disk,

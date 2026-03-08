@@ -24,7 +24,7 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.typing import UNDEFINED, StateType
 
-from . import async_migrate_old_unique_ids, device_info
+from . import device_info
 from .const import (
     CONF_LXC,
     CONF_NODES,
@@ -598,7 +598,6 @@ async def async_setup_sensors_nodes(
 ) -> list:
     """Set up sensor."""
     sensors = []
-    migrate_unique_id_disks = []
 
     coordinators = coordinator = config_entry.runtime_data[COORDINATORS]
 
@@ -688,21 +687,6 @@ async def async_setup_sensors_nodes(
                             and value(coordinator_disk.data) is not None
                         )
                     ):
-                        migrate_unique_id_disks.append(
-                            {
-                                "old_unique_id": f"{config_entry.entry_id}_{coordinator_disks_data.path}_{description.key}",
-                                "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_disks_data.disk_id}_{description.key}",
-                            }
-                        )
-                        migrate_unique_id_disks.append(
-                            {
-                                "old_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_disks_data.path}_{description.key}",
-                                "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_disks_data.disk_id}_{description.key}",
-                            }
-                        )
-                        await async_migrate_old_unique_ids(
-                            hass, Platform.SENSOR, migrate_unique_id_disks
-                        )
                         sensors.append(
                             create_sensor(
                                 coordinator=coordinator_disk,

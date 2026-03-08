@@ -42,7 +42,6 @@ from .const import (
     DOMAIN,
     INTEGRATION_TITLE,
     LOGGER,
-    VERSION_REMOVE_YAML,
     ProxmoxType,
 )
 
@@ -484,7 +483,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """proxmoxve_custom Config Flow class."""
 
-    VERSION = 7
+    VERSION = 1
     _reauth_entry: config_entries.ConfigEntry | None = None
     _reconfig_entry: config_entries.ConfigEntry | None = None
 
@@ -496,183 +495,6 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._nodes: dict[str, Any] = {}
         self._host: str
         self._proxmox_client: ProxmoxClient | None = None
-
-    async def async_step_import(self, import_config: dict[str, Any]) -> FlowResult:
-        """Import existing configuration."""
-        errors = {}
-
-        if f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}" in [
-            f"{entry.data.get(CONF_HOST)}_{entry.data.get(CONF_PORT)}"
-            for entry in self._async_current_entries()
-        ]:
-            ir.async_create_issue(
-                self.hass,
-                DOMAIN,
-                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_already_configured",
-                breaks_in_ha_version=VERSION_REMOVE_YAML,
-                is_fixable=False,
-                severity=ir.IssueSeverity.WARNING,
-                translation_key="import_already_configured",
-                translation_placeholders={
-                    "integration": INTEGRATION_TITLE,
-                    "platform": DOMAIN,
-                    "host": str(import_config.get(CONF_HOST)),
-                    "port": str(import_config.get(CONF_PORT)),
-                },
-            )
-            return self.async_abort(reason="import_failed")
-
-        host: str = str(import_config.get(CONF_HOST))
-        port: int = int(str(import_config.get(CONF_PORT)))
-        user: str = str(import_config.get(CONF_USERNAME))
-        realm: str = str(import_config.get(CONF_REALM))
-        password: str = str(import_config.get(CONF_PASSWORD))
-        verify_ssl = import_config.get(CONF_VERIFY_SSL)
-
-        proxmox_client = ProxmoxClient(
-            host=host,
-            port=port,
-            user=user,
-            realm=realm,
-            password=password,
-            verify_ssl=verify_ssl,
-        )
-
-        try:
-            await self.hass.async_add_executor_job(proxmox_client.build_client)
-        except proxmoxer.backends.https.AuthenticationError:
-            errors[CONF_USERNAME] = "auth_error"
-            ir.async_create_issue(
-                self.hass,
-                DOMAIN,
-                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_auth_error",
-                breaks_in_ha_version=VERSION_REMOVE_YAML,
-                is_fixable=False,
-                severity=ir.IssueSeverity.ERROR,
-                translation_key="import_auth_error",
-                translation_placeholders={
-                    "integration": INTEGRATION_TITLE,
-                    "platform": DOMAIN,
-                    "host": str(import_config.get(CONF_HOST)),
-                    "port": str(import_config.get(CONF_PORT)),
-                },
-            )
-        except SSLError:
-            errors[CONF_VERIFY_SSL] = "ssl_rejection"
-            ir.async_create_issue(
-                self.hass,
-                DOMAIN,
-                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_ssl_rejection",
-                breaks_in_ha_version=VERSION_REMOVE_YAML,
-                is_fixable=False,
-                severity=ir.IssueSeverity.ERROR,
-                translation_key="import_ssl_rejection",
-                translation_placeholders={
-                    "integration": INTEGRATION_TITLE,
-                    "platform": DOMAIN,
-                    "host": str(import_config.get(CONF_HOST)),
-                    "port": str(import_config.get(CONF_PORT)),
-                },
-            )
-        except ConnectTimeout:
-            errors[CONF_HOST] = "cant_connect"
-            ir.async_create_issue(
-                self.hass,
-                DOMAIN,
-                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_cant_connect",
-                breaks_in_ha_version=VERSION_REMOVE_YAML,
-                is_fixable=False,
-                severity=ir.IssueSeverity.ERROR,
-                translation_key="import_cant_connect",
-                translation_placeholders={
-                    "integration": INTEGRATION_TITLE,
-                    "platform": DOMAIN,
-                    "host": str(import_config.get(CONF_HOST)),
-                    "port": str(import_config.get(CONF_PORT)),
-                },
-            )
-        except Exception:  # pylint: disable=broad-except
-            errors[CONF_BASE] = "general_error"
-            ir.async_create_issue(
-                self.hass,
-                DOMAIN,
-                f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_general_error",
-                breaks_in_ha_version=VERSION_REMOVE_YAML,
-                is_fixable=False,
-                severity=ir.IssueSeverity.ERROR,
-                translation_key="import_general_error",
-                translation_placeholders={
-                    "integration": INTEGRATION_TITLE,
-                    "platform": DOMAIN,
-                    "host": str(import_config.get(CONF_HOST)),
-                    "port": str(import_config.get(CONF_PORT)),
-                },
-            )
-
-        if errors:
-            return self.async_abort(reason="import_failed")
-
-        proxmox_nodes_host = []
-        if proxmox := (proxmox_client.get_api_client()):
-            proxmox_nodes = await self.hass.async_add_executor_job(
-                get_api, proxmox, "nodes"
-            )
-
-            for node in proxmox_nodes if proxmox_nodes is not None else []:
-                proxmox_nodes_host.append(node[CONF_NODE])
-
-        if (
-            import_config is not None
-            and CONF_NODES in import_config
-            and (import_nodes := import_config.get(CONF_NODES)) is not None
-        ):
-            config = import_config.copy()
-            config[CONF_NODES] = []
-            for node_data in import_nodes:
-                node = node_data[CONF_NODE]
-                if node in proxmox_nodes_host:
-                    config[CONF_NODES].append(node)
-                    config[CONF_QEMU] = node_data[CONF_VMS]
-                    config[CONF_LXC] = node_data[CONF_CONTAINERS]
-                else:
-                    ir.async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_{node}_import_node_not_exist",
-                        breaks_in_ha_version=VERSION_REMOVE_YAML,
-                        is_fixable=False,
-                        severity=ir.IssueSeverity.WARNING,
-                        translation_key="import_node_not_exist",
-                        translation_placeholders={
-                            "integration": INTEGRATION_TITLE,
-                            "platform": DOMAIN,
-                            "host": str(import_config.get(CONF_HOST)),
-                            "port": str(import_config.get(CONF_PORT)),
-                            "node": str(node),
-                        },
-                    )
-                    return self.async_abort(reason="import_failed")
-
-        ir.async_create_issue(
-            self.hass,
-            DOMAIN,
-            f"{import_config.get(CONF_HOST)}_{import_config.get(CONF_PORT)}_import_success",
-            breaks_in_ha_version=VERSION_REMOVE_YAML,
-            is_fixable=False,
-            severity=ir.IssueSeverity.WARNING,
-            translation_key="import_success",
-            translation_placeholders={
-                "integration": INTEGRATION_TITLE,
-                "platform": DOMAIN,
-                "host": str(import_config.get(CONF_HOST)),
-                "port": str(import_config.get(CONF_PORT)),
-            },
-        )
-
-        return self.async_create_entry(
-            title=(f"{config.get(CONF_HOST)}:{config.get(CONF_PORT)}"),
-            data=config,
-        )
 
     async def async_step_reauth(self, data: Mapping[str, Any]) -> FlowResult:
         """Handle a reauthorization flow request."""
