@@ -1,5 +1,5 @@
 -r requirements.txt
 pytest==9.0.0
 pytest-homeassistant-custom-component
-pytest-cov==7.0.0
-pycares==4.3.0
+pytest-cov
+pycares
