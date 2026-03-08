@@ -33,6 +33,7 @@ class ProxmoxClient:
         token_name: str = "",
         port: int | None = DEFAULT_PORT,
         realm: str | None = DEFAULT_REALM,
+        *,
         verify_ssl: bool | None = DEFAULT_VERIFY_SSL,
     ) -> None:
         """Initialize the ProxmoxClient."""
