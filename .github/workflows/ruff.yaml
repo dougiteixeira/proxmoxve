@@ -24,7 +24,7 @@ jobs:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
       - name: 🏗 Install dependencies
-        run: uv sync --frozen --dev
+        run: uv sync --dev
 
       - name: 🚀 Run ruff linter
         run: uv run ruff check --output-format=github .
