@@ -34,55 +34,7 @@ USER_INPUT_OK = {
     CONF_QEMU: ["101"],
     CONF_LXC: ["100"],
 }
-YAML_INPUT_OK = {
-    "proxmoxve_custom": {
-        CONF_HOST: "192.168.10.101",
-        CONF_PORT: 8006,
-        CONF_USERNAME: "root",
-        CONF_PASSWORD: "secret",
-        CONF_REALM: "pam",
-        CONF_VERIFY_SSL: True,
-        CONF_NODES: [
-            {
-                CONF_NODE: "pve",
-                CONF_VMS: ["100", "101", "102"],
-                CONF_CONTAINERS: ["201", "202", "203"],
-            }
-        ],
-    }
-}
-YAML_INPUT_INVALID = {
-    "proxmoxve_custom": {
-        CONF_HOST: "test_host",
-        CONF_USERNAME: "user_test",
-        CONF_PASSWORD: "passw_test",
-        "error": "error",
-        CONF_NODES: [
-            {
-                CONF_NODE: "pve",
-                CONF_VMS: ["100", "101", "102"],
-                CONF_CONTAINERS: ["201", "202", "203"],
-            }
-        ],
-    }
-}
-YAML_INPUT_NOT_EXIST = {
-    "proxmoxve_custom": {
-        CONF_HOST: "192.168.10.152",
-        CONF_PORT: 8006,
-        CONF_USERNAME: "root",
-        CONF_PASSWORD: "secret",
-        CONF_REALM: "pam",
-        CONF_VERIFY_SSL: True,
-        CONF_NODES: [
-            {
-                CONF_NODE: "not_exist",
-                CONF_VMS: ["100", "101", "102"],
-                CONF_CONTAINERS: ["201", "202", "203"],
-            }
-        ],
-    }
-}
+
 USER_INPUT_USER_HOST = {
     CONF_HOST: "192.168.10.101",
     CONF_PORT: 8006,
