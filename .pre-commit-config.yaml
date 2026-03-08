@@ -1,0 +1,67 @@
+---
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: 🐶 Ruff Linter
+        language: system
+        types: [python]
+        entry: uv run ruff check --fix
+        require_serial: true
+        stages: [pre-commit, pre-push, manual]
+      - id: ruff-format
+        name: 🐶 Ruff Formatter
+        language: system
+        types: [python]
+        entry: uv run ruff format
+        require_serial: true
+        stages: [pre-commit, pre-push, manual]
+      - id: check-json
+        name: Check JSON files
+        language: system
+        types: [json]
+        entry: uv run check-json
+      - id: check-toml
+        name: ✅ Check TOML files
+        language: system
+        types: [toml]
+        entry: uv run check-toml
+      - id: check-yaml
+        name: ✅ Check YAML files
+        language: system
+        types: [yaml]
+        entry: uv run check-yaml
+      - id: check-merge-conflict
+        name: 💥 Check for merge conflicts
+        language: system
+        types: [text]
+        entry: uv run check-merge-conflict
+      - id: check-symlinks
+        name: 🔗 Check for broken symlinks
+        language: system
+        types: [symlink]
+        entry: uv run check-symlinks
+      - id: end-of-file-fixer
+        name: ⮐  Fix End of Files
+        language: system
+        types: [text]
+        entry: uv run end-of-file-fixer
+        stages: [pre-commit, pre-push, manual]
+      - id: no-commit-to-branch
+        name: 🛑 Don't commit to main branch
+        language: system
+        entry: uv run no-commit-to-branch
+        pass_filenames: false
+        always_run: true
+        args:
+          - --branch=main
+      - id: pylint
+        name: 🌟 Starring code with pylint
+        language: system
+        types: [python]
+        entry: uv run pylint
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.7.1
+    hooks:
+      - id: prettier
+        name: 🎨 Format using prettier
