@@ -20,10 +20,12 @@
                     "qemu": "Virtual Machines (QEMU)",
                     "lxc": "Linux Containers (LXC)",
                     "storage": "Storages",
-                    "disks_enable": "Enable physical disk information"
+                    "disks_enable": "Enable physical disk information",
+                    "tasks_enable": "Monitor failed tasks"
                 },
                 "data_description": {
-                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly.",
+                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
                 }
             },
             "reauth_confirm": {
@@ -142,10 +144,12 @@
                     "nodes": "Nodes",
                     "qemu": "Virtual Machines (QEMU)",
                     "storage": "Storages",
-                    "disks_enable": "Enable physical disk information"
+                    "disks_enable": "Enable physical disk information",
+                    "tasks_enable": "Monitor failed tasks"
                 },
                 "data_description": {
-                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly."
+                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly.",
+                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
                 }
             }
         },
@@ -240,6 +244,17 @@
             },
             "disk_wearout": {
                 "name": "Wearout"
+            },
+            "failed_tasks_count": {
+                "name": "Failed tasks",
+                "state_attributes": {
+                    "recent_failures": {
+                        "name": "Recent failures"
+                    },
+                    "last_failure_time": {
+                        "name": "Last failure time"
+                    }
+                }
             },
             "life_left": {
                 "name": "Life left"

@@ -20,10 +20,12 @@
                     "qemu": "Máquinas virtuales (QEMU)",
                     "lxc": "Contenedores de Linux (LXC)",
                     "storage": "Almacenamientos",
-                    "disks_enable": "Habilitar información física del disco"
+                    "disks_enable": "Habilitar información física del disco",
+                    "tasks_enable": "Monitor failed tasks"
                 },
                 "data_description": {
-                    "disks_enable": "Si trabaja con la hibernación del disco, debe desactivar esta opción de integración para que no cause que los discos se reactiven incorrectamente."
+                    "disks_enable": "Si trabaja con la hibernación del disco, debe desactivar esta opción de integración para que no cause que los discos se reactiven incorrectamente.",
+                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
                 }
             },
             "reauth_confirm": {
@@ -142,10 +144,12 @@
                     "nodes": "Nodos",
                     "qemu": "Máquinas virtuales (QEMU)",
                     "storage": "Almacenamientos",
-                    "disks_enable": "Habilitar información física del disco"
+                    "disks_enable": "Habilitar información física del disco",
+                    "tasks_enable": "Monitor failed tasks"
                 },
                 "data_description": {
-                    "disks_enable": "Si trabaja con la hibernación del disco, debe desactivar esta opción de integración para que no cause que los discos se reactiven incorrectamente."
+                    "disks_enable": "Si trabaja con la hibernación del disco, debe desactivar esta opción de integración para que no cause que los discos se reactiven incorrectamente.",
+                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
                 }
             }
         },
@@ -240,6 +244,17 @@
             },
             "disk_wearout": {
                 "name": "Desgaste"
+            },
+            "failed_tasks_count": {
+                "name": "Failed tasks",
+                "state_attributes": {
+                    "recent_failures": {
+                        "name": "Recent failures"
+                    },
+                    "last_failure_time": {
+                        "name": "Last failure time"
+                    }
+                }
             },
             "life_left": {
                 "name": "Vida restante"

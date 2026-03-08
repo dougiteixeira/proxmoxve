@@ -20,10 +20,12 @@
                     "qemu": "Виртуальные машины (QEMU)",
                     "lxc": "Контейнеры Linux (LXC)",
                     "storage": "Хранилища",
-                    "disks_enable": "Включить мониторинг физических дисков"
+                    "disks_enable": "Включить мониторинг физических дисков",
+                    "tasks_enable": "Monitor failed tasks"
                 },
                 "data_description": {
-                    "disks_enable": "При использовании гибернации дисков отключите эту опцию, чтобы предотвратить их нежелательное пробуждение."
+                    "disks_enable": "При использовании гибернации дисков отключите эту опцию, чтобы предотвратить их нежелательное пробуждение.",
+                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
                 }
             },
             "reauth_confirm": {
@@ -142,10 +144,12 @@
                     "nodes": "Ноды",
                     "qemu": "Виртуальные машины (QEMU)",
                     "storage": "Хранилища",
-                    "disks_enable": "Включить мониторинг физических дисков"
+                    "disks_enable": "Включить мониторинг физических дисков",
+                    "tasks_enable": "Monitor failed tasks"
                 },
                 "data_description": {
-                    "disks_enable": "При использовании гибернации дисков отключите эту опцию, чтобы предотвратить их нежелательное пробуждение."
+                    "disks_enable": "При использовании гибернации дисков отключите эту опцию, чтобы предотвратить их нежелательное пробуждение.",
+                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
                 }
             }
         },
@@ -240,6 +244,17 @@
             },
             "disk_wearout": {
                 "name": "Износ"
+            },
+            "failed_tasks_count": {
+                "name": "Failed tasks",
+                "state_attributes": {
+                    "recent_failures": {
+                        "name": "Recent failures"
+                    },
+                    "last_failure_time": {
+                        "name": "Last failure time"
+                    }
+                }
             },
             "life_left": {
                 "name": "Остаточный ресурс"
