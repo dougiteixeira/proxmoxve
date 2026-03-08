@@ -1007,6 +1007,7 @@ def poll_api(
     api_path: str,
     api_category: ProxmoxType,
     resource_id: str | int | None = None,
+    *,
     issue_crete_permissions: bool | None = True,
 ) -> dict[str, Any] | None:
     """Return data from the Proxmox Node API."""
