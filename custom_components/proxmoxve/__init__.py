@@ -591,7 +591,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         node_name=node,
                         disk_id=(
                             disk["wwn"]
-                            if "wwn" in disk and disk["wwn"] and disk["wwn"] != "unknown"
+                            if "wwn" in disk
+                            and disk["wwn"]
+                            and disk["wwn"] != "unknown"
                             else (
                                 disk["by_id_link"]
                                 if "by_id_link" in disk
