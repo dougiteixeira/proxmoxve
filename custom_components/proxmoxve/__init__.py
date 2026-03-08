@@ -803,6 +803,7 @@ def device_info(
     api_category: ProxmoxType,
     node: str | None = None,
     resource_id: int | None = None,
+    *,
     create: bool | None = False,
     cordinator_resource: ProxmoxDiskData | ProxmoxStorageData | None = None,
 ):
