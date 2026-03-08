@@ -9,4 +9,4 @@ homeassistant:
 logger:
   default: info
   logs:
-    custom_components.proxmoxve: debug
+    custom_components.proxmoxve_custom: debug

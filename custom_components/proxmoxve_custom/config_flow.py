@@ -482,7 +482,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
 
 
 class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """ProxmoxVE Config Flow class."""
+    """proxmoxve_custom Config Flow class."""
 
     VERSION = 7
     _reauth_entry: config_entries.ConfigEntry | None = None

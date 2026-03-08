@@ -1,5 +1,5 @@
 {
-  "domain": "proxmoxve",
+  "domain": "proxmoxve_custom",
   "name": "Proxmox VE",
   "codeowners": [
     "@dougiteixeira"

@@ -15,7 +15,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectTimeout, SSLError
 
-from custom_components.proxmoxve import DOMAIN
+from custom_components.proxmoxve_custom import DOMAIN
 
 from .const import (
     USER_INPUT_AUTH,
@@ -46,7 +46,7 @@ async def test_step_reauth(hass: HomeAssistant) -> None:
     assert "flow_id" in result
 
     with patch(
-        "custom_components.proxmoxve.ProxmoxClient.build_client",
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
         return_value=True,
     ):
         result_auth_ok = await hass.config_entries.flow.async_configure(
@@ -67,7 +67,7 @@ async def test_step_reauth(hass: HomeAssistant) -> None:
     )
 
     with patch(
-        "custom_components.proxmoxve.ProxmoxClient.build_client",
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
         side_effect=proxmoxer.backends.https.AuthenticationError("mock msg"),
         return_value=None,
     ):
@@ -87,7 +87,7 @@ async def test_step_reauth(hass: HomeAssistant) -> None:
     )
 
     with patch(
-        "custom_components.proxmoxve.ProxmoxClient.build_client",
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
         side_effect=SSLError,
         return_value=None,
     ):
@@ -107,7 +107,7 @@ async def test_step_reauth(hass: HomeAssistant) -> None:
     )
 
     with patch(
-        "custom_components.proxmoxve.ProxmoxClient.build_client",
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
         side_effect=ConnectTimeout,
         return_value=None,
     ):
@@ -127,7 +127,7 @@ async def test_step_reauth(hass: HomeAssistant) -> None:
     )
 
     with patch(
-        "custom_components.proxmoxve.ProxmoxClient.build_client",
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
         side_effect=Exception,
         return_value=None,
     ):

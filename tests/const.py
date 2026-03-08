@@ -9,8 +9,8 @@ from homeassistant.const import (
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_LXC,
@@ -35,7 +35,7 @@ USER_INPUT_OK = {
     CONF_LXC: ["100"],
 }
 YAML_INPUT_OK = {
-    "proxmoxve": {
+    "proxmoxve_custom": {
         CONF_HOST: "192.168.10.101",
         CONF_PORT: 8006,
         CONF_USERNAME: "root",
@@ -52,7 +52,7 @@ YAML_INPUT_OK = {
     }
 }
 YAML_INPUT_INVALID = {
-    "proxmoxve": {
+    "proxmoxve_custom": {
         CONF_HOST: "test_host",
         CONF_USERNAME: "user_test",
         CONF_PASSWORD: "passw_test",
@@ -67,7 +67,7 @@ YAML_INPUT_INVALID = {
     }
 }
 YAML_INPUT_NOT_EXIST = {
-    "proxmoxve": {
+    "proxmoxve_custom": {
         CONF_HOST: "192.168.10.152",
         CONF_PORT: 8006,
         CONF_USERNAME: "root",

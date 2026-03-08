@@ -101,7 +101,7 @@ To enable debug for Proxmox VE integration, add following to your `configuration
 logger:
   default: info
   logs:
-    custom_components.proxmoxve: debug
+    custom_components.proxmoxve_custom: debug
 ```
 </details>
 

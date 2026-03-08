@@ -18,6 +18,6 @@ async def async_init_integration(
 def patch_async_setup_entry(return_value=True):
     """Patch async setup entry to return True."""
     return patch(
-        "custom_components.proxmoxve.async_setup_entry",
+        "custom_components.proxmoxve_custom.async_setup_entry",
         return_value=return_value,
     )

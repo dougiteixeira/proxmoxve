@@ -16,8 +16,8 @@ from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectTimeout, SSLError
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import (
     CONF_NODE,
     CONF_NODES,
 )
@@ -94,7 +94,7 @@ async def test_flow_import_error_auth_error(hass: HomeAssistant) -> None:
     """Test import errors in case username or password are incorrect."""
     conf = YAML_INPUT_OK[DOMAIN]
     with patch(
-        "custom_components.proxmoxve.ProxmoxClient.build_client",
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
         side_effect=proxmoxer.backends.https.AuthenticationError("mock msg"),
         return_value=None,
     ):
@@ -120,7 +120,7 @@ async def test_flow_import_error_ssl_rejection(hass: HomeAssistant) -> None:
     """Test import errors in case the SSL certificare is not present or is not valid or is expired."""
     conf = YAML_INPUT_OK[DOMAIN]
     with patch(
-        "custom_components.proxmoxve.ProxmoxClient.build_client",
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
         side_effect=SSLError,
         return_value=None,
     ):
@@ -146,7 +146,7 @@ async def test_flow_import_error_cant_connect(hass: HomeAssistant) -> None:
     """Test import errors in case the connection fails."""
     conf = YAML_INPUT_OK[DOMAIN]
     with patch(
-        "custom_components.proxmoxve.ProxmoxClient.build_client",
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
         side_effect=ConnectTimeout,
         return_value=None,
     ):
@@ -172,7 +172,7 @@ async def test_flow_import_error_general_error(hass: HomeAssistant) -> None:
     """Test import errors in case of an unknown exception occurs."""
     conf = YAML_INPUT_OK[DOMAIN]
     with patch(
-        "custom_components.proxmoxve.ProxmoxClient.build_client",
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
         side_effect=Exception,
         return_value=None,
     ):
