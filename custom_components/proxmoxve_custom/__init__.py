@@ -22,8 +22,8 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceInfo
 from proxmoxer import AuthenticationError
 from proxmoxer.core import ResourceException
-from requests.exceptions import ConnectTimeout, RetryError, SSLError
 from requests.exceptions import ConnectionError as connError
+from requests.exceptions import ConnectTimeout, RetryError, SSLError
 from urllib3.exceptions import InsecureRequestWarning
 
 from .api import ProxmoxClient, get_api
