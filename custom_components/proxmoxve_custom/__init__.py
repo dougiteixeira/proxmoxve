@@ -226,7 +226,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
                 coordinators_disk = []
                 for disk in disks if disks is not None else []:
-                    LOGGER.warning("TEST DISK: %s", disk)
                     if isinstance(disk, dict):
                         coordinator_disk = ProxmoxDiskCoordinator(
                             hass=hass,
@@ -241,7 +240,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                                 else (
                                     disk["by_id_link"]
                                     if "by_id_link" in disk
-                                    else disk["serial"]
+                                    else disk.get("serial")
                                 )
                             ),
                         )
