@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+import homeassistant.config_entries.ConfigEntry
+
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -19,9 +20,6 @@ from homeassistant.const import (
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import (
     device_registry as dr,
-)
-from homeassistant.helpers import (
-    entity_registry as er,
 )
 from homeassistant.helpers import (
     issue_registry as ir,
@@ -75,7 +73,6 @@ from .coordinator import (
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.typing import ConfigType
 
     from .models import ProxmoxDiskData, ProxmoxStorageData
 

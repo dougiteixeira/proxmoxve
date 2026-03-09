@@ -10,7 +10,6 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.const import Platform
 from homeassistant.helpers.typing import UNDEFINED
 
 from . import COORDINATORS, device_info

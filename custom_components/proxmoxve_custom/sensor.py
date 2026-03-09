@@ -17,7 +17,6 @@ from homeassistant.const import (
     PERCENTAGE,
     REVOLUTIONS_PER_MINUTE,
     EntityCategory,
-    Platform,
     UnitOfInformation,
     UnitOfTemperature,
     UnitOfTime,

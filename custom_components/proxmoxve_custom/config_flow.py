@@ -24,23 +24,19 @@ from requests.exceptions import ConnectTimeout, SSLError
 
 from .api import ProxmoxClient, get_api
 from .const import (
-    CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_LXC,
-    CONF_NODE,
     CONF_NODES,
     CONF_QEMU,
     CONF_REALM,
     CONF_STORAGE,
     CONF_TASKS_ENABLE,
     CONF_TOKEN_NAME,
-    CONF_VMS,
     COORDINATORS,
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
-    INTEGRATION_TITLE,
     LOGGER,
     ProxmoxType,
 )

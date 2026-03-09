@@ -3,9 +3,8 @@
 from unittest.mock import patch
 
 import proxmoxer
-from homeassistant.config_entries import (
-    ConfigEntryState,
-)
+import homeassistant.config_entries.ConfigEntryState
+
 from homeassistant.const import (
     CONF_BASE,
     CONF_HOST,

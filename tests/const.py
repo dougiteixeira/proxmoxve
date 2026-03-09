@@ -14,7 +14,6 @@ from custom_components.proxmoxve_custom.const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_LXC,
-    CONF_NODE,
     CONF_NODES,
     CONF_QEMU,
     CONF_REALM,
