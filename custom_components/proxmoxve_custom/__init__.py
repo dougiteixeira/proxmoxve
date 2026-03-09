@@ -226,7 +226,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
                 coordinators_disk = []
                 for disk in disks if disks is not None else []:
-                    LOGGER.warnings("TEST: %s",disk)
+                    LOGGER.warning("TEST: %s", disk)
                     if disk is not None:
                         coordinator_disk = ProxmoxDiskCoordinator(
                             hass=hass,
