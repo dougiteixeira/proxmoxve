@@ -225,7 +225,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     continue
 
                 coordinators_disk = []
-                for disk in disks if disks is not None else []:
+                for disk in disks if (disks is not None and disk is not None) else []:
                     coordinator_disk = ProxmoxDiskCoordinator(
                         hass=hass,
                         proxmox=proxmox,
