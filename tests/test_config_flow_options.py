@@ -34,7 +34,6 @@ from .const import (
     mock_config_entry,
 )
 
-
 async def test_options_flow_host_auth(hass: HomeAssistant) -> None:
     """Test options config flow."""
     entry = MockConfigEntry(

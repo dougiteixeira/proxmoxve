@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,

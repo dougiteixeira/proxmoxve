@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 import voluptuous as vol
 from proxmoxer import AuthenticationError
 from proxmoxer.core import ResourceException
-from requests.exceptions import ConnectTimeout, RetryError, SSLError
 from requests.exceptions import ConnectionError as connError
+from requests.exceptions import ConnectTimeout, RetryError, SSLError
 from urllib3.exceptions import InsecureRequestWarning
 
 import homeassistant.helpers.config_validation as cv
