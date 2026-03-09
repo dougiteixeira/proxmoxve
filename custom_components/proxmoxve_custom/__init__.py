@@ -225,26 +225,27 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     continue
 
                 coordinators_disk = []
-                for disk in disks if (disks is not None and disk is not None) else []:
-                    coordinator_disk = ProxmoxDiskCoordinator(
-                        hass=hass,
-                        proxmox=proxmox,
-                        api_category=ProxmoxType.Disk,
-                        node_name=node,
-                        disk_id=(
-                            disk["wwn"]
-                            if "wwn" in disk
-                            and disk["wwn"]
-                            and disk["wwn"] != "unknown"
-                            else (
-                                disk["by_id_link"]
-                                if "by_id_link" in disk
-                                else disk["serial"]
-                            )
-                        ),
-                    )
-                    await coordinator_disk.async_refresh()
-                    coordinators_disk.append(coordinator_disk)
+                for disk in disks if disks is not None else []:
+                    if disk is not None:
+                        coordinator_disk = ProxmoxDiskCoordinator(
+                            hass=hass,
+                            proxmox=proxmox,
+                            api_category=ProxmoxType.Disk,
+                            node_name=node,
+                            disk_id=(
+                                disk["wwn"]
+                                if "wwn" in disk
+                                and disk["wwn"]
+                                and disk["wwn"] != "unknown"
+                                else (
+                                    disk["by_id_link"]
+                                    if "by_id_link" in disk
+                                    else disk["serial"]
+                                )
+                            ),
+                        )
+                        await coordinator_disk.async_refresh()
+                        coordinators_disk.append(coordinator_disk)
                 coordinators[f"{ProxmoxType.Disk}_{node}"] = coordinators_disk
 
                 try:
