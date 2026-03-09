@@ -112,6 +112,7 @@ CONFIG_SCHEMA = vol.Schema(
 
 warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
+
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up the platform."""
     hass.data.setdefault(DOMAIN, {})
@@ -120,7 +121,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     host = entry_data[CONF_HOST]
     port = entry_data[CONF_PORT]
     user = entry_data[CONF_USERNAME]
-    token_name = entry_data[CONF_TOKEN_NAME]
+    token_name = entry_data.get(CONF_TOKEN_NAME)
     realm = entry_data[CONF_REALM]
     password = entry_data[CONF_PASSWORD]
     verify_ssl = entry_data[CONF_VERIFY_SSL]
