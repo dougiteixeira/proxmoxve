@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 import proxmoxer
+from requests.exceptions import ConnectTimeout, SSLError
 
 from homeassistant.const import (
     CONF_BASE,
@@ -15,7 +16,6 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from requests.exceptions import ConnectTimeout, SSLError
 
 from custom_components.proxmoxve_custom import DOMAIN
 from custom_components.proxmoxve_custom.const import (
