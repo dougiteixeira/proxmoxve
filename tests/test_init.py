@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -9,9 +10,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve_custom import DOMAIN
@@ -24,6 +23,7 @@ from custom_components.proxmoxve_custom.const import (
 
 from . import async_init_integration
 from .const import MOCK_GET_RESPONSE
+
 
 async def test_setup_entry(hass: HomeAssistant) -> None:
     """Test setup entry."""

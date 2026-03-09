@@ -3,8 +3,6 @@
 from unittest.mock import patch
 
 import proxmoxer
-from requests.exceptions import ConnectTimeout, SSLError
-
 from homeassistant.const import (
     CONF_BASE,
     CONF_HOST,
@@ -16,6 +14,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from requests.exceptions import ConnectTimeout, SSLError
 
 from custom_components.proxmoxve_custom import DOMAIN
 from custom_components.proxmoxve_custom.const import (
@@ -33,6 +32,7 @@ from .const import (
     USER_INPUT_SELECTION,
     mock_config_entry,
 )
+
 
 async def test_options_flow_host_auth(hass: HomeAssistant) -> None:
     """Test options config flow."""
