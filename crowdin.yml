@@ -5,8 +5,8 @@
 "preserve_hierarchy": true
 files: [
   {
-    "source": "/custom_components/proxmoxve/translations/en.json",
-    "translation": "/custom_components/proxmoxve/translations/%locale%.json"
+    "source": "/custom_components/proxmoxve_custom/translations/en.json",
+    "translation": "/custom_components/proxmoxve_custom/translations/%locale%.json"
   }
 ]
 "pull_request_title": "Translations update from Crowdin"
