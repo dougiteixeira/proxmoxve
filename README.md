@@ -110,25 +110,25 @@ Here are some screenshots of the integration
 
 <details><summary>Node</summary>
 
-![image](/assets/e371b34e-0449-499f-878b-b5baacee8a5e.png)
+![image](/assets/282329206-e371b34e-0449-499f-878b-b5baacee8a5e.png)
 
 </details>
 
 <details><summary>VM (QEMU)</summary>
  
-![image](/assets/8213b877-8b23-4c4a-917b-04f27bb3a886.png)
+![image](/assets/282329013-8213b877-8b23-4c4a-917b-04f27bb3a886.png)
  
 </details>
 
 <details><summary>Storage</summary>
  
-![image](assets/fb290802-95d7-4dcc-8538-d31636a2f6f8.png)
+![image](282329274-fb290802-95d7-4dcc-8538-d31636a2f6f8.png)
  
 </details>
 
 <details><summary>Physical disks</summary>
  
-![image](/assets/f6174806-0ba8-4f60-ada7-cf5f29a1f629.png)
+![image](/283442167-f6174806-0ba8-4f60-ada7-cf5f29a1f629.png)
  
 </details>
 
@@ -223,23 +223,23 @@ Some entities are disabled by default (including control buttons), see below how
   
    1) Go to the page for the device you want to enable the button (or sensor).
 
-      ![image](/assets/4e3f9b7d-e935-4fc5-bdd3-3329ef9b90a8.png)
+      ![image](/assets/254760578-4e3f9b7d-e935-4fc5-bdd3-3329ef9b90a8.png)
    
    2) Click +x entities not show
 
-      ![image](/assets/0240d2ed-efac-4c59-9def-e721a44dde90.png)
+      ![image](/assets/254760603-0240d2ed-efac-4c59-9def-e721a44dde90.png)
    
    3) Click on the entity you want to enable and click on settings (on the gear icon):
 
-      ![image](/assets/e1bd2fb2-6fb5-4919-88c1-8056b7435f87.png)
+      ![image](/assets/254760618-e1bd2fb2-6fb5-4919-88c1-8056b7435f87.png)
    
    4) Click the Enable button at the top of the dialog:
 
-      ![image](/assets/1a8205e4-a779-4a01-922d-5d147e8e5766.png)
+      ![image](/assets/254760643-1a8205e4-a779-4a01-922d-5d147e8e5766.png)
    
    5) Wait a while (approximately 30 seconds) for the entity to be enabled. If you don't want to wait, just reload the configuration entry on the integration page.
 
-      ![image](/assets/33edd547-8c55-44eb-b0b9-5036317bf077.png)
+      ![image](/assets/254760679-33edd547-8c55-44eb-b0b9-5036317bf077.png)
    
    For the entity to appear enabled on the device page, it may be necessary to refresh the page.
    </details>
