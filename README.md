@@ -122,13 +122,13 @@ Here are some screenshots of the integration
 
 <details><summary>Storage</summary>
  
-![image](282329274-fb290802-95d7-4dcc-8538-d31636a2f6f8.png)
+![image](/assets/282329274-fb290802-95d7-4dcc-8538-d31636a2f6f8.png)
  
 </details>
 
 <details><summary>Physical disks</summary>
  
-![image](/283442167-f6174806-0ba8-4f60-ada7-cf5f29a1f629.png)
+![image](/assets/283442167-f6174806-0ba8-4f60-ada7-cf5f29a1f629.png)
  
 </details>
 
