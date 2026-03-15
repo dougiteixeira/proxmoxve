@@ -307,13 +307,55 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
                 ProxmoxType.QEMU,
                 self.resource_id,
             )
-        else:
-            msg = f"{self.resource_id} QEMU node not found"
-            raise UpdateFailed(msg)
-
+        
         if api_status is None or "status" not in api_status:
             msg = f"QEMU {self.resource_id} unable to be found"
             raise UpdateFailed(msg)
+            
+        guest_disk_used: int | UndefinedType = UNDEFINED
+
+        try:
+            fsinfo_path = f"nodes/{node_name!s}/qemu/{self.resource_id}/agent/get-fsinfo"
+            fsinfo = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                fsinfo_path,
+                ProxmoxType.QEMU,
+                self.resource_id,
+            )
+
+            entries = fsinfo.get("result", []) if isinstance(fsinfo, dict) else fsinfo
+
+            if isinstance(entries, list):
+                filesystems_by_device: dict[str, int] = {}
+
+                for fs in entries:
+                    if not isinstance(fs, dict):
+                        continue
+
+                    disks = fs.get("disk") or []
+                    if not disks:
+                        continue
+
+                    disk0 = disks[0]
+                    device_key = disk0.get("dev") or fs.get("name")
+
+                    used = fs.get("used-bytes")
+                    if not device_key or not isinstance(used, (int, float)):
+                        continue
+
+                    filesystems_by_device[device_key] = max(
+                        filesystems_by_device.get(device_key, 0),
+                        int(used),
+                    )
+
+                if filesystems_by_device:
+                    guest_disk_used = sum(filesystems_by_device.values())
+                    
+        except Exception as ex:
+            pass
 
         update_device_via(self, ProxmoxType.QEMU, node_name)
         return ProxmoxVMData(
@@ -338,7 +380,11 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             network_in=api_status.get("netin", UNDEFINED),
             network_out=api_status.get("netout", UNDEFINED),
             disk_total=api_status.get("maxdisk", UNDEFINED),
-            disk_used=api_status.get("disk", UNDEFINED),
+            disk_used=(
+                guest_disk_used
+                if guest_disk_used is not UNDEFINED
+                else api_status.get("disk", UNDEFINED)
+            ),
         )
 
 
