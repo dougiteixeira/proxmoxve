@@ -2,175 +2,175 @@
     "config": {
         "step": {
             "host": {
-                "description": "Proxmox host information",
+                "description": "Proxmox host informatie",
                 "data": {
                     "host": "Host",
-                    "password": "Password or token value",
-                    "token_name": "Token name",
-                    "port": "Port",
-                    "realm": "Realm",
-                    "username": "Username",
-                    "verify_ssl": "Verify SSL certificate"
+                    "password": "Wachtwoord of token waarde",
+                    "token_name": "Token naam",
+                    "port": "Poort",
+                    "realm": "Domein",
+                    "username": "Gebruikersnaam",
+                    "verify_ssl": "SSL-certificaat verifiëren"
                 }
             },
             "expose": {
-                "description": "Select the Proxmox instance nodes, Virtual Machines (QEMU), Containers (LXC) and Storages you want to expose",
+                "description": "Selecteer de Proxmox instantie nodes, Virtual Machines (QEMU), Containers (LXC) en Storages die u wilt blootstellen",
                 "data": {
                     "nodes": "Nodes",
-                    "qemu": "Virtual Machines (QEMU)",
+                    "qemu": "Virtuele Machines (QEMU)",
                     "lxc": "Linux Containers (LXC)",
-                    "storage": "Storages",
-                    "disks_enable": "Enable physical disk information",
-                    "tasks_enable": "Monitor failed tasks"
+                    "storage": "Opslagruimtes",
+                    "disks_enable": "Schakel fysieke schijfinformatie in",
+                    "tasks_enable": "Monitor mislukte taken"
                 },
                 "data_description": {
-                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly.",
-                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
+                    "disks_enable": "Als je met disk hybernation werkt, moet je deze integratie-optie uitschakelen zodat de schijven niet onnodig worden gereactiveerd.",
+                    "tasks_enable": "Bijhouden en rapporteren van mislukte taken van de afgelopen 24 uur op geselecteerde nodes."
                 }
             },
             "reauth_confirm": {
-                "description": "The username or password is invalid.",
-                "title": "Reauthenticate Integration",
+                "description": "Ongeldige gebruikersnaam of wachtwoord.",
+                "title": "Integratie herauthenticeren",
                 "data": {
-                    "password": "Password or token value",
-                    "username": "Username",
-                    "token_name": "Token name",
-                    "realm": "Realm"
+                    "password": "Wachtwoord of token waarde",
+                    "username": "Gebruikersnaam",
+                    "token_name": "Token naam",
+                    "realm": "Domein"
                 }
             },
             "reconfigure": {
-                "description": "Proxmox host information",
+                "description": "Proxmox host informatie",
                 "data": {
                     "host": "Host",
-                    "password": "Password or token value",
-                    "token_name": "Token name",
-                    "port": "Port",
-                    "realm": "Realm",
-                    "username": "Username",
-                    "verify_ssl": "Verify SSL certificate"
+                    "password": "Wachtwoord of token waarde",
+                    "token_name": "Token naam",
+                    "port": "Poort",
+                    "realm": "Domein",
+                    "username": "Gebruikersnaam",
+                    "verify_ssl": "SSL-certificaat verifiëren"
                 }
             }
         },
         "error": {
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "auth_error": "Ongeldige authenticatie",
+            "cant_connect": "Kon geen verbinding maken",
+            "general_error": "Onverwachte fout",
+            "invalid_port": "Ongeldig poortnummer",
+            "ssl_rejection": "SSL-certificaat kon niet worden geverifieerd"
         },
         "abort": {
-            "already_configured": "Device is already configured",
-            "no_resources": "No resources were returned for this instance.",
-            "reauth_successful": "Re-authentication was successful",
-            "reconfigure_successful": "Reconfiguration completed successfully."
+            "already_configured": "Apparaat is al geconfigureerd",
+            "no_resources": "Er zijn geen bronnen teruggestuurd voor deze instantie.",
+            "reauth_successful": "Herauthenticatie is gelukt",
+            "reconfigure_successful": "Opnieuw configureren voltooid."
         }
     },
     "issues": {
         "import_success": {
-            "title": "{host}:{port} was imported from YAML configuration",
-            "description": "The YAML configuration of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file."
+            "title": "{host}:{port} is geïmporteerd uit de YAML configuratie",
+            "description": "De YAML-configuratie van {host}:{port} instantie van {integration} (`{platform}`) is automatisch in de UI geïmporteerd.\n\nKan veilig worden verwijderd uit uw `configuration.yaml` bestand."
         },
         "import_invalid_port": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to invalid port.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Fout bij het importeren van de YAML configuratie van {host}:{port}",
+            "description": "Importeren van YAML configuratie van {host}:{port} instantie van {integration} (`{platform}`) is mislukt vanwege een ongeldige poort.\n\nU moet deze configuratie verwijderen uit uw `configuration.yaml` bestand, Home Assistant herstarten en handmatig configureren."
         },
         "import_auth_error": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to authentication error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Fout bij het importeren van de YAML configuratie van {host}:{port}",
+            "description": "Importeren van YAML configuratie van {host}:{port} instantie van {integration} (`{platform}`) is mislukt vanwege een ongeldige poort.\n\nU moet deze configuratie verwijderen uit uw `configuration.yaml` bestand, Home Assistant herstarten en handmatig configureren."
         },
         "import_ssl_rejection": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to SSL rejection.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Fout bij het importeren van de YAML configuratie van {host}:{port}",
+            "description": "Importeren van YAML configuratie van {host}:{port} instantie van {integration} (`{platform}`) is mislukt vanwege SSL afwijzing.\n\nU moet deze configuratie verwijderen uit uw `configuration.yaml` bestand, Home Assistant herstarten en handmatig configureren."
         },
         "import_cant_connect": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to connection failed.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Fout bij het importeren van de YAML configuratie van {host}:{port}",
+            "description": "Importeren van YAML configuratie van {host}:{port} instantie van {integration} (`{platform}`) is mislukt door een mislukte verbinding.\n\nU moet deze configuratie verwijderen uit uw `configuration.yaml` bestand, Home Assistant herstarten en handmatig configureren."
         },
         "import_general_error": {
-            "title": "Error in importing YAML configuration from {host}:{port}",
-            "description": "Importing YAML configuration from {host}:{port} instance of {integration} (`{platform}`) failed due to unknown error.\n\nYou must remove this configuration from your `configuration.yaml` file, restart Home Assistant and configure it manually."
+            "title": "Fout bij het importeren van de YAML configuratie van {host}:{port}",
+            "description": "Importeren van YAML configuratie van {host}:{port} instantie van {integration} (`{platform}`) is mislukt vanwege onbekende fout.\n\nU moet deze configuratie verwijderen uit uw `configuration.yaml` bestand, Home Assistant herstarten en handmatig configureren."
         },
         "import_already_configured": {
-            "title": "The instance {host}:{port} already exists in the UI, can be removed",
-            "description": "The YAML configuration of instace {host}:{port} of {integration} (`{platform}`) already exists in the UI and was ignored on import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+            "title": "De instantie {host}:{port} bestaat al in de UI en kan worden verwijderd",
+            "description": "De YAML-configuratie van instace {host}:{port} van {integration} (`{platform}`) bestaat al in de UI en werd genegeerd bij het importeren.\n\nU moet deze configuratie uit uw `configuration.yaml` bestand verwijderen en Home Assistant herstarten."
         },
         "import_node_not_exist": {
-            "title": "Node {node} does not exist in {host}:{port}",
-            "description": "The {node} of the {host}:{port} instance of {integration} (`{platform}`) present in the YAML configuration does not exist in this instance and was ignored in the import.\n\nYou must remove this configuration from your `configuration.yaml` file and restart Home Assistant."
+            "title": "Node {node} bestaat niet in {host}:{port}",
+            "description": "De {node} van de {host}:{port} instantie van {integration} (`{platform}`) die aanwezig is in de YAML configuratie bestaat niet in deze instantie en is genegeerd in de import.\n\nU moet deze configuratie uit uw `configuration.yaml` bestand verwijderen en Home Assistant herstarten."
         },
         "yaml_deprecated": {
-            "title": "Configuration of the {integration} in YAML is deprecated",
-            "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in {version}.\n\nResolve the import issues and remove the YAML configuration from your `configuration.yaml` file."
+            "title": "Configuratie van de {integration} in YAML wordt niet meer ondersteund",
+            "description": "Configuratie van de {integration} (`{platform}`) in YAML is verouderd en moet worden verwijderd in {version}.\n\nLos de importproblemen op en verwijder de YAML configuratie van je `configuration.yaml` bestand."
         },
         "resource_nonexistent": {
-            "description": "{resource_type} {resource} does not exist on ({host}:{port}), remove it in integration options.\n\nThis can also be caused if the user doesn't have enough permission to access the resource.\n\nTip on required permissions:\n* `{permission}`",
-            "title": "{resource_type} {resource} does not exist"
+            "description": "{resource_type} {resource} bestaat niet op ({host}:{port}), verwijder het in de integratie opties.\n\nDit kan ook worden veroorzaakt als de gebruiker niet genoeg rechten heeft om de pagina te openen.\n\nTip voor vereiste machtigingen:\n* `{permission}`",
+            "title": "{resource_type} {resource} bestaat niet"
         },
         "no_permissions": {
-            "description": "The user `{user}` does not have the required permissions for all features.\n\nThe following features are not accessible by the user:\n`{errors}`\n\nCheck the user permissions as described in the documentation.",
-            "title": "User `{user}` does not have the required permissions"
+            "description": "De gebruiker `{user}` heeft niet de vereiste rechten voor alle functies.\n\nDe volgende functies zijn niet toegankelijk voor de gebruiker:\n`{errors}`\n\nControleer de gebruikersrechten zoals beschreven in de documentatie.",
+            "title": "Gebruiker `{user}` heeft niet de vereiste rechten"
         },
         "resource_exception_forbiden": {
-            "description": "User `{user}` does not have sufficient permissions to access resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-            "title": "Permissions error for `{resource}`"
+            "description": "Gebruiker `{user}` heeft niet voldoende rechten om de bron te kunnen gebruiken `{resource}`.\n\nTip voor vereiste machtigingen:\n* `{permission}`\n\nControleer alstublieft de documentatie en gebruikersrechten.",
+            "title": "Machtiging fout voor `{resource}`"
         },
         "resource_command_forbiden": {
-            "description": "User `{user}` does not have sufficient permissions to execute command `{command}` on resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-            "title": "Permission error for `{resource}` command"
+            "description": "Gebruiker `{user}` heeft niet voldoende rechten om commando `{command}` uit te voeren op bron `{resource}`.\n\nTip op de vereiste machtigingen:\n* `{permission}`\n\nControleer de documentatie en gebruikersrechten.",
+            "title": "Machtiging fout voor `{resource}` commando"
         }
     },
     "options": {
         "step": {
             "menu": {
                 "menu_options": {
-                    "host_auth": "Change host authentication information",
-                    "change_expose": "Add or remove Nodes, VMs, Containers or Storages"
+                    "host_auth": "Wijzig host authenticatie informatie",
+                    "change_expose": "Toevoegen of verwijderen van nodes, VMs, Containers of opslag"
                 }
             },
             "host_auth": {
                 "data": {
-                    "password": "Password or token value",
-                    "token_name": "Token name",
-                    "realm": "Realm",
-                    "username": "Username",
-                    "verify_ssl": "Verify SSL certificate"
+                    "password": "Wachtwoord of token waarde",
+                    "token_name": "Token naam",
+                    "realm": "Domein",
+                    "username": "Gebruikersnaam",
+                    "verify_ssl": "SSL-certificaat verifiëren"
                 },
-                "description": "Proxmox host information"
+                "description": "Proxmox host informatie"
             },
             "change_expose": {
-                "description": "Select the Proxmox instance nodes and Virtual Machines (QEMU) and Containers (LXC) you want to expose",
+                "description": "Selecteer de Proxmox-instance nodes, Virtual Machines (QEMU) en Containers (LXC) die u wilt laten zien",
                 "data": {
                     "lxc": "Linux Containers (LXC)",
                     "nodes": "Nodes",
-                    "qemu": "Virtual Machines (QEMU)",
-                    "storage": "Storages",
-                    "disks_enable": "Enable physical disk information",
-                    "tasks_enable": "Monitor failed tasks"
+                    "qemu": "Virtuele Machines (QEMU)",
+                    "storage": "Opslagruimtes",
+                    "disks_enable": "Schakel fysieke schijfinformatie in",
+                    "tasks_enable": "Monitor mislukte taken"
                 },
                 "data_description": {
-                    "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly.",
-                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
+                    "disks_enable": "Als je met disk hybernation werkt, moet je deze integratie-optie uitschakelen zodat de schijven niet onnodig worden gereactiveerd.",
+                    "tasks_enable": "Bijhouden en rapporteren van mislukte taken van de afgelopen 24 uur op geselecteerde knooppunten."
                 }
             }
         },
         "error": {
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "auth_error": "Ongeldige authenticatie",
+            "cant_connect": "Kon geen verbinding maken",
+            "general_error": "Onverwachte fout",
+            "invalid_port": "Ongeldig poort nummer",
+            "ssl_rejection": "Kon het SSL-certificaat niet verifiëren"
         },
         "abort": {
-            "no_nodes": "No nodes were returned for the host.",
-            "no_vms": "There are no virtual machines or containers for this node, the configuration entry will be created for the node.",
-            "changes_successful": "Changes saved successfully.",
-            "no_nodes_to_add": "No nodes to add.",
-            "node_already_exists": "The selected node already exists.",
-            "auth_error": "Invalid authentication",
-            "cant_connect": "Failed to connect",
-            "general_error": "Unexpected error",
-            "invalid_port": "Invalid port number",
-            "ssl_rejection": "Could not verify the SSL certificate"
+            "no_nodes": "Voor de host werden geen nodes teruggegeven.",
+            "no_vms": "Er zijn geen virtuele machines of containers voor deze node, de configuratie invoer zal worden gemaakt voor de node.",
+            "changes_successful": "Wijzigingen succesvol opgeslagen",
+            "no_nodes_to_add": "Geen nodes om toe te voegen.",
+            "node_already_exists": "Geselecteerde node bestaat al.",
+            "auth_error": "Ongeldige authenticatie",
+            "cant_connect": "Kon geen verbinding maken",
+            "general_error": "Onverwachte fout",
+            "invalid_port": "Ongeldig poort nummer",
+            "ssl_rejection": "SSL-certificaat kon niet worden geverifieerd"
         }
     },
     "entity": {
@@ -179,24 +179,24 @@
                 "name": "Status"
             },
             "health": {
-                "name": "Health"
+                "name": "Gezondheid"
             },
             "update_avail": {
-                "name": "Updates packages"
+                "name": "Packageupdates"
             }
         },
         "button": {
             "start_all": {
-                "name": "Start all"
+                "name": "Alles starten"
             },
             "stop_all": {
-                "name": "Stop all"
+                "name": "Alles stoppen"
             },
             "shutdown": {
-                "name": "Shutdown"
+                "name": "Uitschakelen"
             },
             "reboot": {
-                "name": "Reboot"
+                "name": "Herstarten"
             },
             "start": {
                 "name": "Start"
@@ -205,10 +205,10 @@
                 "name": "Stop"
             },
             "resume": {
-                "name": "Resume"
+                "name": "Hervat"
             },
             "suspend": {
-                "name": "Suspend"
+                "name": "Onderbreken"
             },
             "reset": {
                 "name": "Reset"
@@ -219,149 +219,149 @@
         },
         "sensor": {
             "cpu_used": {
-                "name": "CPU used"
+                "name": "CPU gebruikt"
             },
             "disk_free": {
-                "name": "Disk free"
+                "name": "Schijf vrij"
             },
             "disk_free_perc": {
-                "name": "Disk free percentage"
+                "name": "Schijf beschikbaar percentage"
             },
             "disk_rpm": {
-                "name": "Disk speed"
+                "name": "Schijfsnelheid"
             },
             "disk_size": {
-                "name": "Size"
+                "name": "Grootte"
             },
             "disk_total": {
-                "name": "Disk total"
+                "name": "Schijf totaal"
             },
             "disk_used": {
-                "name": "Disk used"
+                "name": "Schijf gebruikt"
             },
             "disk_used_perc": {
-                "name": "Disk used percentage"
+                "name": "Schijf gebruikt percentage"
             },
             "disk_wearout": {
                 "name": "Wearout"
             },
             "failed_tasks_count": {
-                "name": "Failed tasks",
+                "name": "Mislukte taken",
                 "state_attributes": {
                     "recent_failures": {
-                        "name": "Recent failures"
+                        "name": "Recente fouten"
                     },
                     "last_failure_time": {
-                        "name": "Last failure time"
+                        "name": "Tijdstip laatste fout"
                     }
                 }
             },
             "life_left": {
-                "name": "Life left"
+                "name": "Leven resterend"
             },
             "zfs_health": {
-                "name": "Health"
+                "name": "Gezondheid"
             },
             "zfs_free_perc": {
-                "name": "Free percentage"
+                "name": "Beschikbaar percentage"
             },
             "zfs_total": {
-                "name": "Total"
+                "name": "Totaal"
             },
             "zfs_used": {
-                "name": "Used"
+                "name": "Gebruikt"
             },
             "zfs_used_perc": {
-                "name": "Used percentage"
+                "name": "Gebruikt percentage"
             },
             "lxc_on": {
-                "name": "Containers running",
+                "name": "Containers lopen",
                 "state_attributes": {
                     "lxc_on_list": {
-                        "name": "Containers list"
+                        "name": "Containerlijst"
                     }
                 }
             },
             "memory_free": {
-                "name": "Memory free"
+                "name": "Geheugen beschikbaar"
             },
             "memory_free_perc": {
-                "name": "Memory free percentage"
+                "name": "Geheugen beschikbaar percentage"
             },
             "memory_total": {
-                "name": "Memory total"
+                "name": "Totaal geheugen"
             },
             "memory_used": {
-                "name": "Memory used"
+                "name": "Gebruikt geheugen"
             },
             "memory_used_perc": {
-                "name": "Memory used percentage"
+                "name": "Gebruikt geheugen percentage"
             },
             "network_in": {
-                "name": "Network in"
+                "name": "Netwerk in"
             },
             "network_out": {
-                "name": "Network out"
+                "name": "Netwerk uit"
             },
             "node": {
                 "name": "Node"
             },
             "power_cycles": {
-                "name": "Power cycles"
+                "name": "Vermogen cycli"
             },
             "power_loss": {
-                "name": "Unexpected power loss"
+                "name": "Onverwacht stroomverlies"
             },
             "power_hours": {
-                "name": "Power-on hours"
+                "name": "Stroom-aan-uren"
             },
             "qemu_on": {
-                "name": "Virtual machines running",
+                "name": "Virtuele machines draaien",
                 "state_attributes": {
                     "qemu_on_list": {
-                        "name": "Virtual machines list"
+                        "name": "Lijst virtuele machines"
                     }
                 }
             },
             "status_raw": {
                 "name": "Status",
                 "state": {
-                    "internal-error": "Internal error",
+                    "internal-error": "Interne fout",
                     "prelaunch": "Pre launch",
-                    "paused": "Paused",
-                    "stopped": "Stopped",
-                    "suspended": "Suspended",
-                    "running": "Running"
+                    "paused": "Gepauzeerd",
+                    "stopped": "Gestopt",
+                    "suspended": "Onderbroken",
+                    "running": "Actief"
                 }
             },
             "swap_free": {
-                "name": "Swap free"
+                "name": "Swap vrij"
             },
             "swap_free_perc": {
-                "name": "Swap free percentage"
+                "name": "Swap vrij percentage"
             },
             "swap_total": {
-                "name": "Swap total"
+                "name": "Swap totaal"
             },
             "swap_used": {
-                "name": "Swap used"
+                "name": "Swap gebruikt"
             },
             "swap_used_perc": {
-                "name": "Swap used percentage"
+                "name": "Swap vrij percentage"
             },
             "temperature": {
-                "name": "Temperature"
+                "name": "Temperatuur"
             },
             "updates_total": {
-                "name": "Total updates",
+                "name": "Totaal aantal updates",
                 "state_attributes": {
                     "updates_list": {
-                        "name": "Updates list"
+                        "name": "Update lijst"
                     }
                 }
             },
             "uptime": {
-                "name": "Last boot"
+                "name": "Laatste start"
             }
         }
     }
