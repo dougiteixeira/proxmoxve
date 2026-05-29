@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Final
@@ -18,7 +19,11 @@ from homeassistant.const import (
     REVOLUTIONS_PER_MINUTE,
     EntityCategory,
     Platform,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfFrequency,
     UnitOfInformation,
+    UnitOfPower,
     UnitOfTemperature,
     UnitOfTime,
 )
@@ -46,6 +51,263 @@ if TYPE_CHECKING:
     from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
     from .models import ProxmoxDiskData, ProxmoxZFSData
+
+CHIP_DEVICE_MAP: Final[dict[str, str]] = {
+    "k10temp": "CPU",
+    "k8temp": "CPU",
+    "coretemp": "CPU",
+    "peci-cputemp": "CPU",
+    "zenpower": "CPU",
+    "fam15h": "CPU",
+    "sbtsi": "CPU",
+    "sbrmi": "CPU",
+    "amdgpu": "GPU",
+    "i915": "GPU",
+    "nvidia_gpu": "GPU",
+    "nvme": "NVMe",
+    "drivetemp": "Drive",
+    "jc42": "Memory",
+    "spd5118": "Memory",
+    "peci-dimmtemp": "Memory",
+    "sodimm": "Memory",
+    "tmp102": "Memory",
+    "tmp103": "Memory",
+    "tmp401": "Memory",
+    "tmp421": "Memory",
+    "lm75": "Memory",
+    "lm90": "Memory",
+    "adm1021": "Memory",
+    "max6642": "Memory",
+    "lm95234": "Memory",
+    "nct6775": "Motherboard",
+    "nct6683": "Motherboard",
+    "nct6106": "Motherboard",
+    "it87": "Motherboard",
+    "w83627": "Motherboard",
+    "w83667": "Motherboard",
+    "f71882": "Motherboard",
+    "asus_ec": "Motherboard",
+    "mlx5": "NIC",
+    "igb": "NIC",
+    "ixgbe": "NIC",
+    "acpitz": "Motherboard",
+    "dell_smm": "Laptop",
+    "macsmc": "Laptop",
+    "thinkpad": "Laptop",
+    "lm25066": "PSU",
+    "lm5066": "PSU",
+    "pmbus": "PSU",
+    "corsair": "PSU",
+    "ibm-cffps": "PSU",
+    "emc2305": "Cooling",
+    "max31785": "Cooling",
+    "pwm-fan": "Cooling",
+    "g760a": "Cooling",
+    "pc87360": "Cooling",
+    "raspberrypi": "SoC",
+    "i5500": "Chipset",
+    "i5k_amb": "Chipset",
+}
+
+SENSOR_LABEL_MAP: Final[dict[str, dict[str, str]]] = {
+    "amdgpu": {
+        "edge": "GPU hotspot",
+        "junction": "GPU junction",
+        "mem": "GPU memory temperature",
+        "vddgfx": "GPU core voltage",
+        "vddnb": "GPU SoC voltage",
+        "sclk": "GPU shader clock",
+        "mclk": "GPU memory clock",
+        "ppt": "GPU package power",
+    },
+    "k10temp": {
+        "tctl": "CPU control temperature",
+        "tdie": "CPU die temperature",
+        "tccd1": "CCD 1 temperature",
+        "tccd2": "CCD 2 temperature",
+        "tccd3": "CCD 3 temperature",
+        "tccd4": "CCD 4 temperature",
+        "tccd5": "CCD 5 temperature",
+        "tccd6": "CCD 6 temperature",
+        "tccd7": "CCD 7 temperature",
+        "tccd8": "CCD 8 temperature",
+    },
+    "k8temp": {
+        "temp1": "CPU temperature",
+    },
+    "coretemp": {
+        "package id 0": "CPU package temperature",
+    },
+    "i915": {
+        "temp1": "GPU temperature",
+        "power1": "GPU power",
+    },
+    "nvidia_gpu": {
+        "temp1": "GPU temperature",
+        "power1": "GPU power",
+        "fan1": "GPU fan",
+    },
+    "nvme": {
+        "composite": "NVMe temperature",
+        "sensor 1": "NVMe sensor 1",
+        "sensor 2": "NVMe sensor 2",
+        "sensor 3": "NVMe sensor 3",
+        "sensor 4": "NVMe sensor 4",
+        "sensor 5": "NVMe sensor 5",
+    },
+    "drivetemp": {
+        "temp1": "Drive temperature",
+    },
+    "jc42": {
+        "temp1": "Memory module temperature",
+    },
+    "spd5118": {
+        "temp1": "DDR5 temperature",
+    },
+    "mlx5": {
+        "temp1": "NIC temperature",
+        "temp2": "NIC ambient temperature",
+        "temp3": "NIC internal temperature",
+        "power1": "NIC power",
+    },
+    "acpitz": {
+        "temp1": "ACPI zone temperature",
+    },
+    "fam15h": {
+        "power1": "CPU package power",
+        "power1_average": "CPU average power",
+    },
+    "peci-cputemp": {
+        "die": "CPU package die temperature",
+        "dts": "CPU DTS temperature",
+        "tcontrol": "CPU target temperature",
+        "tthrottle": "CPU throttling temperature",
+    },
+    "dell_smm": {
+        "temp1": "CPU temperature",
+        "temp2": "GPU temperature",
+        "temp3": "SODIMM temperature",
+    },
+    "sbtsi": {
+        "temp1": "SoC temperature",
+    },
+    "nct6775": {
+        "systin": "System temperature",
+        "cputin": "CPU temperature",
+        "auxtin": "Auxiliary temperature",
+    },
+    "macsmc": {
+        "temp1": "SMC temperature",
+    },
+    "pmbus": {
+        "temp1": "PSU temperature",
+        "temp2": "PSU temperature 2",
+        "fan1": "PSU fan",
+        "power1": "PSU input power",
+        "power2": "PSU output power",
+    },
+}
+
+DEVICE_ICONS: Final[dict[str, str]] = {
+    "CPU": "mdi:cpu-64-bit",
+    "GPU": "mdi:gpu",
+    "NVMe": "mdi:harddisk",
+    "Drive": "mdi:harddisk",
+    "Memory": "mdi:memory",
+    "Motherboard": "mdi:chip",
+    "NIC": "mdi:network-switch",
+    "Laptop": "mdi:laptop",
+    "PSU": "mdi:power-plug",
+    "Cooling": "mdi:fan",
+    "SoC": "mdi:chip",
+    "Chipset": "mdi:chip",
+}
+
+
+def _get_chip_prefix(chip: str) -> str:
+    """Extract the chip prefix from a full chip identifier for map lookup."""
+    for prefix, _ in CHIP_DEVICE_MAP.items():
+        if chip.startswith(prefix):
+            return prefix
+    fallback = chip.split("-")[0] if "-" in chip else chip.split(" ")[0]
+    return fallback.lower()
+
+
+def _classify_sensor_key(sensor_key: str) -> dict:
+    """Classify a sensor key to determine device type, unit, and display name."""
+    parts = sensor_key.rsplit(" ", 1)
+    chip = parts[0].lower()
+    sensor = parts[1] if len(parts) > 1 else ""
+    sensor_lower = sensor.lower()
+
+    chip_prefix = _get_chip_prefix(chip)
+    device_type = CHIP_DEVICE_MAP.get(chip_prefix, chip_prefix.capitalize() or "Unknown")
+
+    chip_labels = SENSOR_LABEL_MAP.get(chip_prefix, {})
+    known_label = None
+    for key, label in chip_labels.items():
+        if sensor_lower == key or sensor_lower.startswith(key.rstrip("*")):
+            known_label = label
+            break
+
+    if sensor_lower.startswith(("vdd", "vcore", "in", "_in")):
+        return {
+            "name": known_label or f"{device_type} voltage",
+            "native_unit": UnitOfElectricPotential.VOLT,
+            "device_class": SensorDeviceClass.VOLTAGE,
+            "icon": "mdi:flash",
+            "conversion_fn": None,
+            "suggested_precision": 3,
+        }
+
+    if sensor_lower in ("ppt", "ppt1") or sensor_lower.startswith("power"):
+        return {
+            "name": known_label or f"{device_type} power",
+            "native_unit": UnitOfPower.WATT,
+            "device_class": SensorDeviceClass.POWER,
+            "icon": "mdi:flash-outline",
+            "conversion_fn": None,
+            "suggested_precision": 1,
+        }
+
+    if sensor_lower in ("sclk", "mclk", "freq1", "freq2"):
+        return {
+            "name": known_label or f"{device_type} clock",
+            "native_unit": UnitOfFrequency.MEGAHERTZ,
+            "device_class": SensorDeviceClass.FREQUENCY,
+            "icon": "mdi:speedometer",
+            "conversion_fn": lambda x: x / 1_000_000,
+            "suggested_precision": 0,
+        }
+
+    if sensor_lower.startswith("fan"):
+        return {
+            "name": known_label or f"{device_type} {sensor}".title(),
+            "native_unit": REVOLUTIONS_PER_MINUTE,
+            "device_class": None,
+            "icon": "mdi:fan",
+            "conversion_fn": None,
+            "suggested_precision": 0,
+        }
+
+    if sensor_lower.startswith("curr"):
+        return {
+            "name": known_label or f"{device_type} current",
+            "native_unit": UnitOfElectricCurrent.AMPERE,
+            "device_class": SensorDeviceClass.CURRENT,
+            "icon": "mdi:current-ac",
+            "conversion_fn": None,
+            "suggested_precision": 2,
+        }
+
+    return {
+        "name": known_label or f"{device_type} {sensor}",
+        "native_unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "icon": "mdi:thermometer",
+        "conversion_fn": None,
+        "suggested_precision": 1,
+    }
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -590,6 +852,7 @@ async def async_setup_entry(
     async_add_entities(await async_setup_sensors_lxc(hass, config_entry))
     async_add_entities(await async_setup_sensors_storages(hass, config_entry))
     async_add_entities(await async_setup_sensors_tasks(hass, config_entry))
+    async_add_entities(await async_setup_hardware_sensors(hass, config_entry))
 
 
 async def async_setup_sensors_nodes(
@@ -1022,5 +1285,57 @@ async def async_setup_sensors_tasks(
                         unique_id=unique_id,
                     )
                 )
+
+    return sensors
+
+
+async def async_setup_hardware_sensors(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up hardware sensor entities from sensors -j output."""
+    sensors = []
+    coordinators = config_entry.runtime_data[COORDINATORS]
+
+    for node in config_entry.data[CONF_NODES]:
+        coordinator_key = f"{ProxmoxType.Node}_{node}"
+        if coordinator_key not in coordinators:
+            continue
+        coordinator = coordinators[coordinator_key]
+        if coordinator.data is None or not coordinator.data.sensors:
+            continue
+
+        for sensor_key in coordinator.data.sensors:
+            if coordinator.data.sensors[sensor_key] is None:
+                continue
+            info = _classify_sensor_key(sensor_key)
+
+            description = ProxmoxSensorEntityDescription(
+                key="hw_sensor",
+                name=info["name"],
+                icon=info["icon"],
+                native_unit_of_measurement=info["native_unit"],
+                device_class=info["device_class"],
+                state_class=SensorStateClass.MEASUREMENT,
+                suggested_display_precision=info["suggested_precision"],
+                conversion_fn=info["conversion_fn"],
+                entity_registry_enabled_default=True,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=lambda data, key=sensor_key: data.sensors.get(key),
+            )
+            sensors.append(
+                create_sensor(
+                    coordinator=coordinator,
+                    info_device=device_info(
+                        hass=hass,
+                        config_entry=config_entry,
+                        api_category=ProxmoxType.Node,
+                        node=node,
+                    ),
+                    description=description,
+                    resource_id=f"{node}_{sensor_key}_sensor",
+                    config_entry=config_entry,
+                )
+            )
 
     return sensors

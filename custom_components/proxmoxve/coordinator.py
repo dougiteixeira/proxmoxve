@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -41,6 +42,41 @@ from .models import (
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
+
+
+def _try_parse_float(raw: object) -> float | None:
+    """Try to parse a float from a value that may contain unit suffix."""
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    if isinstance(raw, str):
+        raw = raw.strip()
+        for suffix in ("°C", "°F", "C", "F", "`C", " "):
+            if raw.endswith(suffix):
+                raw = raw[: -len(suffix)].strip()
+                break
+        try:
+            return float(raw)
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _parse_sensors_dict(data: dict) -> dict[str, float]:
+    """Parse raw sensors -j dict format: {chip: {sensor: {_input: value}}}."""
+    result: dict[str, float] = {}
+    for chip_name, chip_data in data.items():
+        if not isinstance(chip_data, dict):
+            continue
+        for sensor_name, sensor_data in chip_data.items():
+            if sensor_name == "adapter" or not isinstance(sensor_data, dict):
+                continue
+            for key, value in sensor_data.items():
+                if key.endswith("_input"):
+                    temp = _try_parse_float(value)
+                    if temp is not None:
+                        entry_name = f"{chip_name} {sensor_name}"
+                        result[entry_name] = temp
+    return result
 
 
 class ProxmoxCoordinator(
@@ -178,6 +214,19 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             node_lxc["list"] = node_lxc_on_list
             api_status["lxc"] = node_lxc
 
+        sensors: dict[str, float] = {}
+        sensors_raw: str | None = None
+        if sensors_output := api_status.get("sensorsOutput"):
+            sensors_raw = sensors_output
+            try:
+                parsed = json.loads(sensors_output)
+                if isinstance(parsed, dict):
+                    sensors = _parse_sensors_dict(parsed)
+            except (json.JSONDecodeError, TypeError):
+                LOGGER.debug(
+                    "Failed to parse sensorsOutput for node %s", self.resource_id
+                )
+
         if node_status != "":
             return ProxmoxNodeData(
                 type=ProxmoxType.Node,
@@ -246,6 +295,8 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                     if (("lxc" in api_status) and "list" in api_status["lxc"])
                     else UNDEFINED
                 ),
+                sensors=sensors,
+                sensors_raw=sensors_raw,
             )
         msg = f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
         raise UpdateFailed(msg)

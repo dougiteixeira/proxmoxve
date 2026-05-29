@@ -31,6 +31,8 @@ class ProxmoxNodeData:
     qemu_on_list: list
     lxc_on: int
     lxc_on_list: list
+    sensors: dict[str, float] | None = None
+    sensors_raw: str | None = None
 
 
 @dataclasses.dataclass

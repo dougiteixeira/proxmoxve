@@ -30,6 +30,46 @@ The integration provides sensors that monitor failed tasks on your Proxmox nodes
 
 The failed task sensors help you monitor the health of your Proxmox operations and quickly identify when automated tasks encounter issues.
 
+### Hardware Sensors
+
+The integration automatically discovers and exposes hardware temperature, voltage, power, current, and fan speed sensors from Proxmox VE hosts via `lm-sensors`.
+
+#### Prerequisites
+
+On each Proxmox VE host, install `lm-sensors` and the PVE-mods script:
+
+```bash
+apt-get install lm-sensors
+wget https://raw.githubusercontent.com/Meliox/PVE-mods/main/pve-mod-gui-sensors.sh
+bash pve-mod-gui-sensors.sh install
+```
+
+This modifies the Proxmox VE API to inject `sensors -j` output into the `GET /nodes/{node}/status` response. No additional API calls are made by the integration.
+
+#### Supported Hardware
+
+| Chip / Driver | Device Type | Examples |
+|---------------|-------------|----------|
+| `k10temp`, `k8temp`, `coretemp`, `peci-cputemp` | CPU | Tctl, Tdie, Package temperature |
+| `amdgpu`, `i915`, `nvidia_gpu` | GPU | Core voltage, hotspot temperature, power, clock |
+| `nvme`, `drivetemp` | Storage | NVMe/Drive temperature |
+| `jc42`, `spd5118`, `sodimm` | Memory | DIMM temperature |
+| `nct6775`, `it87`, `w83627` | Motherboard | System/CPU/Aux temperature |
+| `mlx5`, `igb`, `ixgbe` | NIC | NIC temperature, power |
+| `pmbus`, `corsair`, `lm25066` | PSU | Power supply temperature, power |
+| `emc2305`, `pwm-fan`, `max31785` | Cooling | Fan speed (RPM) |
+
+#### Auto-classification
+
+Each sensor is automatically classified:
+
+- **Names** mapped from known labels (e.g. `Tctl` → `CPU control temperature`, `edge` → `GPU hotspot`)
+- **Units** inferred from sensor name patterns (temperature in °C, voltage in V, power in W, frequency in MHz, current in A, fan speed in RPM)
+- **Device classes** set accordingly (`temperature`, `voltage`, `power`, `frequency`, `current`)
+- **Icons** assigned per device type
+
+Sensors are created under the corresponding Node device in Home Assistant and are marked as `diagnostic`.
+
 > [!IMPORTANT]  
 > See the section on Proxmox user permissions [here](https://github.com/dougiteixeira/proxmoxve#proxmox-permissions).
 
