@@ -8,6 +8,7 @@ from homeassistant.helpers import issue_registry as ir
 from proxmoxer import ProxmoxAPI
 from proxmoxer.core import ResourceException
 from requests.exceptions import ConnectTimeout
+from requests.adapters import HTTPAdapter
 
 from .const import (
     DEFAULT_PORT,
@@ -72,6 +73,16 @@ class ProxmoxClient:
                 verify_ssl=self._verify_ssl,
                 timeout=30,
             )
+
+        adapter = HTTPAdapter(
+            pool_connections=32,
+            pool_maxsize=32,
+            max_retries=0,
+            pool_block=False,
+        )
+
+        session = self._proxmox._store["session"]
+        session.mount("https://", adapter)
 
     def get_api_client(self) -> ProxmoxAPI:
         """Return the ProxmoxAPI client."""
