@@ -96,7 +96,7 @@
         },
         "import_node_not_exist": {
             "title": "El node {node} no existeix a {host}:{port}",
-            "description": "La configuració YAML de la instància {host}:{port} de {integration} ({platform}) ja existeix a la interfície d’usuari i s’ha ignorat en la importació.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml i reiniciar Home Assistant."
+            "description": "El node {node} de la instància {host}:{port} de {integration} ({platform}) present a la configuració YAML no existeix en aquesta instància i s’ha ignorat en la importació.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml i reiniciar Home Assistant."
         },
         "yaml_deprecated": {
             "title": "La configuració de {integration} en YAML està obsoleta",
