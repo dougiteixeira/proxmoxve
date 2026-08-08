@@ -73,6 +73,7 @@ from .coordinator import (
     ProxmoxUpdateCoordinator,
     ProxmoxZFSCoordinator,
 )
+from .disk import colliding_disk_wwns, resolve_disk_id
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -358,8 +359,10 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             except ResourceException:
                 continue
 
+            disks = disks if disks is not None else []
+            colliding_wwns = colliding_disk_wwns(disks)
             dev_reg = dr.async_get(hass)
-            for disk in disks if disks is not None else []:
+            for disk in disks:
                 device = dev_reg.async_get_or_create(
                     config_entry_id=config_entry.entry_id,
                     identifiers={
@@ -371,13 +374,14 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                         )
                     },
                 )
+                disk_id = resolve_disk_id(disk, colliding_wwns=colliding_wwns)
                 dev_reg.async_update_device(
                     device_id=device.id,
                     new_identifiers={
                         (
                             DOMAIN,
                             (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['wwn'] if 'wwn' in disk else disk['by_id_link'] if 'by_id_link' in disk else disk['serial']}"
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk_id}"
                             ),
                         )
                     },
@@ -420,8 +424,10 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             except ResourceException:
                 continue
 
+            disks = disks if disks is not None else []
+            colliding_wwns = colliding_disk_wwns(disks)
             dev_reg = dr.async_get(hass)
-            for disk in disks if disks is not None else []:
+            for disk in disks:
                 device = dev_reg.async_get_or_create(
                     config_entry_id=config_entry.entry_id,
                     identifiers={
@@ -433,13 +439,14 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                         )
                     },
                 )
+                disk_id = resolve_disk_id(disk, colliding_wwns=colliding_wwns)
                 dev_reg.async_update_device(
                     device_id=device.id,
                     new_identifiers={
                         (
                             DOMAIN,
                             (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['wwn'] if 'wwn' in disk else disk['by_id_link'] if 'by_id_link' in disk else disk['serial']}"
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk_id}"
                             ),
                         )
                     },
@@ -582,24 +589,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 except ResourceException:
                     continue
 
+                disks = disks if disks is not None else []
+                colliding_wwns = colliding_disk_wwns(disks)
                 coordinators_disk = []
-                for disk in disks if disks is not None else []:
+                for disk in disks:
                     coordinator_disk = ProxmoxDiskCoordinator(
                         hass=hass,
                         proxmox=proxmox,
                         api_category=ProxmoxType.Disk,
                         node_name=node,
-                        disk_id=(
-                            disk["wwn"]
-                            if "wwn" in disk
-                            and disk["wwn"]
-                            and disk["wwn"] != "unknown"
-                            else (
-                                disk["by_id_link"]
-                                if "by_id_link" in disk
-                                else disk["serial"]
-                            )
-                        ),
+                        disk_id=resolve_disk_id(disk, colliding_wwns=colliding_wwns),
                     )
                     await coordinator_disk.async_refresh()
                     coordinators_disk.append(coordinator_disk)

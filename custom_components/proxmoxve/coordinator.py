@@ -27,6 +27,7 @@ from requests.exceptions import (
 
 from .api import get_api
 from .const import CONF_NODE, DOMAIN, LOGGER, UPDATE_INTERVAL, ProxmoxType
+from .disk import disk_matches_id
 from .models import (
     ProxmoxDiskData,
     ProxmoxLXCData,
@@ -734,14 +735,11 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                 power_hours=UNDEFINED,
                 life_left=UNDEFINED,
                 power_loss=UNDEFINED,
+                wwn=None,
             )
 
         for disk in api_status:
-            if (
-                ("wwn" in disk and disk["wwn"] == self.resource_id)
-                or ("by_id_link" in disk and disk["by_id_link"] == self.resource_id)
-                or ("serial" in disk and disk["serial"] == self.resource_id)
-            ):
+            if disk_matches_id(disk, self.resource_id):
                 disk_attributes = {}
                 api_path = f"nodes/{self.node_name}/disks/smart?disk={disk['devpath']}"
                 try:
@@ -825,6 +823,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     serial=disk.get("serial", None),
                     model=disk.get("model", None),
                     disk_type=disk_type,
+                    wwn=disk.get("wwn", None),
                     disk_wearout=(
                         float(disk["wearout"])
                         if (

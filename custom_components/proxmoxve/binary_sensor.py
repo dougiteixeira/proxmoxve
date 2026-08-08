@@ -183,6 +183,16 @@ async def async_setup_binary_sensors_nodes(
                                 "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.disk_id}_{description.key}",
                             }
                         )
+                        if (
+                            coordinator_data.wwn
+                            and coordinator_data.wwn != coordinator_data.disk_id
+                        ):
+                            migrate_unique_id_disks.append(
+                                {
+                                    "old_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.wwn}_{description.key}",
+                                    "new_unique_id": f"{config_entry.entry_id}_{node}_{coordinator_data.disk_id}_{description.key}",
+                                }
+                            )
                         await async_migrate_old_unique_ids(
                             hass, Platform.BINARY_SENSOR, migrate_unique_id_disks
                         )
