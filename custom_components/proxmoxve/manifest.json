@@ -3,7 +3,7 @@
   "name": "Proxmox VE Custom",
   "codeowners": [
     "@dougiteixeira",
-    "mZ738"
+    "@mZ738"
   ],
   "config_flow": true,
   "documentation": "https://github.com/dougiteixeira/proxmoxve",
