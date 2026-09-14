@@ -21,11 +21,11 @@
                     "lxc": "Conteneurs Linux (LXC)",
                     "storage": "Stockages",
                     "disks_enable": "Activer les informations sur les disques physiques",
-                    "tasks_enable": "Monitor failed tasks"
+                    "tasks_enable": "Surveiller les tâches échouées"
                 },
                 "data_description": {
                     "disks_enable": "Si vous utilisez l'hibernation des disques, vous devez désactiver cette option de l'intégration afin qu'elle ne provoque pas une réactivation intempestive des disques.",
-                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
+                    "tasks_enable": "Suivre et rapporter les tâches échouées des dernières 24 heures sur les nœuds sélectionnés."
                 }
             },
             "reauth_confirm": {
@@ -145,11 +145,11 @@
                     "qemu": "Machines virtuelles (QEMU)",
                     "storage": "Stockages",
                     "disks_enable": "Activer les informations du disque physique",
-                    "tasks_enable": "Monitor failed tasks"
+                    "tasks_enable": "Surveiller les tâches échouées"
                 },
                 "data_description": {
                     "disks_enable": "Si vous avez activé la mise en veille des disques durs, vous devriez désactiver cette option pour éviter que l'intégration les relance de manière intempestive.",
-                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
+                    "tasks_enable": "Suivre et rapporter les tâches échouées des dernières 24 heures sur les nœuds sélectionnés."
                 }
             }
         },
@@ -246,13 +246,13 @@
                 "name": "Usure"
             },
             "failed_tasks_count": {
-                "name": "Failed tasks",
+                "name": "Tâches échouées",
                 "state_attributes": {
                     "recent_failures": {
-                        "name": "Recent failures"
+                        "name": "Échecs récents"
                     },
                     "last_failure_time": {
-                        "name": "Last failure time"
+                        "name": "Heure du dernier échec"
                     }
                 }
             },
@@ -310,7 +310,7 @@
                 "name": "Nombre d'allumages"
             },
             "power_loss": {
-                "name": "Perte de puissance inattendue"
+                "name": "Perte d'alimentation inattendue"
             },
             "power_hours": {
                 "name": "Heures de fonctionnement"
@@ -324,7 +324,7 @@
                 }
             },
             "status_raw": {
-                "name": "Statut",
+                "name": "État",
                 "state": {
                     "internal-error": "Erreur interne",
                     "prelaunch": "Pré-démarrage",
