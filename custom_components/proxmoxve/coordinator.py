@@ -2296,6 +2296,11 @@ def poll_api(  # noqa: PLR0917
                 return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
             case ProxmoxType.Proxmox:
                 return "['perm','/',['Sys.Audit']]"
+            case ProxmoxType.Resources:
+                # `cluster/resources` needs no privilege; Proxmox filters it
+                # to what the credentials may audit. A 403 here means the
+                # credentials cannot audit anything at all.
+                return "['perm','/',['VM.Audit']]"
             case _:
                 return "Unmapped"
 
@@ -2314,6 +2319,14 @@ def poll_api(  # noqa: PLR0917
         raise UpdateFailed(error) from error
     except ResourceException as error:
         if error.status_code == 403 and issue_crete_permissions:
+            # The update coordinator passes "Update <node>" as its resource
+            # id; the cluster-wide reads pass none at all. Neither may end
+            # up in the repair text as is.
+            resource_label = (
+                str(resource_id).replace(f"{ProxmoxType.Update.capitalize()} ", "")
+                if resource_id is not None
+                else ""
+            )
             ir.create_issue(
                 hass,
                 DOMAIN,
@@ -2323,16 +2336,13 @@ def poll_api(  # noqa: PLR0917
                 severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_exception_forbiden",
                 translation_placeholders={
-                    "resource": f"{api_category.capitalize()} {resource_id.replace(f'{ProxmoxType.Update.capitalize()} ', '')}",
+                    "resource": f"{api_category.capitalize()} {resource_label}".strip(),
                     "user": (
                         config_entry.data.get(CONF_HA_ADMIN_USERNAME)
                         if api_category is ProxmoxType.Proxmox
                         else config_entry.data[CONF_USERNAME]
                     ),
-                    "permission": permission_to_resource(
-                        api_category,
-                        resource_id.replace(f"{ProxmoxType.Update.capitalize()} ", ""),
-                    ),
+                    "permission": permission_to_resource(api_category, resource_label),
                 },
             )
             LOGGER.debug(

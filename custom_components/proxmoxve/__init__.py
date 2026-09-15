@@ -442,7 +442,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             await hass.async_add_executor_job(proxmox_client.build_client)
         except ResourceException:
             LOGGER.warning(
-                "Migration from version 5 to version 6 failed due to API connection"
+                "Migration from version 6 to version 7 failed due to API connection"
             )
 
         proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
@@ -1199,11 +1199,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     return unload_ok  # noqa: RET504
-
-
-async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update."""
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_remove_config_entry_device(
