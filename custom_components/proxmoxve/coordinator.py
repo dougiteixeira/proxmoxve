@@ -1130,6 +1130,34 @@ class ProxmoxCertificateCoordinator(ProxmoxCoordinator):
         return parse_certificates(api_status, self.node_name)
 
 
+# systemd names a network interface after its hardware address as
+# `enx<12 hex digits>`, and Proxmox lists that name among an interface's
+# `altnames`. It is the only place `nodes/{node}/network` carries a MAC.
+MAC_ALTNAME = re.compile(r"^enx([0-9a-f]{12})$")
+
+
+def parse_mac_addresses(interfaces: Any) -> tuple[str, ...]:
+    """
+    Return the hardware addresses of a node's physical interfaces.
+
+    Bridges and bonds have no address of their own in the listing, and a
+    physical port shows up as `type: eth` with its predictable and its
+    MAC-based names under `altnames`. The MAC-based one is decoded back
+    into the colon form Home Assistant's device registry expects.
+    """
+    found: list[str] = []
+    for interface in interfaces if isinstance(interfaces, list) else []:
+        if not isinstance(interface, dict) or interface.get("type") != "eth":
+            continue
+        for altname in interface.get("altnames") or []:
+            if isinstance(altname, str) and (match := MAC_ALTNAME.match(altname)):
+                digits = match.group(1)
+                mac = ":".join(digits[i : i + 2] for i in range(0, 12, 2))
+                if mac not in found:
+                    found.append(mac)
+    return tuple(found)
+
+
 class ProxmoxNodeCoordinator(ProxmoxCoordinator):
     """Proxmox VE Node data update coordinator."""
 
@@ -1159,6 +1187,8 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         self._last_sensors: dict[str, float] = {}
         self._last_sensors_raw: str | None = None
         self._last_sensors_at: datetime | None = None
+        # Read once: a node's ports do not change between polls.
+        self._mac_addresses: tuple[str, ...] | None = None
 
     def _hold_last_sensors(
         self,
@@ -1261,6 +1291,23 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 ProxmoxType.Node,
                 self.resource_id,
             )
+
+            if self._mac_addresses is None:
+                api_path = f"nodes/{self.resource_id}/network"
+                interfaces = await self.hass.async_add_executor_job(
+                    poll_api,
+                    self.hass,
+                    self.config_entry,
+                    self.proxmox,
+                    api_path,
+                    ProxmoxType.Node,
+                    self.resource_id,
+                    issue_crete_permissions=False,
+                )
+                # Empty stays "not read yet" only when the call failed; an
+                # answered listing without a port is final.
+                if interfaces is not None:
+                    self._mac_addresses = parse_mac_addresses(interfaces)
 
             api_path = f"nodes/{self.resource_id}/qemu"
             qemu_status = await self.hass.async_add_executor_job(
@@ -1418,6 +1465,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 ),
                 sensors=sensors,
                 sensors_raw=sensors_raw,
+                mac_addresses=self._mac_addresses or (),
             )
         msg = f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
         raise UpdateFailed(msg)

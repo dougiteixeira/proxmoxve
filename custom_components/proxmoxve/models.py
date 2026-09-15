@@ -42,6 +42,10 @@ class ProxmoxNodeData:
     # `wait` from the node status: the share of time the CPUs spent waiting
     # for I/O, on the same 0..1 scale as `cpu`. Proxmox shows it as IO delay.
     io_wait: float | UndefinedType = UNDEFINED
+    # Hardware addresses of the node's physical interfaces, read once.
+    # Home Assistant merges devices on them, so the node can be the same
+    # device as the one a network integration sees.
+    mac_addresses: tuple[str, ...] = ()
 
 
 @dataclasses.dataclass
