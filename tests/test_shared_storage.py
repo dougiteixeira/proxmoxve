@@ -170,7 +170,7 @@ async def test_a_shared_storage_reads_from_a_node_that_sees_it(
         "sensor", DOMAIN, f"{entry_id}_storage/ext_node"
     )
     assert node_sensor is not None
-    assert hass.states.get(node_sensor).attributes["nodes"] == [NODE, "pve2"]
+    assert list(hass.states.get(node_sensor).attributes["nodes"]) == [NODE, "pve2"]
 
     device = dr.async_get(hass).async_get_device_by_identifier(
         (DOMAIN, f"{entry_id}_STORAGE_ext"), entry_id
