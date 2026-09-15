@@ -50,6 +50,12 @@ The integration provides sensors that monitor failed tasks on your Proxmox nodes
 
 The failed task sensors help you monitor the health of your Proxmox operations and quickly identify when automated tasks encounter issues.
 
+### Status sensors
+
+Every VM and container has a `Status` sensor, and every node one that is **disabled by default** (its `Status` binary sensor already says online or not). They are proper enum sensors: the states are translated, usable in the history graph, and offered as a pick-list in automation conditions. A VM reports QEMU's finer run state where there is one — `paused`, `prelaunch`, `io-error`, `guest-panicked`, a migration in progress — and `running`/`stopped`/`suspended` otherwise; a container is `running` or `stopped`; a node is `online`, `offline` or `unknown`.
+
+A state this integration has never heard of reads as unknown rather than breaking the sensor, so a future QEMU release cannot take the entity down.
+
 ### Storage state
 
 Besides its capacity sensors, each selected storage gets three binary sensors read from the node's own storage list (`GET /nodes/{node}/storage`):

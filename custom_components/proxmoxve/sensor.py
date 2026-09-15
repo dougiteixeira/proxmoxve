@@ -333,6 +333,58 @@ class ProxmoxSensorEntityDescription(ProxmoxEntityDescription, SensorEntityDescr
     stable_within: timedelta | None = None
 
 
+# What `status/current` can say about a VM. `status` itself is only
+# running or stopped (plus "suspended", which the coordinator derives from
+# the lock); everything finer comes from `qmpstatus`, the QEMU run state.
+# Listed so the enum sensor can translate them and so a value QEMU adds in
+# a future release is dropped rather than raising inside Home Assistant.
+QEMU_STATES: Final[tuple[str, ...]] = (
+    "running",
+    "stopped",
+    "suspended",
+    "paused",
+    "prelaunch",
+    "shutdown",
+    "internal-error",
+    "io-error",
+    "guest-panicked",
+    "watchdog",
+    "inmigrate",
+    "postmigrate",
+    "finish-migrate",
+    "restore-vm",
+    "save-vm",
+    "debug",
+    "colo",
+)
+# A container is running or it is not; nothing in between is reported.
+LXC_STATES: Final[tuple[str, ...]] = ("running", "stopped")
+# What the `nodes` list says about a node.
+NODE_STATES: Final[tuple[str, ...]] = ("online", "offline", "unknown")
+
+
+def _known_state(value: Any, states: tuple[str, ...]) -> str | None:
+    """
+    Keep an enum sensor to the states it declares.
+
+    A value outside the declared options makes Home Assistant refuse the
+    whole state update; reporting unknown for a state this integration has
+    never heard of loses less than that.
+    """
+    if not isinstance(value, str):
+        return None
+    normalized = value.lower()
+    return normalized if normalized in states else None
+
+
+def qemu_status(data: Any) -> str | None:
+    """Return a VM's state, preferring QEMU's finer run state."""
+    health = data.health
+    if health not in ("running", "stopped", UNDEFINED):
+        return _known_state(health, QEMU_STATES)
+    return _known_state(data.status, QEMU_STATES)
+
+
 def percentage_or_unknown(value: float | UndefinedType | None) -> float | None:
     """
     Turn a 0..1 ratio into a percentage, keeping "unknown" unknown.
@@ -640,6 +692,19 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     *PROXMOX_SENSOR_SWAP,
     *PROXMOX_SENSOR_UPTIME,
     ProxmoxSensorEntityDescription(
+        key="status_raw",
+        name="Status",
+        icon="mdi:server",
+        device_class=SensorDeviceClass.ENUM,
+        options=list(NODE_STATES),
+        # The `Status` binary sensor already says online or not; this adds
+        # the "unknown" a cluster reports for a node it has lost touch with,
+        # which is worth having but not worth a second entity by default.
+        entity_registry_enabled_default=False,
+        translation_key="node_status",
+        value_fn=lambda x: _known_state(x.status, NODE_STATES),
+    ),
+    ProxmoxSensorEntityDescription(
         key="qemu_on",
         name="Virtual machines running",
         icon="mdi:server",
@@ -670,12 +735,10 @@ PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key="status_raw",
         name="Status",
         icon="mdi:server",
+        device_class=SensorDeviceClass.ENUM,
+        options=list(QEMU_STATES),
         translation_key="status_raw",
-        value_fn=lambda x: (
-            x.health
-            if (x.health not in ["running", "stopped", UNDEFINED])
-            else x.status
-        ),
+        value_fn=qemu_status,
     ),
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.GUEST_FILE_CONTENT,
@@ -702,6 +765,16 @@ PROXMOX_SENSOR_LXC: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         key="node",
         name="Node",
         icon="mdi:server",
+        translation_key="node",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="status_raw",
+        name="Status",
+        icon="mdi:server",
+        device_class=SensorDeviceClass.ENUM,
+        options=list(LXC_STATES),
+        translation_key="status_raw",
+        value_fn=lambda x: _known_state(x.status, LXC_STATES),
     ),
     *PROXMOX_SENSOR_CPU,
     *PROXMOX_SENSOR_DISK,

@@ -519,7 +519,18 @@
             "paused": "Paused",
             "stopped": "Stopped",
             "suspended": "Suspended",
-            "running": "Running"
+            "running": "Running",
+            "shutdown": "Shutting down",
+            "io-error": "I/O error",
+            "guest-panicked": "Guest panicked",
+            "watchdog": "Watchdog",
+            "inmigrate": "Incoming migration",
+            "postmigrate": "Migrated away",
+            "finish-migrate": "Finishing migration",
+            "restore-vm": "Restoring",
+            "save-vm": "Saving state",
+            "debug": "Debug",
+            "colo": "COLO"
           }
         },
         "swap_free": {
@@ -567,6 +578,14 @@
         },
         "backup_duration": {
           "name": "Backup duration"
+        },
+        "node_status": {
+          "name": "Status",
+          "state": {
+            "online": "Online",
+            "offline": "Offline",
+            "unknown": "Unknown"
+          }
         }
       },
       "update": {
