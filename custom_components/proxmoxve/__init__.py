@@ -82,6 +82,7 @@ from .coordinator import (
     ProxmoxBackupInfoCoordinator,
     ProxmoxCephCoordinator,
     ProxmoxCertificateCoordinator,
+    ProxmoxClusterSummaryCoordinator,
     ProxmoxDiscoveryCoordinator,
     ProxmoxDiskCoordinator,
     ProxmoxHAResourcesCoordinator,
@@ -108,6 +109,7 @@ from .permissions import (
     async_fetch_permissions,
     is_granted,
 )
+from .services import async_register_services
 from .storage import (
     STORAGE_PREFIX,
     is_shared_storage_id,
@@ -177,6 +179,7 @@ warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the platform."""
+    async_register_services(hass)
     # import to config flow
     if DOMAIN in config:
         LOGGER.warning(
@@ -1097,6 +1100,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             hass, config_entry, proxmox, storage_id, coordinators, resources
         )
 
+    # The cluster at a glance, for every setup: no privilege beyond what
+    # the primary credentials already use for the resource list.
+    summary_coordinator = ProxmoxClusterSummaryCoordinator(
+        hass=hass, proxmox=proxmox, config_entry=config_entry
+    )
+    await summary_coordinator.async_refresh()
+    coordinators[f"{ProxmoxType.Proxmox}_summary"] = summary_coordinator
+
     # Optional, separate higher-privilege credentials for cluster-wide HA
     # arm/disarm (needs Sys.Console on '/') and HA-resource membership
     # (needs Sys.Audit on '/') — both broader than the least-privilege scopes
@@ -1317,17 +1328,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop_polling)
     )
 
-    # The cluster device carries the HA features and every shared storage;
-    # it has to exist before those hang their entities under it.
-    if proxmox_ha_admin_client is not None or any(
-        is_shared_storage_id(storage_id) for storage_id in tracked[CONF_STORAGE]
-    ):
-        device_info(
-            hass=hass,
-            config_entry=config_entry,
-            api_category=ProxmoxType.Proxmox,
-            create=True,
-        )
+    # The cluster device carries the summary, the HA features and every
+    # shared storage; it has to exist before those hang their entities on it.
+    device_info(
+        hass=hass,
+        config_entry=config_entry,
+        api_category=ProxmoxType.Proxmox,
+        create=True,
+    )
 
     for node in nodes_add_device:
         device_info(

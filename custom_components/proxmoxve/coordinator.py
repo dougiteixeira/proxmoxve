@@ -60,6 +60,7 @@ from .models import (
     ProxmoxBackupInfoData,
     ProxmoxCephData,
     ProxmoxCertificateData,
+    ProxmoxClusterSummaryData,
     ProxmoxDiskData,
     ProxmoxHAStatusData,
     ProxmoxLXCData,
@@ -149,6 +150,9 @@ HA_CRM_MASTER_DEAD_AFTER: Final[timedelta] = timedelta(seconds=30)
 # is gone rather than late.
 SENSORS_HOLD_FOR: Final[timedelta] = timedelta(minutes=10)
 
+# `loadavg` is the 1, 5 and 15 minute average, in that order.
+LOAD_AVERAGE_FIELDS: Final = 3
+
 
 def _parse_ha_enum(
     entry: dict[str, Any],
@@ -186,6 +190,42 @@ def _positive_or_undefined(value: Any) -> Any:
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
         return value
     return UNDEFINED
+
+
+def parse_load_average(value: Any) -> tuple[float, float, float] | UndefinedType:
+    """
+    Return the node's load average, which Proxmox reports as three strings.
+
+    Anything not shaped as three numbers is no reading.
+    """
+    if not isinstance(value, list | tuple) or len(value) != LOAD_AVERAGE_FIELDS:
+        return UNDEFINED
+    try:
+        one, five, fifteen = (float(entry) for entry in value)
+    except (TypeError, ValueError):
+        return UNDEFINED
+    return (one, five, fifteen)
+
+
+def cpu_share_of_host(
+    cpu: Any, guest_cpus: Any, node_cpus: Any
+) -> float | UndefinedType:
+    """
+    Return how much of the whole node a guest is using, as a 0..1 ratio.
+
+    A guest's `cpu` is relative to its own cores. Scaled by its core count
+    over the node's, it says what the guest costs the host - the figure the
+    Proxmox summary shows next to each guest.
+    """
+    values = (cpu, guest_cpus, node_cpus)
+    if not all(
+        isinstance(value, int | float) and not isinstance(value, bool)
+        for value in values
+    ):
+        return UNDEFINED
+    if node_cpus <= 0 or guest_cpus <= 0:
+        return UNDEFINED
+    return max(0.0, float(cpu)) * guest_cpus / node_cpus
 
 
 def qemu_memory_used(api_status: dict[str, Any]) -> int | UndefinedType:
@@ -280,7 +320,27 @@ def _task_timestamp(value: Any) -> datetime | UndefinedType:
     return dt_util.utc_from_timestamp(value)
 
 
-def parse_backup(entries: list[dict[str, Any]], node_name: str) -> ProxmoxBackupData:
+def parse_running_backup(active: Any) -> dict[str, Any]:
+    """Describe the vzdump run in progress, from the active task list."""
+    tasks = [
+        entry
+        for entry in (active if isinstance(active, list) else [])
+        if isinstance(entry, dict) and entry.get("type") == "vzdump"
+    ]
+    if not tasks:
+        return {"running": False, "running_since": None, "running_guests": None}
+    task = tasks[0]
+    since = _task_timestamp(task.get("starttime"))
+    return {
+        "running": True,
+        "running_since": since if since is not UNDEFINED else None,
+        "running_guests": str(task["id"]) if task.get("id") else None,
+    }
+
+
+def parse_backup(
+    entries: list[dict[str, Any]], node_name: str, active: Any = None
+) -> ProxmoxBackupData:
     """
     Describe a node's most recent backup run from its task log.
 
@@ -306,6 +366,7 @@ def parse_backup(entries: list[dict[str, Any]], node_name: str) -> ProxmoxBackup
             status=None,
             guests=None,
             user=None,
+            **parse_running_backup(active),
         )
 
     task = tasks[0]
@@ -330,6 +391,48 @@ def parse_backup(entries: list[dict[str, Any]], node_name: str) -> ProxmoxBackup
         status=str(status) if status is not None else None,
         guests=guests,
         user=str(task["user"]) if task.get("user") else None,
+        **parse_running_backup(active),
+    )
+
+
+def parse_cluster_summary(resources: Any) -> ProxmoxClusterSummaryData:
+    """Add up what `cluster/resources` says about nodes and guests."""
+    rows = [
+        r
+        for r in (resources if isinstance(resources, list) else [])
+        if isinstance(r, dict)
+    ]
+    nodes = [r for r in rows if r.get("type") == "node"]
+    online = [r for r in nodes if r.get("status") == "online"]
+    qemu = [r for r in rows if r.get("type") == "qemu" and not r.get("template")]
+    lxc = [r for r in rows if r.get("type") == "lxc" and not r.get("template")]
+
+    weighted_cpu = 0.0
+    total_cpus = 0
+    memory_total = 0
+    memory_used = 0
+    for node in online:
+        cpus = node.get("maxcpu")
+        cpu = node.get("cpu")
+        if isinstance(cpus, int | float) and cpus > 0 and isinstance(cpu, int | float):
+            weighted_cpu += float(cpu) * cpus
+            total_cpus += cpus
+        if isinstance(node.get("maxmem"), int) and isinstance(node.get("mem"), int):
+            memory_total += node["maxmem"]
+            memory_used += node["mem"]
+
+    return ProxmoxClusterSummaryData(
+        type=ProxmoxType.Proxmox,
+        nodes_total=len(nodes),
+        nodes_online=len(online),
+        nodes_offline=sorted(str(r.get("node")) for r in nodes if r not in online),
+        qemu_total=len(qemu),
+        qemu_running=sum(1 for r in qemu if r.get("status") == "running"),
+        lxc_total=len(lxc),
+        lxc_running=sum(1 for r in lxc if r.get("status") == "running"),
+        cpu=(weighted_cpu / total_cpus) if total_cpus else UNDEFINED,
+        memory_total=memory_total or UNDEFINED,
+        memory_used=memory_used if memory_total else UNDEFINED,
     )
 
 
@@ -881,6 +984,53 @@ class ProxmoxHAStatusCoordinator(ProxmoxCoordinator):
         return parse_ha_status(api_status)
 
 
+class ProxmoxClusterSummaryCoordinator(ProxmoxCoordinator):
+    """
+    Proxmox VE cluster summary coordinator.
+
+    Reads `cluster/resources` with the primary credentials - it needs no
+    privilege, Proxmox filters it to what they may audit - and adds it up.
+    """
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the Proxmox cluster summary coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name="proxmox_coordinator_cluster_summary",
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "cluster_summary"
+        self.api_category = ProxmoxType.Proxmox
+
+    async def _async_update_data(self) -> ProxmoxClusterSummaryData:
+        """Add up the cluster's resource list."""
+        resources = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            "cluster/resources",
+            ProxmoxType.Resources,
+            None,
+        )
+        if resources is None:
+            msg = "The cluster's resource list is not available"
+            raise UpdateFailed(msg)
+        return parse_cluster_summary(resources)
+
+
 class ProxmoxBackupInfoCoordinator(ProxmoxCoordinator):
     """
     Proxmox VE backup coverage coordinator.
@@ -948,7 +1098,7 @@ class ProxmoxBackupCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_backup_{node_name}",
-            update_interval=timedelta(seconds=TASKS_UPDATE_INTERVAL),
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
 
         self.hass = hass
@@ -975,7 +1125,19 @@ class ProxmoxBackupCoordinator(ProxmoxCoordinator):
             msg = f"Backup history for {self.node_name} is not available"
             raise UpdateFailed(msg)
 
-        return parse_backup(api_status, self.node_name)
+        # And the one that may be running right now, which the archive
+        # never lists: no end time, no verdict yet.
+        active = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            f"nodes/{self.node_name}/tasks?typefilter=vzdump&source=active&limit=1",
+            ProxmoxType.Tasks,
+            self.node_name,
+        )
+
+        return parse_backup(api_status, self.node_name, active)
 
 
 class ProxmoxReplicationCoordinator(ProxmoxCoordinator):
@@ -1451,6 +1613,12 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 uptime=api_status.get("uptime", UNDEFINED),
                 cpu=api_status.get("cpu", UNDEFINED),
                 io_wait=api_status.get("wait", UNDEFINED),
+                load_average=parse_load_average(api_status.get("loadavg")),
+                cpus=(
+                    api_status["cpuinfo"].get("cpus", UNDEFINED)
+                    if isinstance(api_status.get("cpuinfo"), dict)
+                    else UNDEFINED
+                ),
                 disk_total=api_status.get("disk_max", UNDEFINED),
                 disk_used=api_status.get("disk_used", UNDEFINED),
                 memory_total=(
@@ -1554,10 +1722,14 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             None,
         )
 
+        node_cpus: Any = UNDEFINED
         for resource in resources if resources is not None else []:
             if "vmid" in resource:
                 if int(resource["vmid"]) == int(self.resource_id):
                     node_name = resource["node"]
+        for resource in resources if resources is not None else []:
+            if resource.get("type") == "node" and resource.get("node") == node_name:
+                node_cpus = resource.get("maxcpu", UNDEFINED)
 
         if node_name is not None:
             api_path = f"nodes/{node_name!s}/qemu/{self.resource_id}/status/current"
@@ -1692,6 +1864,10 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             health=api_status.get("qmpstatus", UNDEFINED),
             uptime=api_status.get("uptime", UNDEFINED),
             cpu=api_status.get("cpu", UNDEFINED),
+            cpus=api_status.get("cpus", UNDEFINED),
+            cpu_of_host=cpu_share_of_host(
+                api_status.get("cpu"), api_status.get("cpus"), node_cpus
+            ),
             memory_total=memory_total,
             memory_used=memory_used,
             memory_free=memory_free,
@@ -1758,10 +1934,14 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             None,
         )
 
+        node_cpus: Any = UNDEFINED
         for resource in resources if resources is not None else []:
             if "vmid" in resource:
                 if int(resource["vmid"]) == int(self.resource_id):
                     node_name = resource["node"]
+        for resource in resources if resources is not None else []:
+            if resource.get("type") == "node" and resource.get("node") == node_name:
+                node_cpus = resource.get("maxcpu", UNDEFINED)
 
         if node_name is not None:
             api_path = f"nodes/{node_name!s}/lxc/{self.resource_id}/status/current"
@@ -1792,6 +1972,10 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             name=api_status.get("name", UNDEFINED),
             uptime=api_status.get("uptime", UNDEFINED),
             cpu=api_status.get("cpu", UNDEFINED),
+            cpus=api_status.get("cpus", UNDEFINED),
+            cpu_of_host=cpu_share_of_host(
+                api_status.get("cpu"), api_status.get("cpus"), node_cpus
+            ),
             memory_total=api_status.get("maxmem", UNDEFINED),
             memory_used=api_status.get("mem", UNDEFINED),
             memory_free=(

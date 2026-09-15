@@ -143,7 +143,15 @@ def test_problem_sensor_follows_the_verdict() -> None:
 
 
 def test_defaults_match_the_core_integration() -> None:
-    """Test all three are diagnostic and off, as in the core integration."""
+    """
+    Test the three about the last run are diagnostic and off, as in core.
+
+    `Backup running` is the exception on purpose: it is what an automation
+    waits for, so it is on by default and not diagnostic.
+    """
     for description in (*PROXMOX_SENSOR_BACKUP, *PROXMOX_BINARYSENSOR_BACKUP):
+        if description.key == "running":
+            assert description.entity_registry_enabled_default is True
+            continue
         assert description.entity_registry_enabled_default is False
         assert description.entity_category is EntityCategory.DIAGNOSTIC

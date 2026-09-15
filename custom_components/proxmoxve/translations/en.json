@@ -198,6 +198,17 @@
         "status": {
           "name": "Status"
         },
+        "backup_running": {
+          "name": "Backup running",
+          "state_attributes": {
+            "running_since": {
+              "name": "Started"
+            },
+            "running_guests": {
+              "name": "Guests"
+            }
+          }
+        },
         "health": {
           "name": "Health"
         },
@@ -304,7 +315,27 @@
       },
       "sensor": {
         "cpu_used": {
-          "name": "CPU used"
+          "name": "CPU used",
+          "state_attributes": {
+            "cpus": {
+              "name": "Cores"
+            }
+          }
+        },
+        "cpu_of_host": {
+          "name": "CPU used of host"
+        },
+        "cpus": {
+          "name": "CPUs"
+        },
+        "load_1m": {
+          "name": "Load average 1 min"
+        },
+        "load_5m": {
+          "name": "Load average 5 min"
+        },
+        "load_15m": {
+          "name": "Load average 15 min"
         },
         "io_wait": {
           "name": "IO delay"
@@ -379,6 +410,45 @@
         },
         "ceph_used_perc": {
           "name": "Ceph used percentage"
+        },
+        "cluster_nodes_online": {
+          "name": "Nodes online",
+          "state_attributes": {
+            "nodes_total": {
+              "name": "Nodes"
+            },
+            "nodes_offline": {
+              "name": "Nodes offline"
+            }
+          }
+        },
+        "cluster_qemu_running": {
+          "name": "Virtual machines running",
+          "state_attributes": {
+            "qemu_total": {
+              "name": "Virtual machines"
+            }
+          }
+        },
+        "cluster_lxc_running": {
+          "name": "Containers running",
+          "state_attributes": {
+            "lxc_total": {
+              "name": "Containers"
+            }
+          }
+        },
+        "cluster_cpu_used": {
+          "name": "CPU used"
+        },
+        "cluster_memory_used_perc": {
+          "name": "Memory used percentage"
+        },
+        "cluster_memory_used": {
+          "name": "Memory used"
+        },
+        "cluster_memory_total": {
+          "name": "Memory total"
         },
         "certificate_expires": {
           "name": "Certificate expires",
@@ -624,6 +694,71 @@
           "pam": "pam - Linux PAM standard authentication",
           "pve": "pve - Proxmox VE authentication server"
         }
+      },
+      "backup_mode": {
+        "options": {
+          "snapshot": "Snapshot",
+          "suspend": "Suspend",
+          "stop": "Stop"
+        }
+      },
+      "backup_compress": {
+        "options": {
+          "zstd": "zstd",
+          "gzip": "gzip",
+          "lzo": "lzo",
+          "0": "None"
+        }
+      }
+    },
+    "services": {
+      "backup": {
+        "name": "Back up guests",
+        "description": "Starts a backup run (vzdump) on a node, for the guests named or for everything the node hosts. Returns the task id.",
+        "fields": {
+          "node": {
+            "name": "Node",
+            "description": "The node that runs the backup."
+          },
+          "vmid": {
+            "name": "Guests",
+            "description": "IDs of the VMs and containers to back up. Leave empty and turn on 'All' to back up everything on the node."
+          },
+          "all": {
+            "name": "All",
+            "description": "Back up every guest the node hosts."
+          },
+          "storage": {
+            "name": "Storage",
+            "description": "Where to store the backup. Defaults to the node's backup storage."
+          },
+          "mode": {
+            "name": "Mode",
+            "description": "How to freeze the guest: snapshot (no downtime), suspend, or stop."
+          },
+          "compress": {
+            "name": "Compression",
+            "description": "zstd, gzip, lzo, or none. Defaults to the node's setting."
+          },
+          "notes": {
+            "name": "Notes",
+            "description": "Notes template for the backup, for example {{guestname}}."
+          }
+        }
+      }
+    },
+    "exceptions": {
+      "backup_nothing_selected": {
+        "message": "Name at least one guest, or turn on 'All' to back up everything on the node."
+      },
+      "backup_unknown_node": {
+        "message": "No configured Proxmox VE integration tracks node {node}."
+      },
+      "backup_refused": {
+        "message": "Proxmox refused to start the backup on {node}: {error}"
+      },
+      "backup_unreachable": {
+        "message": "Node {node} could not be reached to start the backup: {error}"
       }
     }
   }

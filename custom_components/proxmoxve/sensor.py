@@ -676,6 +676,30 @@ PROXMOX_SENSOR_CPU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         translation_key="cpu_used",
     ),
 )
+PROXMOX_SENSOR_GUEST_CPU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key=ProxmoxKeyAPIParse.CPU,
+        name="CPU used",
+        icon="mdi:cpu-64-bit",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=lambda x: (x * 100) if x >= 0 else 0,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        translation_key="cpu_used",
+        extra_attrs=["cpus"],
+    ),
+    ProxmoxSensorEntityDescription(
+        key="cpu_of_host",
+        name="CPU used of host",
+        icon="mdi:cpu-64-bit",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=percentage_or_unknown,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        entity_registry_enabled_default=False,
+        translation_key="cpu_of_host",
+    ),
+)
 PROXMOX_SENSOR_UPDATE: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ProxmoxSensorEntityDescription(
         key=ProxmoxKeyAPIParse.UPDATE_TOTAL,
@@ -737,6 +761,51 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         translation_key="version",
     ),
+    ProxmoxSensorEntityDescription(
+        key="load_1m",
+        name="Load average 1 min",
+        icon="mdi:gauge",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda x: (
+            x.load_average[0] if x.load_average is not UNDEFINED else None
+        ),
+        translation_key="load_1m",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="load_5m",
+        name="Load average 5 min",
+        icon="mdi:gauge",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda x: (
+            x.load_average[1] if x.load_average is not UNDEFINED else None
+        ),
+        entity_registry_enabled_default=False,
+        translation_key="load_5m",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="load_15m",
+        name="Load average 15 min",
+        icon="mdi:gauge",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda x: (
+            x.load_average[2] if x.load_average is not UNDEFINED else None
+        ),
+        entity_registry_enabled_default=False,
+        translation_key="load_15m",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="cpus",
+        name="CPUs",
+        icon="mdi:cpu-64-bit",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        entity_registry_enabled_default=False,
+        translation_key="cpus",
+    ),
 )
 
 PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
@@ -768,7 +837,7 @@ PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
             ProxmoxKeyAPIParse.GUEST_FILE_CONTENT,
         ],
     ),
-    *PROXMOX_SENSOR_CPU,
+    *PROXMOX_SENSOR_GUEST_CPU,
     *PROXMOX_SENSOR_DISK,
     *PROXMOX_SENSOR_MEMORY,
     *PROXMOX_SENSOR_NETWORK,
@@ -791,7 +860,7 @@ PROXMOX_SENSOR_LXC: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         translation_key="status_raw",
         value_fn=lambda x: _known_state(x.status, LXC_STATES),
     ),
-    *PROXMOX_SENSOR_CPU,
+    *PROXMOX_SENSOR_GUEST_CPU,
     *PROXMOX_SENSOR_DISK,
     *PROXMOX_SENSOR_MEMORY,
     *PROXMOX_SENSOR_NETWORK,
@@ -1125,6 +1194,86 @@ PROXMOX_SENSOR_CERTIFICATE: Final[tuple[ProxmoxSensorEntityDescription, ...]] = 
 )
 
 
+PROXMOX_SENSOR_CLUSTER_SUMMARY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key="nodes_online",
+        name="Nodes online",
+        icon="mdi:server-network",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        extra_attrs=["nodes_total", "nodes_offline"],
+        translation_key="cluster_nodes_online",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="qemu_running",
+        name="Virtual machines running",
+        icon="mdi:server",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        extra_attrs=["qemu_total"],
+        translation_key="cluster_qemu_running",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="lxc_running",
+        name="Containers running",
+        icon="mdi:server",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        extra_attrs=["lxc_total"],
+        translation_key="cluster_lxc_running",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="cpu",
+        name="CPU used",
+        icon="mdi:cpu-64-bit",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=percentage_or_unknown,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        translation_key="cluster_cpu_used",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="memory_used_perc",
+        name="Memory used percentage",
+        icon="mdi:memory",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=percentage_or_unknown,
+        value_fn=lambda x: (
+            x.memory_used / x.memory_total
+            if UNDEFINED not in (x.memory_used, x.memory_total) and x.memory_total > 0
+            else None
+        ),
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        translation_key="cluster_memory_used_perc",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="memory_used",
+        name="Memory used",
+        icon="mdi:memory",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        entity_registry_enabled_default=False,
+        translation_key="cluster_memory_used",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="memory_total",
+        name="Memory total",
+        icon="mdi:memory",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        entity_registry_enabled_default=False,
+        translation_key="cluster_memory_total",
+    ),
+)
+
+
 PROXMOX_SENSOR_HA_STATUS: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ProxmoxSensorEntityDescription(
         key="armed_state",
@@ -1187,6 +1336,7 @@ async def async_setup_entry(
     async_add_entities(await async_setup_sensors_storages(hass, config_entry))
     async_add_entities(await async_setup_sensors_tasks(hass, config_entry))
     async_add_entities(await async_setup_hardware_sensors(hass, config_entry))
+    async_add_entities(await async_setup_sensors_cluster_summary(hass, config_entry))
     async_add_entities(await async_setup_sensors_ha_status(hass, config_entry))
     async_add_entities(await async_setup_sensors_certificates(hass, config_entry))
     async_add_entities(await async_setup_sensors_backup_info(hass, config_entry))
@@ -1219,6 +1369,33 @@ async def async_setup_entry(
         async_add_entities(entities)
 
     config_entry.runtime_data[RESOURCE_CALLBACKS].append(_async_add_resource)
+
+
+async def async_setup_sensors_cluster_summary(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up the cluster summary sensors."""
+    coordinators = config_entry.runtime_data[COORDINATORS]
+    if (
+        coordinator := coordinators.get(f"{ProxmoxType.Proxmox}_summary")
+    ) is None or coordinator.data is None:
+        return []
+
+    return [
+        create_sensor(
+            coordinator=coordinator,
+            info_device=device_info(
+                hass=hass,
+                config_entry=config_entry,
+                api_category=ProxmoxType.Proxmox,
+            ),
+            description=description,
+            resource_id="cluster",
+            config_entry=config_entry,
+        )
+        for description in PROXMOX_SENSOR_CLUSTER_SUMMARY
+    ]
 
 
 async def async_setup_sensors_ha_status(
