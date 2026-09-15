@@ -39,11 +39,20 @@ from .const import (
     GUEST_FILE_READ_MAX_BYTES,
     LOGGER,
     SLOW_UPDATE_INTERVAL,
+    TASKS_UPDATE_INTERVAL,
     UPDATE_INTERVAL,
     ProxmoxType,
 )
+from .discovery import (
+    RESOURCE_KEYS,
+    discovered_resources,
+    remember_resources,
+    remove_resource_devices,
+    resource_changes,
+)
 from .disk import disk_matches_id
 from .models import (
+    ProxmoxBackupData,
     ProxmoxBackupInfoData,
     ProxmoxCephData,
     ProxmoxCertificateData,
@@ -61,6 +70,8 @@ from .models import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
@@ -152,6 +163,19 @@ def _parse_ha_enum(
     return UNDEFINED
 
 
+def _flag_or_undefined(value: Any) -> bool | UndefinedType:
+    """
+    Read one of the API's 0/1 flags, keeping an absent one unknown.
+
+    A flag the response did not carry is not the same as a flag that is
+    off: `active` missing means the node's view of the storage could not be
+    read, not that the storage is down.
+    """
+    if value is None:
+        return UNDEFINED
+    return bool(value)
+
+
 def _positive_or_undefined(value: Any) -> Any:
     """Return a number only when it is above zero, else UNDEFINED."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
@@ -241,6 +265,66 @@ def parse_certificates(
         filename=chosen.get("filename"),
         subject=chosen.get("subject"),
         issuer=chosen.get("issuer"),
+    )
+
+
+def _task_timestamp(value: Any) -> datetime | UndefinedType:
+    """Turn a task log's epoch seconds into a UTC datetime, or nothing."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return UNDEFINED
+    return dt_util.utc_from_timestamp(value)
+
+
+def parse_backup(entries: list[dict[str, Any]], node_name: str) -> ProxmoxBackupData:
+    """
+    Describe a node's most recent backup run from its task log.
+
+    The caller asks the task log for finished `vzdump` tasks, newest first,
+    so the first entry is the run that matters. A run still in progress is
+    not in that list, which is deliberate: it has no end time and no
+    verdict yet, and reporting it would make every backup look like a
+    failure while it runs.
+    """
+    tasks = [
+        entry
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("type") == "vzdump"
+    ]
+    if not tasks:
+        return ProxmoxBackupData(
+            type=ProxmoxType.Backup,
+            node=node_name,
+            runs=0,
+            finished=UNDEFINED,
+            started=UNDEFINED,
+            duration=UNDEFINED,
+            status=None,
+            guests=None,
+            user=None,
+        )
+
+    task = tasks[0]
+    started = _task_timestamp(task.get("starttime"))
+    finished = _task_timestamp(task.get("endtime"))
+    duration: int | UndefinedType = UNDEFINED
+    if UNDEFINED not in (started, finished) and finished >= started:
+        duration = int((finished - started).total_seconds())
+
+    status = task.get("status")
+    # The task's `id` is the guests the run covered - "100" or "100,101" -
+    # and is empty for a job that backs up everything on the node.
+    guests = str(task["id"]) if task.get("id") else None
+
+    return ProxmoxBackupData(
+        type=ProxmoxType.Backup,
+        node=node_name,
+        runs=len(tasks),
+        finished=finished,
+        started=started,
+        duration=duration,
+        status=str(status) if status is not None else None,
+        guests=guests,
+        user=str(task["user"]) if task.get("user") else None,
     )
 
 
@@ -488,9 +572,73 @@ def parse_ha_status(entries: list[dict[str, Any]]) -> ProxmoxHAStatusData:
     )
 
 
+def is_proxmox_package(update: dict[str, Any]) -> bool:
+    """
+    Tell one of Proxmox's own packages from the rest of the upgrade.
+
+    `apt/update` describes every pending package the same way, whether it
+    is pve-manager or a Debian security fix. Proxmox's packages are either
+    named `pve-*`/`libpve-*`, or come from the Proxmox repository, which the
+    `Origin` field records.
+    """
+    package = str(update.get("Package", ""))
+    origin = str(update.get("Origin", ""))
+    title = str(update.get("Title", ""))
+    return (
+        package.startswith(("pve-", "libpve-"))
+        or "proxmox" in origin.lower()
+        or "proxmox" in title.lower()
+    )
+
+
+def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateData:
+    """
+    Turn a node's `apt/update` response into update data.
+
+    Besides the count and the flat list the sensors already carried, this
+    keeps enough per package for the update entity to describe the upgrade.
+    """
+    packages: list[dict[str, str | bool]] = []
+    for update in api_status:
+        if not isinstance(update, dict) or "Package" not in update:
+            continue
+        package = str(update["Package"])
+        version = str(update.get("Version", ""))
+        packages.append(
+            {
+                "package": package,
+                "title": str(update.get("Title", package)),
+                "version": version,
+                "proxmox": is_proxmox_package(update),
+            }
+        )
+
+    # Proxmox's own packages first, each group alphabetically, so the list
+    # reads as "what changes on the hypervisor, then everything else".
+    packages.sort(key=lambda entry: (not entry["proxmox"], entry["package"]))
+    proxmox_updates = sum(1 for entry in packages if entry["proxmox"])
+
+    updates_list = sorted(
+        f"{entry['title']} - {entry['version']}" for entry in packages
+    )
+    total = len(packages)
+
+    return ProxmoxUpdateData(
+        type=ProxmoxType.Update,
+        node=node,
+        total=total,
+        updates_list=updates_list,
+        update=total > 0,
+        packages=packages,
+        proxmox_updates=proxmox_updates,
+        other_updates=total - proxmox_updates,
+    )
+
+
 class ProxmoxCoordinator(
     DataUpdateCoordinator[
-        ProxmoxBackupInfoData
+        ProxmoxBackupData
+        | ProxmoxBackupInfoData
         | ProxmoxCephData
         | ProxmoxCertificateData
         | ProxmoxDiskData
@@ -509,6 +657,83 @@ class ProxmoxCoordinator(
     """Proxmox VE data update coordinator."""
 
 
+class ProxmoxDiscoveryCoordinator(DataUpdateCoordinator[dict[str, list[str]]]):
+    """
+    Watch the cluster for nodes, guests and storages appearing or leaving.
+
+    Only created when automatic discovery is switched on. When the listing
+    differs from what the config entry tracks, the entry is brought in line
+    and the difference acted on the way the Home Assistant core integration
+    does it: what is new gets its coordinators, device and entities right
+    away, what is gone loses them. Nothing is reloaded.
+
+    The callables come from setup, which owns the coordinator map and the
+    per-resource setup helpers; importing them here would be circular.
+    """
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        add_resource: Callable[[ProxmoxType, str], Awaitable[None]],
+        remove_resource: Callable[[ProxmoxType, str], Awaitable[None]],
+    ) -> None:
+        """Initialize the Proxmox discovery coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name="proxmox_coordinator_discovery",
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "discovery"
+        self.api_category = ProxmoxType.Proxmox
+        self._add_resource = add_resource
+        self._remove_resource = remove_resource
+
+    async def _async_update_data(self) -> dict[str, list[str]]:
+        """Compare the cluster's resource list with what is tracked."""
+        resources = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            "cluster/resources",
+            ProxmoxType.Resources,
+            self.resource_id,
+        )
+
+        if not isinstance(resources, list):
+            msg = "Cluster resources are not available"
+            raise UpdateFailed(msg)
+
+        found = discovered_resources(resources)
+        added, removed = resource_changes(self.config_entry, found)
+        if not any(added.values()) and not any(removed.values()):
+            return found
+
+        remember_resources(self.config_entry, found)
+
+        # Gone first, so a guest deleted and recreated under the same id in
+        # one interval ends up with fresh coordinators rather than stale ones.
+        for api_category, key in RESOURCE_KEYS.items():
+            for resource_id in removed[key]:
+                await self._remove_resource(api_category, resource_id)
+        remove_resource_devices(self.hass, self.config_entry, removed)
+
+        # Nodes before guests and storages: their devices hang off the node's.
+        for api_category, key in RESOURCE_KEYS.items():
+            for resource_id in added[key]:
+                await self._add_resource(api_category, resource_id)
+        return found
+
+
 class ProxmoxHAResourcesCoordinator(DataUpdateCoordinator[set[str]]):
     """
     Track which guests are managed by the Proxmox HA stack.
@@ -521,13 +746,16 @@ class ProxmoxHAResourcesCoordinator(DataUpdateCoordinator[set[str]]):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Proxmox HA resources coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name="proxmox_coordinator_ha_resources",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -570,13 +798,16 @@ class ProxmoxHAStatusCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Proxmox cluster HA status coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name="proxmox_coordinator_ha_status",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -620,13 +851,16 @@ class ProxmoxBackupInfoCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Proxmox backup info coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name="proxmox_coordinator_backup_info",
             update_interval=timedelta(seconds=SLOW_UPDATE_INTERVAL),
         )
@@ -656,19 +890,69 @@ class ProxmoxBackupInfoCoordinator(ProxmoxCoordinator):
         return parse_backup_info(api_status)
 
 
+class ProxmoxBackupCoordinator(ProxmoxCoordinator):
+    """Proxmox VE node backup run data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        node_name: str,
+    ) -> None:
+        """Initialize the Proxmox backup coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_backup_{node_name}",
+            update_interval=timedelta(seconds=TASKS_UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = f"{ProxmoxType.Backup.capitalize()} {node_name}"
+
+    async def _async_update_data(self) -> ProxmoxBackupData:
+        """Update the node's most recent backup run."""
+        # Finished tasks only (`source=archive`, the default, spelled out),
+        # newest first, and just the one: the log can hold thousands.
+        api_status = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            f"nodes/{self.node_name}/tasks?typefilter=vzdump&source=archive&limit=1",
+            ProxmoxType.Tasks,
+            self.node_name,
+        )
+
+        if api_status is None:
+            msg = f"Backup history for {self.node_name} is not available"
+            raise UpdateFailed(msg)
+
+        return parse_backup(api_status, self.node_name)
+
+
 class ProxmoxReplicationCoordinator(ProxmoxCoordinator):
     """Proxmox VE node replication data update coordinator."""
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         node_name: str,
     ) -> None:
         """Initialize the Proxmox replication coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_replication_{node_name}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -705,14 +989,17 @@ class ProxmoxSubscriptionCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         node_name: str,
     ) -> None:
         """Initialize the Proxmox subscription coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_subscription_{node_name}",
             update_interval=timedelta(seconds=SLOW_UPDATE_INTERVAL),
         )
@@ -754,13 +1041,16 @@ class ProxmoxCephCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Proxmox Ceph coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name="proxmox_coordinator_ceph",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -795,14 +1085,17 @@ class ProxmoxCertificateCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         node_name: str,
     ) -> None:
         """Initialize the Proxmox certificate coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_certificate_{node_name}",
             update_interval=timedelta(seconds=SLOW_UPDATE_INTERVAL),
         )
@@ -839,8 +1132,10 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
     ) -> None:
@@ -848,6 +1143,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1128,8 +1424,10 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         qemu_id: int,
     ) -> None:
@@ -1137,6 +1435,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{qemu_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1329,8 +1628,10 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         container_id: int,
     ) -> None:
@@ -1338,6 +1639,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{container_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1424,8 +1726,10 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         storage_id: str,
     ) -> None:
@@ -1433,6 +1737,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{storage_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1485,6 +1790,29 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
 
         storage_id = api_status["id"]
         name = f"Storage {storage_id.replace('storage/', '')}"
+
+        # The cluster resource list says how full a storage is, but not
+        # whether the node can currently reach it (`active`) or whether it
+        # is enabled there at all; the node's own storage list carries both.
+        # Filtered to this one storage so the answer stays small.
+        node_view: dict[str, Any] = {}
+        storage_name = api_status.get("storage")
+        if node_name is not None and storage_name:
+            api_path = f"nodes/{node_name}/storage?storage={quote(str(storage_name))}"
+            node_storages = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Storage,
+                self.resource_id,
+            )
+            for entry in node_storages if isinstance(node_storages, list) else []:
+                if isinstance(entry, dict) and entry.get("storage") == storage_name:
+                    node_view = entry
+                    break
+
         return ProxmoxStorageData(
             type=ProxmoxType.Storage,
             node=node_name,
@@ -1492,6 +1820,9 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             disk_total=api_status.get("maxdisk", UNDEFINED),
             disk_used=api_status.get("disk", UNDEFINED),
             content=api_status.get("content", UNDEFINED),
+            active=_flag_or_undefined(node_view.get("active")),
+            enabled=_flag_or_undefined(node_view.get("enabled")),
+            shared=_flag_or_undefined(node_view.get("shared")),
         )
 
 
@@ -1500,8 +1831,10 @@ class ProxmoxZFSCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
         zfs_id: str,
@@ -1510,6 +1843,7 @@ class ProxmoxZFSCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{zfs_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1558,8 +1892,10 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
     ) -> None:
@@ -1567,6 +1903,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1625,21 +1962,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
                 update=UNDEFINED,
             )
 
-        updates_list = []
-        for update in api_status:
-            updates_list.append(f"{update['Title']} - {update['Version']}")
-
-        updates_list.sort()
-        total = len(updates_list) if updates_list is not None else 0
-        update_avail = total > 0
-
-        return ProxmoxUpdateData(
-            type=ProxmoxType.Update,
-            node=self.node_name,
-            total=total,
-            updates_list=updates_list,
-            update=update_avail,
-        )
+        return parse_updates(api_status, self.node_name)
 
 
 class ProxmoxDiskCoordinator(ProxmoxCoordinator):
@@ -1647,8 +1970,10 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
         disk_id: str,
@@ -1657,6 +1982,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}_{disk_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1842,8 +2168,10 @@ class ProxmoxTaskCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
     ) -> None:
@@ -1851,8 +2179,9 @@ class ProxmoxTaskCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}",
-            update_interval=timedelta(seconds=300),  # 5 minutes
+            update_interval=timedelta(seconds=TASKS_UPDATE_INTERVAL),
         )
 
         self.hass = hass
@@ -2018,6 +2347,11 @@ def poll_api(  # noqa: PLR0917
                 return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
             case ProxmoxType.Proxmox:
                 return "['perm','/',['Sys.Audit']]"
+            case ProxmoxType.Resources:
+                # `cluster/resources` needs no privilege; Proxmox filters it
+                # to what the credentials may audit. A 403 here means the
+                # credentials cannot audit anything at all.
+                return "['perm','/',['VM.Audit']]"
             case _:
                 return "Unmapped"
 
@@ -2036,6 +2370,14 @@ def poll_api(  # noqa: PLR0917
         raise UpdateFailed(error) from error
     except ResourceException as error:
         if error.status_code == 403 and issue_crete_permissions:
+            # The update coordinator passes "Update <node>" as its resource
+            # id; the cluster-wide reads pass none at all. Neither may end
+            # up in the repair text as is.
+            resource_label = (
+                str(resource_id).replace(f"{ProxmoxType.Update.capitalize()} ", "")
+                if resource_id is not None
+                else ""
+            )
             ir.create_issue(
                 hass,
                 DOMAIN,
@@ -2045,16 +2387,13 @@ def poll_api(  # noqa: PLR0917
                 severity=ir.IssueSeverity.ERROR,
                 translation_key="resource_exception_forbiden",
                 translation_placeholders={
-                    "resource": f"{api_category.capitalize()} {resource_id.replace(f'{ProxmoxType.Update.capitalize()} ', '')}",
+                    "resource": f"{api_category.capitalize()} {resource_label}".strip(),
                     "user": (
                         config_entry.data.get(CONF_HA_ADMIN_USERNAME)
                         if api_category is ProxmoxType.Proxmox
                         else config_entry.data[CONF_USERNAME]
                     ),
-                    "permission": permission_to_resource(
-                        api_category,
-                        resource_id.replace(f"{ProxmoxType.Update.capitalize()} ", ""),
-                    ),
+                    "permission": permission_to_resource(api_category, resource_label),
                 },
             )
             LOGGER.debug(

@@ -21,11 +21,13 @@
             "lxc": "Linux Containers (LXC)",
             "storage": "Storages",
             "disks_enable": "Enable physical disk information",
-            "tasks_enable": "Monitor failed tasks"
+            "tasks_enable": "Monitor failed tasks",
+            "auto_discovery": "Track everything automatically"
           },
           "data_description": {
             "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly.",
-            "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
+            "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes.",
+            "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked."
           }
         },
         "reauth_confirm": {
@@ -160,12 +162,14 @@
             "storage": "Storages",
             "disks_enable": "Enable physical disk information",
             "tasks_enable": "Monitor failed tasks",
-            "guest_file_path": "Guest file path to monitor (QEMU, requires guest agent)"
+            "guest_file_path": "Guest file path to monitor (QEMU, requires guest agent)",
+            "auto_discovery": "Track everything automatically"
           },
           "data_description": {
             "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly.",
             "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes.",
-            "guest_file_path": "Absolute path of a file inside each tracked QEMU guest to read via the guest agent and expose as a sensor. Leave empty to disable. Requires the QEMU guest agent to be running in the guest."
+            "guest_file_path": "Absolute path of a file inside each tracked QEMU guest to read via the guest agent and expose as a sensor. Leave empty to disable. Requires the QEMU guest agent to be running in the guest.",
+            "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked."
           }
         }
       },
@@ -214,6 +218,41 @@
         },
         "ha_crm_master_stale": {
           "name": "CRM master stale"
+        },
+        "storage_active": {
+          "name": "Storage active",
+          "state": {
+            "on": "Active",
+            "off": "Inactive"
+          }
+        },
+        "storage_enabled": {
+          "name": "Storage enabled",
+          "state": {
+            "on": "Enabled",
+            "off": "Disabled"
+          }
+        },
+        "storage_shared": {
+          "name": "Storage shared",
+          "state": {
+            "on": "Shared",
+            "off": "Not shared"
+          }
+        },
+        "backup_status": {
+          "name": "Backup status",
+          "state_attributes": {
+            "status": {
+              "name": "Status"
+            },
+            "guests": {
+              "name": "Guests"
+            },
+            "user": {
+              "name": "User"
+            }
+          }
         }
       },
       "button": {
@@ -255,6 +294,12 @@
         },
         "disarm_ha": {
           "name": "Disarm HA"
+        },
+        "suspend_all": {
+          "name": "Suspend all"
+        },
+        "snapshot": {
+          "name": "Create snapshot"
         }
       },
       "sensor": {
@@ -478,7 +523,18 @@
             "paused": "Paused",
             "stopped": "Stopped",
             "suspended": "Suspended",
-            "running": "Running"
+            "running": "Running",
+            "shutdown": "Shutting down",
+            "io-error": "I/O error",
+            "guest-panicked": "Guest panicked",
+            "watchdog": "Watchdog",
+            "inmigrate": "Incoming migration",
+            "postmigrate": "Migrated away",
+            "finish-migrate": "Finishing migration",
+            "restore-vm": "Restoring",
+            "save-vm": "Saving state",
+            "debug": "Debug",
+            "colo": "COLO"
           }
         },
         "swap_free": {
@@ -509,6 +565,44 @@
         },
         "uptime": {
           "name": "Last boot"
+        },
+        "backup_last": {
+          "name": "Last backup",
+          "state_attributes": {
+            "status": {
+              "name": "Status"
+            },
+            "guests": {
+              "name": "Guests"
+            },
+            "user": {
+              "name": "User"
+            }
+          }
+        },
+        "backup_duration": {
+          "name": "Backup duration"
+        },
+        "node_status": {
+          "name": "Status",
+          "state": {
+            "online": "Online",
+            "offline": "Offline",
+            "unknown": "Unknown"
+          }
+        }
+      },
+      "update": {
+        "node_update": {
+          "name": "Software update"
+        }
+      }
+    },
+    "selector": {
+      "realm": {
+        "options": {
+          "pam": "pam - Linux PAM standard authentication",
+          "pve": "pve - Proxmox VE authentication server"
         }
       }
     }

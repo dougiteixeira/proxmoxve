@@ -36,6 +36,23 @@ USER_INPUT_OK = {
     CONF_QEMU: ["101"],
     CONF_LXC: ["100"],
 }
+# A config entry in the current format (version 7): what the config flow
+# stores today, tracking the node, the VM, the container and one storage.
+CURRENT_ENTRY_DATA = {
+    CONF_HOST: "192.168.10.101",
+    CONF_PORT: 8006,
+    CONF_USERNAME: "root",
+    CONF_TOKEN_NAME: "",
+    CONF_PASSWORD: "secret",
+    CONF_REALM: "pam",
+    CONF_VERIFY_SSL: True,
+    CONF_NODES: ["pve"],
+    CONF_QEMU: ["101"],
+    CONF_LXC: ["100"],
+    CONF_STORAGE: ["storage/pve/local"],
+}
+CURRENT_ENTRY_VERSION = 7
+
 YAML_INPUT_OK = {
     "proxmoxve": {
         CONF_HOST: "192.168.10.101",

@@ -26,6 +26,7 @@ from requests.exceptions import ConnectTimeout, SSLError
 
 from .api import ProxmoxClient, get_api
 from .const import (
+    CONF_AUTO_DISCOVERY,
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_GUEST_FILE_PATH,
@@ -69,12 +70,23 @@ SCHEMA_HOST_SSL: vol.Schema = vol.Schema(
         vol.Required(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): bool,
     }
 )
+# The two realms every installation has, offered as a pick-list; anything
+# else - an LDAP, Active Directory or OpenID realm - can still be typed in.
+# Guessing the realm was the most common way a first setup went wrong.
+REALM_SELECTOR = selector.SelectSelector(
+    selector.SelectSelectorConfig(
+        options=["pam", "pve"],
+        custom_value=True,
+        mode=selector.SelectSelectorMode.DROPDOWN,
+        translation_key="realm",
+    )
+)
 SCHEMA_HOST_AUTH: vol.Schema = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
         vol.Optional(CONF_TOKEN_NAME, default=""): str,
         vol.Required(CONF_PASSWORD): str,
-        vol.Optional(CONF_REALM, default=DEFAULT_REALM): str,
+        vol.Optional(CONF_REALM, default=DEFAULT_REALM): REALM_SELECTOR,
     }
 )
 SCHEMA_HOST_FULL: vol.Schema = SCHEMA_HOST_BASE.extend(SCHEMA_HOST_SSL.schema).extend(
@@ -85,7 +97,7 @@ SCHEMA_CLUSTER_HA_AUTH: vol.Schema = vol.Schema(
         vol.Optional(CONF_HA_ADMIN_USERNAME, default=""): str,
         vol.Optional(CONF_HA_ADMIN_TOKEN_NAME, default=""): str,
         vol.Optional(CONF_HA_ADMIN_PASSWORD, default=""): str,
-        vol.Optional(CONF_HA_ADMIN_REALM, default=DEFAULT_REALM): str,
+        vol.Optional(CONF_HA_ADMIN_REALM, default=DEFAULT_REALM): REALM_SELECTOR,
     }
 )
 
@@ -390,6 +402,12 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                             ),
                         ): selector.BooleanSelector(),
                         vol.Optional(
+                            CONF_AUTO_DISCOVERY,
+                            default=self.config_entry.options.get(
+                                CONF_AUTO_DISCOVERY, False
+                            ),
+                        ): selector.BooleanSelector(),
+                        vol.Optional(
                             CONF_GUEST_FILE_PATH,
                             description={
                                 "suggested_value": self.config_entry.options.get(
@@ -419,6 +437,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         options_data = {
             CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
             CONF_TASKS_ENABLE: user_input.get(CONF_TASKS_ENABLE),
+            CONF_AUTO_DISCOVERY: user_input.get(CONF_AUTO_DISCOVERY, False),
             CONF_GUEST_FILE_PATH: user_input.get(CONF_GUEST_FILE_PATH, "").strip(),
         }
 
@@ -498,7 +517,10 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                         if (coordinator_data := coordinator_zfs.data) is None:
                             continue
 
-                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.ZFS.upper()}_{node}_{coordinator_data.path}"
+                        # The pool device is registered under the data's
+                        # display name, "ZFS Pool <pool>", by the sensor
+                        # platform; there is no `path` on pool data.
+                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.ZFS.upper()}_{node}_{coordinator_data.name}"
                         await self.async_remove_device(
                             entry_id=self.config_entry.entry_id,
                             device_identifier=identifier,
@@ -728,6 +750,9 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             and (import_nodes := import_config.get(CONF_NODES)) is not None
         ):
             config = import_config.copy()
+            # The UI always stores a token name, empty for password logins;
+            # setup reads it the same way for both.
+            config.setdefault(CONF_TOKEN_NAME, "")
             config[CONF_NODES] = []
             for node_data in import_nodes:
                 node = node_data[CONF_NODE]
@@ -1060,6 +1085,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_TASKS_ENABLE,
                             default=True,
                         ): selector.BooleanSelector(),
+                        vol.Optional(
+                            CONF_AUTO_DISCOVERY,
+                            default=False,
+                        ): selector.BooleanSelector(),
                     }
                 ),
             )
@@ -1106,6 +1135,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             options={
                 CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
                 CONF_TASKS_ENABLE: user_input.get(CONF_TASKS_ENABLE),
+                CONF_AUTO_DISCOVERY: user_input.get(CONF_AUTO_DISCOVERY, False),
             },
         )
 

@@ -16,6 +16,26 @@ After configuring this integration, the following information is available:
  - **Failed task monitoring sensors** that track failed tasks from the last 24 hours on selected nodes, showing the count of failures and details about recent failed tasks.
  - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled, [see how to enable them here](#disabled-entities).
 
+### Package updates
+
+Each node gets a `Software update` entity of Home Assistant's `update` type, so pending package upgrades show up under Settings → Updates and in the update card, next to everything else that wants upgrading. It behaves exactly like the entity in the Home Assistant core integration: the installed version is the node's Proxmox VE release, the latest version is the highest version among the installed release and Proxmox's own pending packages, written as `<version>-p<proxmox packages>-d<other packages>` so it changes whenever the set of pending packages does, and the release notes say how many packages are pending and link to the node.
+
+It reads `GET /nodes/{node}/apt/update`, which needs `Sys.Modify` on the node. Without that privilege the entity is not created and a repair tells you which permission is missing. There is no install button: the API offers no way to run the upgrade, and a dist-upgrade of a hypervisor is not something to start from a dashboard anyway.
+
+The older `Total updates` sensor and `Updates packages` binary sensor stay as they are.
+
+### Last backup per node
+
+Each node reports its most recent finished backup run, read from the node's task log (`GET /nodes/{node}/tasks?typefilter=vzdump`). All three are diagnostic and **disabled by default**, as in the Home Assistant core integration:
+
+- `Last backup` — when the run finished, with the run's verdict, the guests it covered and the user that started it as attributes.
+- `Backup status` — a problem binary sensor, on when the run's verdict was anything but `OK`. That includes `job errors`, where some guests were backed up and some were not.
+- `Backup duration` — how long the run took.
+
+Only finished runs count. A backup still in progress has no end time and no verdict yet, and reporting it would make every backup look like a failure while it runs. Nodes that have never run a backup get no entities. Polled every five minutes; needs `Sys.Audit` on the node to see runs other users started.
+
+For the other direction - which guests no backup job covers at all - see the `Guests without backup` sensor under [Cluster HA Administration](#cluster-ha-administration-advanced-optional).
+
 ### Failed Task Monitoring
 
 The integration provides sensors that monitor failed tasks on your Proxmox nodes over the last 24 hours. These sensors offer:
@@ -29,6 +49,21 @@ The integration provides sensors that monitor failed tasks on your Proxmox nodes
 - **Automatic Updates**: Refreshes every 5 minutes to provide up-to-date information
 
 The failed task sensors help you monitor the health of your Proxmox operations and quickly identify when automated tasks encounter issues.
+
+### Status sensors
+
+Every node, VM and container has a `Status` sensor. They are proper enum sensors: the states are translated, usable in the history graph, and offered as a pick-list in automation conditions. A VM reports QEMU's finer run state where there is one — `paused`, `prelaunch`, `io-error`, `guest-panicked`, a migration in progress — and `running`/`stopped`/`suspended` otherwise; a container is `running` or `stopped`; a node is `online`, `offline` or `unknown`.
+
+A state this integration has never heard of reads as unknown rather than breaking the sensor, so a future QEMU release cannot take the entity down.
+
+### Storage state
+
+Besides its capacity sensors, each selected storage gets three diagnostic binary sensors read from the node's own storage list (`GET /nodes/{node}/storage`), the same three as in the Home Assistant core integration:
+
+- `Storage active` — whether the node can currently reach the storage, which is what changes when an NFS server goes away or a USB disk is unplugged.
+- `Storage enabled` and `Storage shared` — how the storage is configured.
+
+They need the same `Datastore.Audit` on the storage as the capacity sensors. When that list cannot be read, the entities are not created rather than left permanently off.
 
 ### Hardware Sensors
 
@@ -166,6 +201,14 @@ Only relevant if you run a Proxmox **cluster with HA-manager configured** — on
 > [!IMPORTANT]  
 > See the section on Proxmox user permissions [here](#proxmox-permissions).
 
+### Tracking everything automatically
+
+By default the integration tracks exactly the nodes, guests and storages you picked during setup, and a new VM shows up only once you add it in the integration options. The option **Track everything automatically** (in the same options step) turns that around: everything the credentials can see is tracked, and the cluster is followed from then on — a guest that is created is picked up within a minute, a guest that is deleted is dropped together with its device, and the same goes for nodes and storages. Templates are never tracked, because nothing on a template ever changes.
+
+The selection lists are ignored while this is on, but they are not changed: what you picked stays stored exactly as it was, and switching the option off again brings that selection back at the next reload. Under the hood the integration brings its configuration in line with `GET /cluster/resources` at setup and keeps comparing once a minute. Like the Home Assistant core integration it then acts on the difference in place: a new node, guest or storage gets its coordinators, device and entities right away, a vanished one loses them — nothing is reloaded and nothing else goes unavailable.
+
+Because `cluster/resources` only lists what the credentials may audit, "everything" means everything this user can see. A guest the user has no `VM.Audit` on is simply not there.
+
 ## Features I cannot test myself
 
 My own cluster does not use every feature this integration reads, so some
@@ -222,7 +265,7 @@ Adding Proxmox VE to your Home Assistant instance can be done via the UI using t
 > To use user-based authentication only, you must leave the `Token name` field empty in the configuration flow.
 
 > [!IMPORTANT]
-> It is important to correctly define the user's realm (`pam`, `pve` or other).
+> It is important to correctly define the user's realm. The field offers `pam` (Linux users) and `pve` (users created in Proxmox) as a pick-list; for an LDAP, Active Directory or OpenID realm, type its name into the same field.
 >
 > You can check this in Proxmox under Datacenter > Permissions > Users > Realm column
 
@@ -298,6 +341,8 @@ To be able to obtain each type of integration information, the user used to conn
 It is not necessary to include all of the permission roles below, this will depend on your use of the integration.
 
 The integration will create a repair for each resource that is exposed in the integration configuration but is not accessible by the user, indicating the path and privilege necessary to access it.
+
+Control buttons are only created for actions the user may actually perform: at setup the integration reads the effective privileges of its credentials (`GET /access/permissions`) and leaves out, for instance, the `Reboot` button of a node without `Sys.PowerMgmt`, the `Create snapshot` button of a guest without `VM.Snapshot`, or the `Start` button of a guest without `VM.PowerMgmt`. A button that could only ever fail is not worth having. Grant the privilege and reload the integration to get the button back. Should the privileges not be readable at all, every button is created as before.
 
 When executing a command, if the user does not have the necessary permission, a repair will be created indicating the path and privilege necessary to execute it.
 
@@ -400,6 +445,9 @@ Some entities are disabled by default (including control buttons), see below how
    
    For the entity to appear enabled on the device page, it may be necessary to refresh the page.
    </details>
+
+> [!NOTE]
+> The `Create snapshot` button takes a disk-only snapshot (no RAM state) named `homeassistant_<date>_<time>` in your local time, described as "Created by Home Assistant" so it is recognisable in the snapshot list later. It needs `VM.Snapshot` on the guest; snapshots of a running container additionally need a storage that supports them.
 
 > [!NOTE]
 > The Wake on LAN button only works if the configured node is in a cluster of two or more nodes. If you want to use WOL on a single Node, use the official `Wake-On-Lan` integration.

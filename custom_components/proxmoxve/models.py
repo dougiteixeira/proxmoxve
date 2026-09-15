@@ -87,7 +87,13 @@ class ProxmoxLXCData:
 
 @dataclasses.dataclass
 class ProxmoxStorageData:
-    """Data parsed from the Proxmox API for Storage."""
+    """
+    Data parsed from the Proxmox API for Storage.
+
+    `active`, `enabled` and `shared` come from the node's own view of the
+    storage (`nodes/{node}/storage`), which the cluster resource list does
+    not carry in full. They stay UNDEFINED when that view could not be read.
+    """
 
     type: str
     node: str
@@ -95,6 +101,9 @@ class ProxmoxStorageData:
     content: str | UndefinedType
     disk_used: float | UndefinedType
     disk_total: float | UndefinedType
+    active: bool | UndefinedType
+    enabled: bool | UndefinedType
+    shared: bool | UndefinedType
 
 
 @dataclasses.dataclass
@@ -112,13 +121,22 @@ class ProxmoxZFSData:
 
 @dataclasses.dataclass
 class ProxmoxUpdateData:
-    """Data parsed from the Proxmox API for Updates."""
+    """
+    Data parsed from the Proxmox API for Updates.
+
+    `packages` carries what the update entity needs to describe the pending
+    upgrade: each entry has a `package`, `title` and `version`, plus a
+    `proxmox` flag telling Proxmox's own packages from the Debian ones.
+    """
 
     type: str
     node: str
     updates_list: list | UndefinedType
     total: float | UndefinedType
     update: bool | UndefinedType
+    packages: list[dict[str, str | bool]] = dataclasses.field(default_factory=list)
+    proxmox_updates: int = 0
+    other_updates: int = 0
 
 
 @dataclasses.dataclass
@@ -155,6 +173,30 @@ class ProxmoxTaskData:
     failed_count: int
     recent_failures: list[dict[str, str | int]] | UndefinedType
     last_failure_time: int | UndefinedType
+
+
+@dataclasses.dataclass
+class ProxmoxBackupData:
+    """
+    Data parsed from the Proxmox API about a node's most recent backup run.
+
+    Built from the newest finished `vzdump` task in the node's task log. A
+    node that has never run one has `runs` at 0 and the rest UNDEFINED, so
+    the platforms can skip creating entities for it.
+
+    `status`, `guests` and `user` are exposed as state attributes, so they
+    hold plain values - the UNDEFINED sentinel is not JSON serializable.
+    """
+
+    type: str
+    node: str
+    runs: int
+    finished: datetime | UndefinedType
+    started: datetime | UndefinedType
+    duration: int | UndefinedType
+    status: str | None
+    guests: str | None
+    user: str | None
 
 
 @dataclasses.dataclass
