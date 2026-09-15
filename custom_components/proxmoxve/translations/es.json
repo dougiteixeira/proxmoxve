@@ -181,9 +181,6 @@
             "health": {
                 "name": "Salud"
             },
-            "locked": {
-                "name": "Bloqueado"
-            },
             "update_avail": {
                 "name": "Actualizar paquetes"
             }
@@ -206,9 +203,6 @@
             },
             "stop": {
                 "name": "Detener"
-            },
-            "unlock": {
-                "name": "Desbloquear"
             },
             "resume": {
                 "name": "Reanudar"

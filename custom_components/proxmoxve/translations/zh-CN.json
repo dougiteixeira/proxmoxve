@@ -181,9 +181,6 @@
             "health": {
                 "name": "健康状态"
             },
-            "locked": {
-                "name": "已锁定"
-            },
             "update_avail": {
                 "name": "可用更新"
             }
@@ -206,9 +203,6 @@
             },
             "stop": {
                 "name": "停止"
-            },
-            "unlock": {
-                "name": "解锁"
             },
             "resume": {
                 "name": "恢复"

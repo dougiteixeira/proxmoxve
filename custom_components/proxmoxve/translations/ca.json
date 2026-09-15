@@ -181,9 +181,6 @@
             "health": {
                 "name": "Salut"
             },
-            "locked": {
-                "name": "Bloquejat"
-            },
             "update_avail": {
                 "name": "Actualitzacions de paquets"
             }
@@ -206,9 +203,6 @@
             },
             "stop": {
                 "name": "Aturar"
-            },
-            "unlock": {
-                "name": "Desbloqueja"
             },
             "resume": {
                 "name": "Continuar"
