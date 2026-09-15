@@ -5,16 +5,18 @@
 import re
 from functools import partial
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from proxmoxer import AuthenticationError
 from proxmoxer.core import ResourceException
 
 from custom_components.proxmoxve.api import (
     SNAPSHOT_NAME_MAX_LENGTH,
     ProxmoxClient,
+    auth_error_status,
     post_api_command,
     snapshot_name,
     token_name_only,
@@ -228,3 +230,67 @@ def test_client_logs_in_with_the_bare_token_name() -> None:
     backend = client.get_api_client()._backend  # noqa: SLF001
     assert backend.auth.token_name == "homeassistant"
     assert backend.auth.username == "homeassistant@pve"
+
+
+def _password_client() -> ProxmoxClient:
+    """Return a built password client whose login never touched the network."""
+    client = ProxmoxClient(
+        host="node.example.invalid",
+        user="homeassistant",
+        password="secret",  # noqa: S106 - invented
+        realm="pve",
+        verify_ssl=False,
+    )
+    with patch("proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens"):
+        client.build_client()
+    return client
+
+
+def test_relogin_swaps_in_a_fresh_ticket_everywhere_it_is_used() -> None:
+    """
+    Test logging in again replaces the auth on the backend and the session.
+
+    The coordinators keep the ProxmoxAPI object, so the new login has to
+    land inside it rather than in a new one.
+    """
+    client = _password_client()
+    api = client.get_api_client()
+    stale = api._backend.auth  # noqa: SLF001
+
+    with patch("proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens") as login:
+        assert client.relogin() is True
+
+    login.assert_called_once()
+    fresh = api._backend.auth  # noqa: SLF001
+    assert fresh is not stale
+    assert api._store["session"].auth is fresh  # noqa: SLF001
+    assert fresh.username == "homeassistant@pve"
+    assert client.get_api_client() is api
+
+
+def test_relogin_with_a_token_does_nothing() -> None:
+    """Test a token client reports there is nothing to renew."""
+    client = ProxmoxClient(
+        host="node.example.invalid",
+        user="homeassistant",
+        password="secret",  # noqa: S106 - invented
+        token_name="homeassistant",  # noqa: S106 - not a secret
+        realm="pve",
+        verify_ssl=False,
+    )
+    client.build_client()
+
+    assert client.relogin() is False
+
+
+@pytest.mark.parametrize(
+    ("message", "status"),
+    [
+        ("Couldn't authenticate user: x@pve to https://h/access/ticket code: 401", 401),
+        ("Couldn't authenticate user: x@pve to https://h/access/ticket code: 595", 595),
+        ("something else entirely", None),
+    ],
+)
+def test_auth_error_status(message: str, status: int | None) -> None:
+    """Test the HTTP status is read out of proxmoxer's message when present."""
+    assert auth_error_status(AuthenticationError(message)) == status

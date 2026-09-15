@@ -31,7 +31,7 @@ from requests.exceptions import (
     SSLError,
 )
 
-from .api import get_api
+from .api import ProxmoxClient, get_api
 from .const import (
     CONF_GUEST_FILE_PATH,
     CONF_HA_ADMIN_USERNAME,
@@ -39,6 +39,8 @@ from .const import (
     DOMAIN,
     GUEST_FILE_READ_MAX_BYTES,
     LOGGER,
+    PROXMOX_CLIENT,
+    PROXMOX_HA_ADMIN_CLIENT,
     SLOW_UPDATE_INTERVAL,
     TASKS_UPDATE_INTERVAL,
     UPDATE_INTERVAL,
@@ -2346,6 +2348,51 @@ def update_device_via(
 # Keyword-only arguments are not an option here: every caller reaches this
 # through `hass.async_add_executor_job(poll_api, ...)`, which forwards its
 # arguments positionally and accepts no keywords.
+def _client_for(config_entry: ConfigEntry, proxmox: ProxmoxAPI) -> ProxmoxClient | None:
+    """Return the client that built `proxmox`, if setup has stored one."""
+    runtime = getattr(config_entry, "runtime_data", None)
+    if not isinstance(runtime, dict):
+        return None
+    for key in (PROXMOX_CLIENT, PROXMOX_HA_ADMIN_CLIENT):
+        client = runtime.get(key)
+        if client is not None and client.get_api_client() is proxmox:
+            return client
+    return None
+
+
+def _retry_after_relogin(
+    config_entry: ConfigEntry,
+    proxmox: ProxmoxAPI,
+    api_path: str,
+    error: AuthenticationError,
+) -> dict[str, Any] | None:
+    """
+    Log in once more and repeat the request before asking for credentials.
+
+    A ticket outlives a host that is off for more than two hours, and the
+    renewal proxmoxer then attempts is refused like a wrong password. Nodes
+    that are switched off overnight hit this every morning and ended up in
+    the reauthentication flow although nothing about the credentials had
+    changed. A fresh login with the stored password settles it either way:
+    it works, or it fails for a reason that really is the credentials.
+    """
+    client = _client_for(config_entry, proxmox)
+    if client is None:
+        raise ConfigEntryAuthFailed from error
+    try:
+        renewed = client.relogin()
+    except AuthenticationError as again:
+        raise ConfigEntryAuthFailed from again
+    if not renewed:
+        # Token authentication has nothing to renew; this failure is real.
+        raise ConfigEntryAuthFailed from error
+    LOGGER.debug("Logged in again after the ticket was refused for %s", api_path)
+    try:
+        return get_api(proxmox, api_path)
+    except AuthenticationError as again:
+        raise ConfigEntryAuthFailed from again
+
+
 def poll_api(  # noqa: PLR0917
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -2387,9 +2434,10 @@ def poll_api(  # noqa: PLR0917
                 return "Unmapped"
 
     try:
-        api_data = get_api(proxmox, api_path)
-    except AuthenticationError as error:
-        raise ConfigEntryAuthFailed from error
+        try:
+            api_data = get_api(proxmox, api_path)
+        except AuthenticationError as error:
+            api_data = _retry_after_relogin(config_entry, proxmox, api_path, error)
     except (
         SSLError,
         ConnectTimeout,

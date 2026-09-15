@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from proxmoxer import AuthenticationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
@@ -69,3 +70,41 @@ async def test_shutdown_stops_the_coordinators(
         await hass.async_block_till_done()
 
     assert shutdown.await_count > 0
+
+
+async def test_a_host_not_issuing_tickets_yet_is_retried(
+    hass: HomeAssistant, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test a login refused with anything but 401 leaves the entry retrying.
+
+    During boot pveproxy answers before the ticket service does, and proxmoxer
+    reports that with the same exception as a wrong password. Only a 401 is
+    about the credentials; everything else is "not yet".
+    """
+    with patch(
+        "proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens",
+        side_effect=AuthenticationError(
+            "Couldn't authenticate user: x@pve to https://h/access/ticket code: 595"
+        ),
+    ):
+        await hass.config_entries.async_setup(current_entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert current_entry.state is ConfigEntryState.SETUP_RETRY
+
+
+async def test_a_refused_password_asks_for_credentials(
+    hass: HomeAssistant, current_entry: MockConfigEntry
+) -> None:
+    """Test a 401 at setup is still what reauthentication is for."""
+    with patch(
+        "proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens",
+        side_effect=AuthenticationError(
+            "Couldn't authenticate user: x@pve to https://h/access/ticket code: 401"
+        ),
+    ):
+        await hass.config_entries.async_setup(current_entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert current_entry.state is ConfigEntryState.SETUP_ERROR
