@@ -69,6 +69,8 @@ from .const import (
     LOGGER,
     PROXMOX_CLIENT,
     PROXMOX_HA_ADMIN_CLIENT,
+    PROXMOX_HA_ADMIN_PERMISSIONS,
+    PROXMOX_PERMISSIONS,
     VERSION_REMOVE_YAML,
     ProxmoxType,
 )
@@ -93,6 +95,7 @@ from .coordinator import (
 )
 from .discovery import apply_discovery, discovered_resources
 from .disk import colliding_disk_wwns, resolve_disk_id
+from .permissions import async_fetch_permissions
 
 if TYPE_CHECKING:
     from homeassistant.core import Event, HomeAssistant
@@ -593,6 +596,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     resources = await _get_api_or_retry_setup(hass, proxmox, "cluster/resources", host)
 
+    # What these credentials may do, so the button platform can leave out
+    # buttons that could only ever fail. None when it cannot be read, in
+    # which case nothing is left out.
+    permissions = await async_fetch_permissions(hass, proxmox)
+
     # With automatic discovery on, the cluster's own list decides what is
     # tracked - brought in line here, before the coordinators are built from
     # it, and watched afterwards by a coordinator that reloads on a change.
@@ -886,10 +894,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             proxmox_ha_admin_client = candidate_client
 
     ha_resources_coordinator = None
+    ha_admin_permissions = None
     if proxmox_ha_admin_client is not None:
         proxmox_ha_admin = await hass.async_add_executor_job(
             proxmox_ha_admin_client.get_api_client
         )
+        ha_admin_permissions = await async_fetch_permissions(hass, proxmox_ha_admin)
         ha_resources_coordinator = ProxmoxHAResourcesCoordinator(
             hass=hass,
             proxmox=proxmox_ha_admin,
@@ -953,6 +963,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     config_entry.runtime_data = {
         PROXMOX_CLIENT: proxmox_client,
         PROXMOX_HA_ADMIN_CLIENT: proxmox_ha_admin_client,
+        PROXMOX_PERMISSIONS: permissions,
+        PROXMOX_HA_ADMIN_PERMISSIONS: ha_admin_permissions,
         COORDINATORS: coordinators,
     }
 

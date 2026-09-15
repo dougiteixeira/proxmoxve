@@ -19,10 +19,18 @@ from .const import (
     LOGGER,
     PROXMOX_CLIENT,
     PROXMOX_HA_ADMIN_CLIENT,
+    PROXMOX_HA_ADMIN_PERMISSIONS,
+    PROXMOX_PERMISSIONS,
     ProxmoxCommand,
     ProxmoxType,
 )
 from .entity import ProxmoxEntity, ProxmoxEntityDescription
+from .permissions import (
+    Permissions,
+    ProxmoxPrivilege,
+    is_granted,
+    is_granted_anywhere_below,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -39,11 +47,50 @@ class ProxmoxButtonEntityDescription(ProxmoxEntityDescription, ButtonEntityDescr
     api_category: ProxmoxType | None = (
         None  # Set when the sensor applies to only QEMU or LXC, if None applies to both.
     )
+    # The privilege Proxmox checks for this action. The button is left out
+    # when the credentials are known not to hold it; see button_permitted().
+    privilege: ProxmoxPrivilege | None = None
+
+
+# The node actions that act on guests rather than on the node: Proxmox
+# checks VM.PowerMgmt per guest for these, not Sys.PowerMgmt on the node.
+BULK_GUEST_COMMANDS: Final[frozenset[ProxmoxCommand]] = frozenset(
+    {ProxmoxCommand.START_ALL, ProxmoxCommand.STOP_ALL, ProxmoxCommand.SUSPEND_ALL}
+)
+
+
+def button_permitted(
+    permissions: Permissions | None,
+    description: ProxmoxButtonEntityDescription,
+    api_category: ProxmoxType,
+    resource_id: str | int,
+) -> bool:
+    """
+    Return whether the credentials can perform a button's action.
+
+    Unknown permissions (None) permit everything: not knowing is not the
+    same as not being allowed, and a failed press still raises a repair
+    issue naming the privilege. A description without a privilege is not
+    gated either.
+    """
+    if permissions is None or description.privilege is None:
+        return True
+
+    if api_category is ProxmoxType.Proxmox:
+        return is_granted(permissions, "/", description.privilege)
+    if api_category is ProxmoxType.Node:
+        if description.key in BULK_GUEST_COMMANDS:
+            # `startall` starts every guest the credentials may start, so a
+            # grant on a single guest is enough for the button to do something.
+            return is_granted_anywhere_below(permissions, "/vms", description.privilege)
+        return is_granted(permissions, f"/nodes/{resource_id}", description.privilege)
+    return is_granted(permissions, f"/vms/{resource_id}", description.privilege)
 
 
 PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.START_ALL,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:play",
         name="Start all",
         entity_registry_enabled_default=False,
@@ -51,6 +98,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.STOP_ALL,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:stop",
         name="Stop all",
         entity_registry_enabled_default=False,
@@ -62,6 +110,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     # take too long or lose too much.
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SUSPEND_ALL,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:pause-circle-outline",
         name="Suspend all",
         entity_registry_enabled_default=False,
@@ -69,6 +118,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
+        privilege=ProxmoxPrivilege.SYS_POWER,
         icon="mdi:server-off",
         name="Shutdown",
         entity_registry_enabled_default=False,
@@ -76,6 +126,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.REBOOT,
+        privilege=ProxmoxPrivilege.SYS_POWER,
         icon="mdi:restart",
         name="Reboot",
         entity_registry_enabled_default=False,
@@ -83,6 +134,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.WAKEONLAN,
+        privilege=ProxmoxPrivilege.SYS_POWER,
         icon="mdi:play-network",
         name="Wake-on-LAN",
         entity_registry_enabled_default=False,
@@ -93,6 +145,7 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
 PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.REBOOT,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:restart",
         name="Reboot",
         entity_registry_enabled_default=False,
@@ -100,6 +153,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.START,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:server",
         name="Start",
         entity_registry_enabled_default=False,
@@ -107,6 +161,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:server-off",
         name="Shutdown",
         entity_registry_enabled_default=False,
@@ -114,6 +169,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.STOP,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:stop",
         name="Stop",
         entity_registry_enabled_default=False,
@@ -123,6 +179,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     # after the moment it was taken, see snapshot_name() in api.py.
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SNAPSHOT,
+        privilege=ProxmoxPrivilege.VM_SNAPSHOT,
         icon="mdi:camera-outline",
         name="Create snapshot",
         entity_registry_enabled_default=False,
@@ -130,6 +187,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.UNLOCK,
+        privilege=ProxmoxPrivilege.VM_CONFIG_OPTIONS,
         icon="mdi:lock-open",
         name="Unlock",
         # QEMU only: the LXC config API has no way to clear a lock
@@ -141,6 +199,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESUME,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:play",
         name="Resume",
         api_category=ProxmoxType.QEMU,
@@ -149,6 +208,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SUSPEND,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:pause",
         name="Suspend",
         api_category=ProxmoxType.QEMU,
@@ -157,6 +217,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.HIBERNATE,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:bed",
         name="Hibernate",
         api_category=ProxmoxType.QEMU,
@@ -165,6 +226,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.RESET,
+        privilege=ProxmoxPrivilege.VM_POWER,
         icon="mdi:restart-alert",
         name="Reset",
         api_category=ProxmoxType.QEMU,
@@ -176,6 +238,7 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
 PROXMOX_BUTTON_CLUSTER: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.DISARM_HA,
+        privilege=ProxmoxPrivilege.SYS_CONSOLE,
         icon="mdi:shield-off-outline",
         name="Disarm HA",
         entity_registry_enabled_default=False,
@@ -183,6 +246,7 @@ PROXMOX_BUTTON_CLUSTER: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.ARM_HA,
+        privilege=ProxmoxPrivilege.SYS_CONSOLE,
         icon="mdi:shield-check-outline",
         name="Arm HA",
         entity_registry_enabled_default=False,
@@ -201,6 +265,7 @@ async def async_setup_entry(
 
     coordinators = config_entry.runtime_data[COORDINATORS]
     proxmox_client = config_entry.runtime_data[PROXMOX_CLIENT]
+    permissions = config_entry.runtime_data.get(PROXMOX_PERMISSIONS)
 
     for node in config_entry.data[CONF_NODES]:
         if f"{ProxmoxType.Node}_{node}" in coordinators:
@@ -211,6 +276,16 @@ async def async_setup_entry(
         # unfound vm case
         if coordinator.data is not None:
             for description in PROXMOX_BUTTON_NODE:
+                if not button_permitted(
+                    permissions, description, ProxmoxType.Node, node
+                ):
+                    LOGGER.debug(
+                        "Leaving out the %s button of node %s: no %s",
+                        description.key,
+                        node,
+                        description.privilege,
+                    )
+                    continue
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
@@ -242,6 +317,16 @@ async def async_setup_entry(
                 (api_category := description.api_category)
                 and ProxmoxType.QEMU in api_category
             ) or api_category is None:
+                if not button_permitted(
+                    permissions, description, ProxmoxType.QEMU, vm_id
+                ):
+                    LOGGER.debug(
+                        "Leaving out the %s button of QEMU %s: no %s",
+                        description.key,
+                        vm_id,
+                        description.privilege,
+                    )
+                    continue
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
@@ -272,6 +357,16 @@ async def async_setup_entry(
                 (api_category := description.api_category)
                 and ProxmoxType.LXC in api_category
             ) or api_category is None:
+                if not button_permitted(
+                    permissions, description, ProxmoxType.LXC, ct_id
+                ):
+                    LOGGER.debug(
+                        "Leaving out the %s button of LXC %s: no %s",
+                        description.key,
+                        ct_id,
+                        description.privilege,
+                    )
+                    continue
                 buttons.append(
                     create_button(
                         coordinator=coordinator,
@@ -291,8 +386,18 @@ async def async_setup_entry(
 
     proxmox_ha_admin_client = config_entry.runtime_data.get(PROXMOX_HA_ADMIN_CLIENT)
     ha_resources_coordinator = coordinators.get(f"{ProxmoxType.Proxmox}_ha_resources")
+    ha_admin_permissions = config_entry.runtime_data.get(PROXMOX_HA_ADMIN_PERMISSIONS)
     if proxmox_ha_admin_client is not None and ha_resources_coordinator is not None:
         for description in PROXMOX_BUTTON_CLUSTER:
+            if not button_permitted(
+                ha_admin_permissions, description, ProxmoxType.Proxmox, "cluster"
+            ):
+                LOGGER.debug(
+                    "Leaving out the %s button: the cluster credentials have no %s",
+                    description.key,
+                    description.privilege,
+                )
+                continue
             buttons.append(
                 create_button(
                     coordinator=ha_resources_coordinator,

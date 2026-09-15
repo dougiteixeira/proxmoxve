@@ -52,6 +52,8 @@ CONF_STORAGE = "storage"
 
 PROXMOX_CLIENT = "proxmox_client"
 PROXMOX_HA_ADMIN_CLIENT = "proxmox_ha_admin_client"
+PROXMOX_PERMISSIONS = "proxmox_permissions"
+PROXMOX_HA_ADMIN_PERMISSIONS = "proxmox_ha_admin_permissions"
 
 INTEGRATION_TITLE = "Proxmox VE"
 VERSION_REMOVE_YAML = "2025.1"
