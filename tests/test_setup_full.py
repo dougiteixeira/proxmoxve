@@ -15,6 +15,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
+from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve import DOMAIN
@@ -26,9 +28,10 @@ from custom_components.proxmoxve.const import (
     CONF_STORAGE,
     CONF_TASKS_ENABLE,
     COORDINATORS,
+    ProxmoxType,
 )
 
-from .fake_api import FakeProxmox
+from .fake_api import NODE, FakeProxmox
 
 
 async def _setup(hass: HomeAssistant, entry: MockConfigEntry) -> None:
@@ -142,6 +145,52 @@ async def test_buttons_follow_the_permissions(
     # Sys.PowerMgmt on the node is missing, VM.PowerMgmt on a guest is there.
     assert not registry.async_get_entity_id("button", DOMAIN, f"{entry_id}_pve_reboot")
     assert registry.async_get_entity_id("button", DOMAIN, f"{entry_id}_pve_startall")
+
+
+async def test_no_sys_modify_means_no_update_entity_and_no_repair(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test a read-only token gets no package-update entity, and no repair.
+
+    Reading `apt/update` needs Sys.Modify, a management privilege a
+    read-only setup deliberately does not hold. The coordinator used to be
+    created anyway, get a 403, and raise a repair demanding the permission;
+    the update entity was skipped but the count sensor still appeared with
+    nothing in it.
+    """
+    fake_api.routes["access/permissions"] = {
+        "/": {"Sys.Audit": 1, "VM.Audit": 1, "Datastore.Audit": 1},
+    }
+    fake_api.routes[f"nodes/{NODE}/apt/update"] = ResourceException(
+        403, "Permission check failed", "(/nodes/pve, [Sys.Modify])"
+    )
+
+    await _setup(hass, current_entry)
+
+    coordinators = current_entry.runtime_data[COORDINATORS]
+    assert f"{ProxmoxType.Update}_{NODE}" not in coordinators
+    registry = er.async_get(hass)
+    entry_id = current_entry.entry_id
+    assert not registry.async_get_entity_id(
+        "update", DOMAIN, f"{entry_id}_pve_node_update"
+    )
+    assert not ir.async_get(hass).async_get_issue(
+        DOMAIN, f"{entry_id}_Update {NODE}_forbiden"
+    )
+
+
+async def test_unknown_permissions_still_create_the_update_entity(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test not being able to read the privileges gates nothing."""
+    fake_api.routes["access/permissions"] = ResourceException(
+        403, "Permission check failed", ""
+    )
+
+    await _setup(hass, current_entry)
+
+    assert f"{ProxmoxType.Update}_{NODE}" in current_entry.runtime_data[COORDINATORS]
 
 
 async def test_disks_and_pools_get_their_own_devices(

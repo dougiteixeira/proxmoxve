@@ -102,7 +102,12 @@ from .discovery import (
     selected_resources,
 )
 from .disk import colliding_disk_wwns, resolve_disk_id
-from .permissions import async_fetch_permissions
+from .permissions import (
+    Permissions,
+    ProxmoxPrivilege,
+    async_fetch_permissions,
+    is_granted,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -572,6 +577,7 @@ async def _async_setup_node(  # noqa: PLR0917
     node: str,
     coordinators: dict[str, Any],
     nodes_api: list | dict | None,
+    permissions: Permissions | None = None,
 ) -> ProxmoxNodeCoordinator | None:
     """
     Create every coordinator a node needs, at setup or when discovered later.
@@ -608,15 +614,27 @@ async def _async_setup_node(  # noqa: PLR0917
     await coordinator_node.async_refresh()
     coordinators[f"{ProxmoxType.Node}_{node}"] = coordinator_node
 
-    coordinator_updates = ProxmoxUpdateCoordinator(
-        hass=hass,
-        proxmox=proxmox,
-        config_entry=config_entry,
-        api_category=ProxmoxType.Update,
-        node_name=node,
-    )
-    await coordinator_updates.async_refresh()
-    coordinators[f"{ProxmoxType.Update}_{node}"] = coordinator_updates
+    # Reading `apt/update` needs Sys.Modify on the node - a management
+    # privilege a read-only setup deliberately does not hold. Where the
+    # credentials' privileges are known and lack it, there is no update
+    # coordinator at all: no entity that can never know anything, and no
+    # repair demanding a permission the person chose not to give.
+    if permissions is None or is_granted(
+        permissions, f"/nodes/{node}", ProxmoxPrivilege.SYS_MODIFY
+    ):
+        coordinator_updates = ProxmoxUpdateCoordinator(
+            hass=hass,
+            proxmox=proxmox,
+            config_entry=config_entry,
+            api_category=ProxmoxType.Update,
+            node_name=node,
+        )
+        await coordinator_updates.async_refresh()
+        coordinators[f"{ProxmoxType.Update}_{node}"] = coordinator_updates
+    else:
+        LOGGER.debug(
+            "Node %s: credentials lack Sys.Modify, skipping package updates", node
+        )
 
     coordinator_certificate = ProxmoxCertificateCoordinator(
         hass=hass,
@@ -933,7 +951,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     nodes_api = await _get_api_or_retry_setup(hass, proxmox, "nodes", host)
     for node in tracked[CONF_NODES]:
         coordinator_node = await _async_setup_node(
-            hass, config_entry, proxmox, node, coordinators, nodes_api
+            hass, config_entry, proxmox, node, coordinators, nodes_api, permissions
         )
         if coordinator_node is not None and coordinator_node.data is not None:
             nodes_add_device.append(node)
@@ -1105,7 +1123,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
             if api_category is ProxmoxType.Node:
                 coordinator_node = await _async_setup_node(
-                    hass, config_entry, proxmox, resource_id, coordinators, listing
+                    hass,
+                    config_entry,
+                    proxmox,
+                    resource_id,
+                    coordinators,
+                    listing,
+                    permissions,
                 )
                 if coordinator_node is None:
                     return

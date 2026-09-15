@@ -41,13 +41,14 @@ type Permissions = dict[str, dict[str, int]]
 
 
 class ProxmoxPrivilege(StrEnum):
-    """The Proxmox privileges the buttons need."""
+    """The Proxmox privileges the buttons and the update entity need."""
 
     VM_POWER = "VM.PowerMgmt"
     VM_SNAPSHOT = "VM.Snapshot"
     VM_CONFIG_OPTIONS = "VM.Config.Options"
     SYS_POWER = "Sys.PowerMgmt"
     SYS_CONSOLE = "Sys.Console"
+    SYS_MODIFY = "Sys.Modify"
 
 
 async def async_fetch_permissions(
