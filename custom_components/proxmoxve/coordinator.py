@@ -124,6 +124,15 @@ HA_SERVICE_ERROR_STATES: Final[frozenset[str]] = frozenset(
 # sync with the cluster can report a false positive.
 HA_CRM_MASTER_DEAD_AFTER: Final[timedelta] = timedelta(seconds=30)
 
+# How long a node's last hardware readings stay usable when a poll comes
+# back without any. PVE-mods collects on demand: a worker writes the
+# `sensors` output to a file under /run and removes it again after ten
+# seconds of inactivity, so a poll that arrives cold gets an empty field
+# and the data only lands a second later. A reading a few minutes old is
+# far more useful than a hole in the graph, but past this the data really
+# is gone rather than late.
+SENSORS_HOLD_FOR: Final[timedelta] = timedelta(minutes=10)
+
 
 def _parse_ha_enum(
     entry: dict[str, Any],
@@ -848,6 +857,57 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         self.proxmox = proxmox
         self.resource_id = node_name
         self.api_category = api_category
+        self._last_sensors: dict[str, float] = {}
+        self._last_sensors_raw: str | None = None
+        self._last_sensors_at: datetime | None = None
+
+    def _hold_last_sensors(
+        self,
+        sensors: dict[str, float],
+        sensors_raw: str | None,
+    ) -> tuple[dict[str, float], str | None]:
+        """
+        Keep the previous hardware readings when a poll brings none.
+
+        PVE-mods collects on demand and tears the collection down again
+        after a few seconds idle, so a poll can easily arrive before there
+        is anything to read. Blanking every temperature because one response
+        came back empty produces a gap in the history that says "no reading"
+        where the truth is "not this time".
+
+        The readings are only held for SENSORS_HOLD_FOR. Past that, whatever
+        provides them is gone rather than late - PVE-mods removed, the module
+        unloaded - and reporting nothing is then the honest answer.
+        """
+        now = dt_util.utcnow()
+
+        if sensors:
+            self._last_sensors = sensors
+            self._last_sensors_raw = sensors_raw
+            self._last_sensors_at = now
+            return sensors, sensors_raw
+
+        if self._last_sensors_at is None:
+            return sensors, sensors_raw
+
+        age = now - self._last_sensors_at
+        if age > SENSORS_HOLD_FOR:
+            LOGGER.debug(
+                "No hardware sensor data for node %s in %s, dropping the last readings",
+                self.resource_id,
+                age,
+            )
+            self._last_sensors = {}
+            self._last_sensors_raw = None
+            self._last_sensors_at = None
+            return sensors, sensors_raw
+
+        LOGGER.debug(
+            "Node %s reported no hardware sensor data, keeping readings from %s ago",
+            self.resource_id,
+            age,
+        )
+        return self._last_sensors, self._last_sensors_raw
 
     async def _async_update_data(self) -> ProxmoxNodeData:
         """Update data  for Proxmox Node."""
@@ -974,6 +1034,19 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             if isinstance(lm_sensors_data, dict):
                 sensors = _parse_sensors_dict(lm_sensors_data)
                 sensors_raw = json.dumps(lm_sensors_data)
+            else:
+                LOGGER.debug(
+                    "Node %s returned PveMod_JsonSensorInfo without the expected "
+                    "lm-sensors block",
+                    self.resource_id,
+                )
+        else:
+            LOGGER.debug(
+                "Node %s status carried no hardware sensor data at all",
+                self.resource_id,
+            )
+
+        sensors, sensors_raw = self._hold_last_sensors(sensors, sensors_raw)
 
         if node_status != "":
             return ProxmoxNodeData(

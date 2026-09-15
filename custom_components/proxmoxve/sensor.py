@@ -340,10 +340,20 @@ def percentage_or_unknown(value: float | UndefinedType | None) -> float | None:
     A sensor that reports 0% when it simply has no reading looks like a
     measurement, which is worse than reporting nothing: 0% disk used and "I
     cannot see inside this guest" are very different statements.
+
+    The result is capped at 100%. A QEMU guest whose balloon driver reports
+    no statistics leaves Proxmox with only the host-side size of the QEMU
+    process, which carries emulator overhead and can sit above the memory
+    the guest was configured with - that is how a "memory used percentage"
+    of 106% reached a dashboard. Above the cap the ratio has stopped
+    describing how full the guest is, and 100% is the closest true thing to
+    say about it.
     """
     if value is None or value is UNDEFINED:
         return None
-    return value * 100 if value > 0 else 0
+    if value <= 0:
+        return 0
+    return min(value, 1) * 100
 
 
 PROXMOX_SENSOR_DISK: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
@@ -437,11 +447,11 @@ PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Memory free percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
+        conversion_fn=percentage_or_unknown,
         value_fn=lambda x: (
             (x.memory_free / x.memory_total)
             if (UNDEFINED not in (x.memory_free, x.memory_total) and x.memory_total > 0)
-            else 0
+            else None
         ),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -476,11 +486,11 @@ PROXMOX_SENSOR_MEMORY: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Memory used percentage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
-        conversion_fn=lambda x: (x * 100) if x != UNDEFINED and x > 0 else 0,
+        conversion_fn=percentage_or_unknown,
         value_fn=lambda x: (
             (x.memory_used / x.memory_total)
             if (UNDEFINED not in (x.memory_used, x.memory_total) and x.memory_total > 0)
-            else 0
+            else None
         ),
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,

@@ -50,6 +50,25 @@ Both are auto-detected — whichever one is installed and enabled for temperatur
 
 This modifies the Proxmox VE API to inject `sensors -j` output into the `GET /nodes/{node}/status` response. No additional API calls are made by the integration.
 
+#### When readings come and go
+
+PVE-mods v2 collects on demand rather than continuously. A worker started by `pveproxy` runs `sensors`, enriches the output with drive and CPU names, and writes it to `/run/pveproxy/pve-mod/sensors.json`; the API handler reads that file back when you ask for a node's status. After ten seconds without a request the worker stops its collectors and removes the whole directory again.
+
+So a poll that arrives while nothing is warm gets the field **present but empty**, and every hardware sensor on that node would drop to *unknown*. The data is there a second or two later, once that same request has woken the worker. This is how PVE-mods is meant to work — a missing directory is not a fault, and there is nothing to repair on the host.
+
+The ten seconds are hard-wired: `collector_timeout` lives in the package's `PVE/PVEMod/Config.pm` and is not among the sections `pve-mod.conf` can override, so setting it there is accepted and silently ignored.
+
+The integration therefore keeps the previous readings for up to ten minutes when a poll brings none, which covers the gap without polling the API more often. Past ten minutes it reports nothing, because by then the data really is gone rather than late — PVE-mods removed, the module unloaded, `lm-sensors` broken.
+
+If your hardware sensors stay unknown for longer than that, check the source rather than the integration — ask twice, a few seconds apart, so the first request wakes the collector:
+
+```bash
+pvesh get /nodes/$(hostname)/status --output-format json | grep -c PveMod_JsonSensorInfo
+sleep 3
+ls -l /run/pveproxy/pve-mod/sensors.json
+journalctl -u pveproxy --since today | grep -i pve-mod
+```
+
 #### Supported Hardware
 
 | Chip / Driver | Device Type | Examples |
