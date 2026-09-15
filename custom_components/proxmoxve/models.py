@@ -226,6 +226,30 @@ class ProxmoxBackupData:
 
 
 @dataclasses.dataclass
+class ProxmoxClusterSummaryData:
+    """
+    The cluster at a glance, added up from `cluster/resources`.
+
+    CPU is weighted by each online node's core count, so a busy small node
+    does not count like a busy large one; memory is the plain sum. Nodes
+    that are offline contribute nothing to either. The lists are exposed as
+    attributes, so they hold plain values.
+    """
+
+    type: str
+    nodes_total: int
+    nodes_online: int
+    nodes_offline: list[str]
+    qemu_total: int
+    qemu_running: int
+    lxc_total: int
+    lxc_running: int
+    cpu: float | UndefinedType
+    memory_total: int | UndefinedType
+    memory_used: int | UndefinedType
+
+
+@dataclasses.dataclass
 class ProxmoxHAStatusData:
     """
     Data parsed from the Proxmox API for the cluster HA stack.

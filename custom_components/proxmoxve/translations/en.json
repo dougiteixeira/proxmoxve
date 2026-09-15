@@ -400,6 +400,45 @@
         "ceph_used_perc": {
           "name": "Ceph used percentage"
         },
+        "cluster_nodes_online": {
+          "name": "Nodes online",
+          "state_attributes": {
+            "nodes_total": {
+              "name": "Nodes"
+            },
+            "nodes_offline": {
+              "name": "Nodes offline"
+            }
+          }
+        },
+        "cluster_qemu_running": {
+          "name": "Virtual machines running",
+          "state_attributes": {
+            "qemu_total": {
+              "name": "Virtual machines"
+            }
+          }
+        },
+        "cluster_lxc_running": {
+          "name": "Containers running",
+          "state_attributes": {
+            "lxc_total": {
+              "name": "Containers"
+            }
+          }
+        },
+        "cluster_cpu_used": {
+          "name": "CPU used"
+        },
+        "cluster_memory_used_perc": {
+          "name": "Memory used percentage"
+        },
+        "cluster_memory_used": {
+          "name": "Memory used"
+        },
+        "cluster_memory_total": {
+          "name": "Memory total"
+        },
         "certificate_expires": {
           "name": "Certificate expires",
           "state_attributes": {

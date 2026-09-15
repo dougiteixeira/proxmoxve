@@ -60,6 +60,7 @@ from .models import (
     ProxmoxBackupInfoData,
     ProxmoxCephData,
     ProxmoxCertificateData,
+    ProxmoxClusterSummaryData,
     ProxmoxDiskData,
     ProxmoxHAStatusData,
     ProxmoxLXCData,
@@ -369,6 +370,47 @@ def parse_backup(entries: list[dict[str, Any]], node_name: str) -> ProxmoxBackup
         status=str(status) if status is not None else None,
         guests=guests,
         user=str(task["user"]) if task.get("user") else None,
+    )
+
+
+def parse_cluster_summary(resources: Any) -> ProxmoxClusterSummaryData:
+    """Add up what `cluster/resources` says about nodes and guests."""
+    rows = [
+        r
+        for r in (resources if isinstance(resources, list) else [])
+        if isinstance(r, dict)
+    ]
+    nodes = [r for r in rows if r.get("type") == "node"]
+    online = [r for r in nodes if r.get("status") == "online"]
+    qemu = [r for r in rows if r.get("type") == "qemu" and not r.get("template")]
+    lxc = [r for r in rows if r.get("type") == "lxc" and not r.get("template")]
+
+    weighted_cpu = 0.0
+    total_cpus = 0
+    memory_total = 0
+    memory_used = 0
+    for node in online:
+        cpus = node.get("maxcpu")
+        cpu = node.get("cpu")
+        if isinstance(cpus, int | float) and cpus > 0 and isinstance(cpu, int | float):
+            weighted_cpu += float(cpu) * cpus
+            total_cpus += cpus
+        if isinstance(node.get("maxmem"), int) and isinstance(node.get("mem"), int):
+            memory_total += node["maxmem"]
+            memory_used += node["mem"]
+
+    return ProxmoxClusterSummaryData(
+        type=ProxmoxType.Proxmox,
+        nodes_total=len(nodes),
+        nodes_online=len(online),
+        nodes_offline=sorted(str(r.get("node")) for r in nodes if r not in online),
+        qemu_total=len(qemu),
+        qemu_running=sum(1 for r in qemu if r.get("status") == "running"),
+        lxc_total=len(lxc),
+        lxc_running=sum(1 for r in lxc if r.get("status") == "running"),
+        cpu=(weighted_cpu / total_cpus) if total_cpus else UNDEFINED,
+        memory_total=memory_total or UNDEFINED,
+        memory_used=memory_used if memory_total else UNDEFINED,
     )
 
 
@@ -918,6 +960,53 @@ class ProxmoxHAStatusCoordinator(ProxmoxCoordinator):
             raise UpdateFailed(msg)
 
         return parse_ha_status(api_status)
+
+
+class ProxmoxClusterSummaryCoordinator(ProxmoxCoordinator):
+    """
+    Proxmox VE cluster summary coordinator.
+
+    Reads `cluster/resources` with the primary credentials - it needs no
+    privilege, Proxmox filters it to what they may audit - and adds it up.
+    """
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the Proxmox cluster summary coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name="proxmox_coordinator_cluster_summary",
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "cluster_summary"
+        self.api_category = ProxmoxType.Proxmox
+
+    async def _async_update_data(self) -> ProxmoxClusterSummaryData:
+        """Add up the cluster's resource list."""
+        resources = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            "cluster/resources",
+            ProxmoxType.Resources,
+            None,
+        )
+        if resources is None:
+            msg = "The cluster's resource list is not available"
+            raise UpdateFailed(msg)
+        return parse_cluster_summary(resources)
 
 
 class ProxmoxBackupInfoCoordinator(ProxmoxCoordinator):
