@@ -7,7 +7,7 @@ from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve import DOMAIN, device_info
-from custom_components.proxmoxve.const import ProxmoxType
+from custom_components.proxmoxve.const import COORDINATORS, ProxmoxType
 
 from .fake_api import FakeProxmox
 
@@ -67,3 +67,27 @@ async def test_link_is_dropped_for_a_node_without_a_device(
     )
 
     assert info["via_device_id"] is None
+
+
+async def test_a_refresh_does_not_invent_a_guest_device(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test linking a guest to its node creates no device that is not there.
+
+    The guest coordinator refreshes before the platforms create the device,
+    and used to create it itself - bare, and named after the config entry.
+    Whenever no platform came along to fill it in, that is what stayed.
+    """
+    entry = await _setup(hass, fake_api, current_entry)
+    dev_reg = dr.async_get(hass)
+    identifier = (DOMAIN, f"{entry.entry_id}_{ProxmoxType.LXC.upper()}_100")
+    device = dev_reg.async_get_device_by_identifier(identifier, entry.entry_id)
+    assert device is not None
+    dev_reg.async_remove_device(device.id)
+
+    coordinator = entry.runtime_data[COORDINATORS][f"{ProxmoxType.LXC}_100"]
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert dev_reg.async_get_device_by_identifier(identifier, entry.entry_id) is None

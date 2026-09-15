@@ -2276,20 +2276,24 @@ def update_device_via(
     api_category: ProxmoxType,
     node_name: str,
 ) -> None:
-    """Return the Device Info."""
+    """Point the guest's device at the node it currently runs on."""
     dev_reg = dr.async_get(self.hass)
-    device = dev_reg.async_get_or_create(
-        config_entry_id=self.config_entry.entry_id,
-        identifiers={
-            (
-                DOMAIN,
-                f"{self.config_entry.entry_id}_{api_category.upper()}_{self.resource_id}",
-            )
-        },
-    )
     # Scoped to this config entry: identifiers are only unique within one, so
     # async_get_device can resolve to a device belonging to a different
     # integration that happens to share the pair.
+    device = dev_reg.async_get_device_by_identifier(
+        (
+            DOMAIN,
+            f"{self.config_entry.entry_id}_{api_category.upper()}_{self.resource_id}",
+        ),
+        self.config_entry.entry_id,
+    )
+    if device is None:
+        # The first refresh runs before the platforms have created the
+        # device. Creating it here instead would leave a bare device named
+        # after the config entry, with no model and no entities, should
+        # nothing come along to fill it in.
+        return
     via_device = dev_reg.async_get_device_by_identifier(
         (
             DOMAIN,
