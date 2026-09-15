@@ -56,6 +56,17 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         entity_registry_enabled_default=False,
         translation_key="stop_all",
     ),
+    # Suspends every running VM to disk (`qm suspend --todisk`); containers
+    # cannot be suspended and are left alone. The counterpart of "Start all"
+    # before a planned power-off, when a clean shutdown of each guest would
+    # take too long or lose too much.
+    ProxmoxButtonEntityDescription(
+        key=ProxmoxCommand.SUSPEND_ALL,
+        icon="mdi:pause-circle-outline",
+        name="Suspend all",
+        entity_registry_enabled_default=False,
+        translation_key="suspend_all",
+    ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
         icon="mdi:server-off",

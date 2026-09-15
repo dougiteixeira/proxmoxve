@@ -171,10 +171,11 @@ def post_api_command(
                 )
             else:
                 result = post_api(proxmox, f"cluster/ha/status/{command}")
-        # START_ALL, STOP_ALL, WAKEONLAN are not part of status API
+        # START_ALL, STOP_ALL, SUSPEND_ALL, WAKEONLAN are not part of status API
         elif api_category is ProxmoxType.Node and command in [
             ProxmoxCommand.START_ALL,
             ProxmoxCommand.STOP_ALL,
+            ProxmoxCommand.SUSPEND_ALL,
             ProxmoxCommand.WAKEONLAN,
         ]:
             result = post_api(proxmox, f"nodes/{node}/{command}")

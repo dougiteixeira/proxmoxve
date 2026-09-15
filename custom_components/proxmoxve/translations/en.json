@@ -290,6 +290,9 @@
         },
         "disarm_ha": {
           "name": "Disarm HA"
+        },
+        "suspend_all": {
+          "name": "Suspend all"
         }
       },
       "sensor": {

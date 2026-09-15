@@ -83,6 +83,39 @@ async def test_post_api_command_start_uses_post(hass: HomeAssistant) -> None:
     proxmox.put.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        ProxmoxCommand.START_ALL,
+        ProxmoxCommand.STOP_ALL,
+        ProxmoxCommand.SUSPEND_ALL,
+        ProxmoxCommand.WAKEONLAN,
+    ],
+)
+async def test_post_api_command_node_bulk_actions(
+    hass: HomeAssistant, command: ProxmoxCommand
+) -> None:
+    """Test the bulk node actions post to their own endpoint, not status."""
+    proxmox = MagicMock()
+    proxmox_client = MagicMock()
+    proxmox_client.get_api_client.return_value = proxmox
+
+    entity = SimpleNamespace(hass=hass, config_entry=mock_config_entry)
+
+    await hass.async_add_executor_job(
+        partial(
+            post_api_command,
+            entity,
+            proxmox_client=proxmox_client,
+            api_category=ProxmoxType.Node,
+            command=command,
+            node="pve",
+        )
+    )
+
+    proxmox.post.assert_called_once_with(f"nodes/pve/{command}")
+
+
 async def test_post_api_command_surfaces_non_403_error(hass: HomeAssistant) -> None:
     """Test a non-403 API error is raised instead of being swallowed."""
     proxmox = MagicMock()

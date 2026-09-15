@@ -256,7 +256,10 @@
             },
             "wakeonlan": {
                 "name": "Wake-on-LAN"
-            }
+            },
+          "suspend_all": {
+            "name": "Alle anhalten"
+          }
         },
         "sensor": {
             "cpu_used": {
