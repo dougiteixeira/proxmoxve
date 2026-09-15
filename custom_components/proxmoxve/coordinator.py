@@ -72,6 +72,7 @@ from .models import (
     ProxmoxVMData,
     ProxmoxZFSData,
 )
+from .storage import is_shared_storage_id, storage_entries, storage_name
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -1849,25 +1850,14 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
         self.resource_id = storage_id
 
     async def _async_update_data(self) -> ProxmoxStorageData:
-        """Update data  for Proxmox Update."""
-        node_name = None
-        api_status = None
+        """
+        Update data for a storage, local or shared.
 
-        api_path = "cluster/resources"
-        resources = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            api_path,
-            ProxmoxType.Resources,
-            None,
-        )
-
-        for resource in resources if resources is not None else []:
-            if "storage" in resource and resource["id"] == self.resource_id:
-                node_name = resource["node"]
-
+        A local storage is one row of the cluster's storage listing. A shared
+        one is listed once per node that mounts it, all with the same
+        figures; the row of a node that currently sees it as available is
+        used, and every such node is carried along.
+        """
         api_path = "cluster/resources?type=storage"
         api_storages = await self.hass.async_add_executor_job(
             poll_api,
@@ -1878,27 +1868,40 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             ProxmoxType.Storage,
             self.resource_id,
         )
+        rows = storage_entries(api_storages)
 
-        api_status = []
-        for api_storage in api_storages:
-            if api_storage["id"] == self.resource_id:
-                api_status = api_storage
+        if is_shared_storage_id(self.resource_id):
+            name_wanted = storage_name(self.resource_id)
+            candidates = sorted(
+                (row for row in rows if row.get("storage") == name_wanted),
+                key=lambda row: str(row.get("node")),
+            )
+            available = [row for row in candidates if row.get("status") == "available"]
+            # A node that sees the storage answers for it; failing that, any
+            # node that has it configured, so the entity exists and says so.
+            api_status = (available or candidates or [None])[0]
+            nodes = tuple(str(row["node"]) for row in available if "node" in row)
+        else:
+            api_status = next(
+                (row for row in rows if row["id"] == self.resource_id), None
+            )
+            nodes = ()
 
         if api_status is None or "content" not in api_status:
             msg = f"Storage {self.resource_id} unable to be found"
             raise UpdateFailed(msg)
 
-        storage_id = api_status["id"]
-        name = f"Storage {storage_id.replace('storage/', '')}"
+        node_name = str(api_status.get("node")) if api_status.get("node") else None
+        name = f"Storage {self.resource_id.replace('storage/', '')}"
 
         # The cluster resource list says how full a storage is, but not
         # whether the node can currently reach it (`active`) or whether it
         # is enabled there at all; the node's own storage list carries both.
         # Filtered to this one storage so the answer stays small.
         node_view: dict[str, Any] = {}
-        storage_name = api_status.get("storage")
-        if node_name is not None and storage_name:
-            api_path = f"nodes/{node_name}/storage?storage={quote(str(storage_name))}"
+        storage_label = api_status.get("storage")
+        if node_name is not None and storage_label:
+            api_path = f"nodes/{node_name}/storage?storage={quote(str(storage_label))}"
             node_storages = await self.hass.async_add_executor_job(
                 poll_api,
                 self.hass,
@@ -1909,7 +1912,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
                 self.resource_id,
             )
             for entry in node_storages if isinstance(node_storages, list) else []:
-                if isinstance(entry, dict) and entry.get("storage") == storage_name:
+                if isinstance(entry, dict) and entry.get("storage") == storage_label:
                     node_view = entry
                     break
 
@@ -1923,6 +1926,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             active=_flag_or_undefined(node_view.get("active")),
             enabled=_flag_or_undefined(node_view.get("enabled")),
             shared=_flag_or_undefined(node_view.get("shared")),
+            nodes=nodes,
         )
 
 

@@ -35,6 +35,7 @@ from .const import (
     TRACKED,
     ProxmoxType,
 )
+from .storage import tracked_storage_ids
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -78,14 +79,14 @@ def discovered_resources(resources: list[dict[str, Any]]) -> dict[str, list[str]
                 found[CONF_QEMU].add(str(resource["vmid"]))
             case ProxmoxType.LXC if "vmid" in resource:
                 found[CONF_LXC].add(str(resource["vmid"]))
-            case ProxmoxType.Storage if "id" in resource:
-                found[CONF_STORAGE].add(str(resource["id"]))
+            case ProxmoxType.Storage:
+                pass  # decided for the whole listing below, shared ones once
 
     return {
         CONF_NODES: sorted(found[CONF_NODES]),
         CONF_QEMU: sorted(found[CONF_QEMU], key=int),
         CONF_LXC: sorted(found[CONF_LXC], key=int),
-        CONF_STORAGE: sorted(found[CONF_STORAGE]),
+        CONF_STORAGE: tracked_storage_ids(resources),
     }
 
 

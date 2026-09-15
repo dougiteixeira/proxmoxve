@@ -805,6 +805,9 @@ PROXMOX_SENSOR_STORAGE: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         name="Node",
         icon="mdi:server",
         translation_key="node",
+        # For a shared storage this is the node answering for it; the
+        # attribute lists every node that currently sees it.
+        extra_attrs=["nodes"],
     ),
     *PROXMOX_SENSOR_DISK,
 )
