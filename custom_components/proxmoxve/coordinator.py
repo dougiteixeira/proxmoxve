@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
@@ -1965,6 +1966,66 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
         return parse_updates(api_status, self.node_name)
 
 
+# SMART attribute ids, as smartctl numbers them. The text form of the NVMe
+# health log carries no ids, so `text_to_smart_id` maps its labels onto the
+# same numbers before the values reach the parser.
+SMART_POWER_CYCLES: Final = 12
+SMART_TEMPERATURE: Final = 194
+SMART_TEMPERATURE_AIR: Final = 190
+SMART_POWER_HOURS: Final = 9
+SMART_LIFE_LEFT: Final = 231
+SMART_POWER_LOSS: Final = 174
+
+
+def _leading_int(value: Any) -> int | None:
+    """
+    Return the integer a SMART value starts with, or None.
+
+    SMART values arrive as text and carry whatever the drive felt like
+    reporting: `36`, `36 (Min/Max 20/45)`, `3728h+12m`, or a bare `-` where
+    a virtual NVMe reports no temperature at all. The integer in front is
+    what the sensors want; anything without one is simply not a reading.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if not isinstance(value, str):
+        return None
+    match = re.match(r"\s*(\d+)", value.replace(",", ""))
+    return int(match.group(1)) if match else None
+
+
+def parse_smart_attributes(attributes: list[Any]) -> dict[str, int]:
+    """
+    Pick the SMART attributes the disk sensors report.
+
+    A value that is not a number is skipped rather than raised on. One
+    unparseable field used to take the whole disk coordinator down and mark
+    every entity of that disk unavailable, for a temperature a drive did not
+    have.
+    """
+    wanted = {
+        SMART_POWER_CYCLES: ("power_cycles", "raw"),
+        SMART_TEMPERATURE: ("temperature", "raw"),
+        SMART_TEMPERATURE_AIR: ("temperature_air", "raw"),
+        SMART_POWER_HOURS: ("power_hours", "raw"),
+        SMART_LIFE_LEFT: ("life_left", "value"),
+        SMART_POWER_LOSS: ("power_loss", "raw"),
+    }
+    result: dict[str, int] = {}
+    for attribute in attributes:
+        if not isinstance(attribute, dict):
+            continue
+        smart_id = _leading_int(attribute.get("id"))
+        if smart_id not in wanted:
+            continue
+        key, field = wanted[smart_id]
+        if (number := _leading_int(attribute.get(field))) is not None:
+            result[key] = number
+    return result
+
+
 class ProxmoxDiskCoordinator(ProxmoxCoordinator):
     """Proxmox VE Disk data update coordinator."""
 
@@ -2048,7 +2109,6 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
 
         for disk in api_status:
             if disk_matches_id(disk, self.resource_id):
-                disk_attributes = {}
                 api_path = f"nodes/{self.node_name}/disks/smart?disk={disk['devpath']}"
                 try:
                     disk_attributes_api = await self.hass.async_add_executor_job(
@@ -2086,40 +2146,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                                 }
                             )
 
-                for disk_attribute in attributes_json:
-                    if int(disk_attribute["id"].strip()) == 12:
-                        disk_attributes["power_cycles"] = int(disk_attribute["raw"])
-
-                    elif int(disk_attribute["id"].strip()) == 194:
-                        disk_attributes["temperature"] = int(
-                            disk_attribute["raw"].strip().split(" ", 1)[0]
-                        )
-
-                    elif int(disk_attribute["id"].strip()) == 190:
-                        disk_attributes["temperature_air"] = int(
-                            disk_attribute["raw"].strip().split(" ", 1)[0]
-                        )
-
-                    elif int(disk_attribute["id"].strip()) == 9:
-                        power_hours_raw = disk_attribute["raw"]
-                        if len(power_hours_h := power_hours_raw.strip().split("h")) > 1:
-                            disk_attributes["power_hours"] = int(
-                                power_hours_h[0].strip()
-                            )
-                        elif (
-                            len(power_hours_s := power_hours_raw.strip().split(" ")) > 1
-                        ):
-                            disk_attributes["power_hours"] = int(
-                                power_hours_s[0].strip()
-                            )
-                        else:
-                            disk_attributes["power_hours"] = int(disk_attribute["raw"])
-
-                    elif int(disk_attribute["id"].strip()) == 231:
-                        disk_attributes["life_left"] = int(disk_attribute["value"])
-
-                    elif int(disk_attribute["id"].strip()) == 174:
-                        disk_attributes["power_loss"] = int(disk_attribute["raw"])
+                disk_attributes = parse_smart_attributes(attributes_json)
 
                 disk_type = disk.get("type", None)
                 return ProxmoxDiskData(
