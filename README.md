@@ -51,6 +51,10 @@ data:
 
 The credentials need `VM.Backup` on each guest and `Datastore.AllocateSpace` on the storage; Proxmox's refusal names what is missing, and the action passes that message on.
 
+### Backup buttons
+
+For a dashboard there are buttons as well: **`Back up now`** on every VM and container, **`Back up all`** on every node. A button cannot ask where to write, so they need the option **Backup storage for the backup buttons** in the integration options — a pick-list of the storages that accept backups, any other name can be typed in. Without a storage picked there are no buttons at all, since `vzdump` would otherwise dump into the node's local directory; and like every other button they exist only where the credentials hold the privilege, `VM.Backup` here. Both run in snapshot mode. Off by default like the other buttons that change things.
+
 For the other direction - which guests no backup job covers at all - see the `Guests without backup` sensor under [Cluster HA Administration](#cluster-ha-administration-advanced-optional).
 
 ### Failed Task Monitoring

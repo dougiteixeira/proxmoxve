@@ -126,3 +126,19 @@ def merge_shared_selection(
             new_selection.append(new_id)
 
     return new_selection, keepers, dropped
+
+
+def backup_storage_options(resources: Any) -> list[str]:
+    """
+    Return the names of the storages a backup can be written to.
+
+    A storage takes backups when `backup` is among its content types; the
+    listing carries it once per node, so the names are collapsed. Anything
+    not in the list can still be typed in.
+    """
+    names = {
+        str(entry["storage"])
+        for entry in storage_entries(resources)
+        if "backup" in str(entry.get("content", "")).split(",")
+    }
+    return sorted(names)

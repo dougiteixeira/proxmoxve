@@ -12,6 +12,7 @@ from homeassistant.components.button import ButtonEntity, ButtonEntityDescriptio
 from . import device_info
 from .api import ProxmoxClient, post_api_command
 from .const import (
+    CONF_BACKUP_STORAGE,
     CONF_LXC,
     CONF_NODES,
     CONF_QEMU,
@@ -57,8 +58,24 @@ class ProxmoxButtonEntityDescription(ProxmoxEntityDescription, ButtonEntityDescr
 # The node actions that act on guests rather than on the node: Proxmox
 # checks VM.PowerMgmt per guest for these, not Sys.PowerMgmt on the node.
 BULK_GUEST_COMMANDS: Final[frozenset[ProxmoxCommand]] = frozenset(
-    {ProxmoxCommand.START_ALL, ProxmoxCommand.STOP_ALL, ProxmoxCommand.SUSPEND_ALL}
+    {
+        ProxmoxCommand.START_ALL,
+        ProxmoxCommand.STOP_ALL,
+        ProxmoxCommand.SUSPEND_ALL,
+        ProxmoxCommand.BACKUP_ALL,
+    }
 )
+# The backup buttons need a storage picked in the options besides the
+# privilege; without one they are left out altogether.
+BACKUP_COMMANDS: Final[frozenset[ProxmoxCommand]] = frozenset(
+    {ProxmoxCommand.BACKUP, ProxmoxCommand.BACKUP_ALL}
+)
+
+
+def backup_storage(config_entry: ConfigEntry) -> str | None:
+    """Return the storage the backup buttons write to, or None when unset."""
+    value = config_entry.options.get(CONF_BACKUP_STORAGE)
+    return value.strip() if isinstance(value, str) and value.strip() else None
 
 
 def button_permitted(
@@ -117,6 +134,16 @@ PROXMOX_BUTTON_NODE: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Suspend all",
         entity_registry_enabled_default=False,
         translation_key="suspend_all",
+    ),
+    # Backs up every guest on the node to the storage picked in the
+    # options, in snapshot mode. Only offered while a storage is picked.
+    ProxmoxButtonEntityDescription(
+        key=ProxmoxCommand.BACKUP_ALL,
+        privilege=ProxmoxPrivilege.VM_BACKUP,
+        icon="mdi:backup-restore",
+        name="Back up all",
+        entity_registry_enabled_default=False,
+        translation_key="backup_all",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.SHUTDOWN,
@@ -186,6 +213,17 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         name="Create snapshot",
         entity_registry_enabled_default=False,
         translation_key="snapshot",
+    ),
+    # A snapshot stays in the guest's own storage; a backup is a copy to
+    # the storage picked in the options, and the button exists only while
+    # one is picked.
+    ProxmoxButtonEntityDescription(
+        key=ProxmoxCommand.BACKUP,
+        privilege=ProxmoxPrivilege.VM_BACKUP,
+        icon="mdi:backup-restore",
+        name="Back up now",
+        entity_registry_enabled_default=False,
+        translation_key="backup",
     ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.UNLOCK,
@@ -298,6 +336,7 @@ async def async_setup_buttons_nodes(
     coordinators = config_entry.runtime_data[COORDINATORS]
     proxmox_client = config_entry.runtime_data[PROXMOX_CLIENT]
     permissions = config_entry.runtime_data.get(PROXMOX_PERMISSIONS)
+    storage = backup_storage(config_entry)
 
     for node in selected(config_entry, CONF_NODES, only):
         if f"{ProxmoxType.Node}_{node}" in coordinators:
@@ -309,6 +348,8 @@ async def async_setup_buttons_nodes(
         if coordinator.data is None:
             continue
         for description in PROXMOX_BUTTON_NODE:
+            if description.key in BACKUP_COMMANDS and storage is None:
+                continue
             if not button_permitted(permissions, description, ProxmoxType.Node, node):
                 LOGGER.debug(
                     "Leaving out the %s button of node %s: no %s",
@@ -348,6 +389,7 @@ async def async_setup_buttons_guests(
     coordinators = config_entry.runtime_data[COORDINATORS]
     proxmox_client = config_entry.runtime_data[PROXMOX_CLIENT]
     permissions = config_entry.runtime_data.get(PROXMOX_PERMISSIONS)
+    storage = backup_storage(config_entry)
     key = CONF_QEMU if api_category is ProxmoxType.QEMU else CONF_LXC
 
     for vm_id in selected(config_entry, key, only):
@@ -364,6 +406,8 @@ async def async_setup_buttons_guests(
                 description.api_category is not None
                 and api_category not in description.api_category
             ):
+                continue
+            if description.key in BACKUP_COMMANDS and storage is None:
                 continue
             if not button_permitted(permissions, description, api_category, vm_id):
                 LOGGER.debug(

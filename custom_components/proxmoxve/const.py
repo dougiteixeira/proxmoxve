@@ -15,6 +15,10 @@ CONF_VMS = "vms"
 CONF_CONTAINERS = "containers"
 CONF_DISKS_ENABLE = "disks_enable"
 CONF_TASKS_ENABLE = "tasks_enable"
+# The storage the backup buttons write to. Unset means no buttons: vzdump
+# without a storage dumps into the node's local directory, which is never
+# what a button on a dashboard should do without being asked.
+CONF_BACKUP_STORAGE = "backup_storage"
 CONF_AUTO_DISCOVERY = "auto_discovery"
 CONF_GUEST_FILE_PATH = "guest_file_path"
 CONF_HA_ADMIN_USERNAME = "ha_admin_username"
@@ -102,6 +106,8 @@ class ProxmoxCommand(StrEnum):
     SUSPEND_ALL = "suspendall"
     HIBERNATE = "hibernate"
     SNAPSHOT = "snapshot"
+    BACKUP = "backup"
+    BACKUP_ALL = "backup-all"
     WAKEONLAN = "wakeonlan"
     UNLOCK = "unlock"
     ARM_HA = "arm-ha"
