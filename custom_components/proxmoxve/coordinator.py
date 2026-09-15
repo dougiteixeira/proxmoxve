@@ -1713,7 +1713,16 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             network_in=api_status.get("netin", UNDEFINED),
             network_out=api_status.get("netout", UNDEFINED),
             disk_total=api_status.get("maxdisk", UNDEFINED),
-            disk_used=api_status.get("disk", UNDEFINED),
+            disk_used=(
+                api_status.get("disk", UNDEFINED)
+                # Proxmox cannot look inside a container that is not running
+                # and reports `disk: 0` - which is not "empty": the data is
+                # still on the volume. That 0 turned into 0% used and 100%
+                # free every time a container stopped, a spike in every
+                # graph. Memory and swap really are zero then; disk is not.
+                if api_status.get("status") == "running"
+                else UNDEFINED
+            ),
             swap_total=api_status.get("maxswap", UNDEFINED),
             swap_used=api_status.get("swap", UNDEFINED),
             swap_free=(

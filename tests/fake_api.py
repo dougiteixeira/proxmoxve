@@ -127,7 +127,8 @@ def lxc_status(vmid: int, name: str, status: str = "running") -> dict:
         "maxmem": 1_073_741_824,
         "swap": 0,
         "maxswap": 536_870_912,
-        "disk": 911_167_488,
+        # Proxmox cannot see inside a stopped container and reports 0.
+        "disk": 911_167_488 if running else 0,
         "maxdisk": 2_040_373_248,
         "netin": 370_783_656,
         "netout": 117_493_824,
