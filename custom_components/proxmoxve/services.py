@@ -98,6 +98,12 @@ def vzdump_parameters(call_data: dict[str, Any]) -> dict[str, Any]:
     if (compress := call_data.get(ATTR_COMPRESS)) is not None:
         params["compress"] = compress
     if notes := call_data.get(ATTR_NOTES):
+        # vzdump accepts a notes template only together with a storage -
+        # checked on a live node - and answers a parameter error otherwise.
+        if not storage:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="backup_notes_need_storage"
+            )
         params["notes-template"] = notes
     return params
 
