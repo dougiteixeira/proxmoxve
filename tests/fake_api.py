@@ -57,6 +57,8 @@ STORAGE_EXT = {
     "maxdisk": 471_416_549_376,
     "shared": 1,
 }
+# The same export as the second node lists it: identical figures, other id.
+STORAGE_EXT_PVE2 = {**STORAGE_EXT, "id": "storage/pve2/ext", "node": "pve2"}
 
 
 def guest_resource(kind: str, vmid: int, name: str, status: str = "running") -> dict:
@@ -165,9 +167,14 @@ def default_routes() -> dict[str, Any]:
             ct,
             STORAGE_LOCAL,
             STORAGE_EXT,
+            STORAGE_EXT_PVE2,
             {"id": f"sdn/{NODE}/localnetwork", "type": "sdn", "node": NODE},
         ],
-        "cluster/resources?type=storage": [STORAGE_LOCAL, STORAGE_EXT],
+        "cluster/resources?type=storage": [
+            STORAGE_LOCAL,
+            STORAGE_EXT,
+            STORAGE_EXT_PVE2,
+        ],
         "access/permissions": {
             "/": {
                 "Sys.Audit": 1,

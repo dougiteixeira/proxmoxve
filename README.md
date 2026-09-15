@@ -65,6 +65,12 @@ Besides its capacity sensors, each selected storage gets three diagnostic binary
 
 They need the same `Datastore.Audit` on the storage as the capacity sensors. When that list cannot be read, the entities are not created rather than left permanently off.
 
+### Shared storage, once
+
+Proxmox lists a storage once per node that has it configured, so an NFS export or a Ceph pool a four-node cluster mounts everywhere used to appear four times in Home Assistant with the same numbers. A storage the cluster marks as **shared** is now one device on the `Proxmox Cluster`, tracked as `storage/<name>` instead of `storage/<node>/<name>`. Its figures come from a node that currently reports it available, and the `Node` sensor's `nodes` attribute lists every node that does. Local storage — a directory, an LVM, a ZFS pool — is still per node, because it genuinely is.
+
+If you set the integration up before this change, the switch happens by itself at the next start: of the per-node entries you had picked, the one on the node you configured (or the first you picked) keeps its device, its entities and their history under the new id; the other entries lose their device. Automations that referred to one of the removed entities — `sensor.storage_<other node>_<name>_…` — have to be pointed at the one that stayed. The selection in the integration options shows shared storage once from now on, marked *(shared)*.
+
 ### Hardware Sensors
 
 The integration automatically discovers and exposes hardware temperature, voltage, power, current, and fan speed sensors from Proxmox VE hosts via `lm-sensors`.

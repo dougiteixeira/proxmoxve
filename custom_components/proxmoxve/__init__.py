@@ -108,6 +108,14 @@ from .permissions import (
     async_fetch_permissions,
     is_granted,
 )
+from .storage import (
+    STORAGE_PREFIX,
+    is_shared_storage_id,
+    merge_shared_selection,
+    shared_storage_names,
+    storage_name,
+    tracked_storage_ids,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -803,11 +811,9 @@ async def _async_setup_storage(  # noqa: PLR0917
     Returns whether the cluster lists the storage; a repair issue says so
     when it does not.
     """
-    if storage_id not in [
-        resource.get("id")
-        for resource in (resources if isinstance(resources, list) else [])
-        if isinstance(resource, dict)
-    ]:
+    # Shared storage is tracked under its node-less id, which the listing
+    # itself never carries; `tracked_storage_ids` speaks both forms.
+    if storage_id not in tracked_storage_ids(resources):
         _resource_nonexistent_issue(
             hass,
             config_entry,
@@ -868,7 +874,7 @@ async def _async_drop_coordinators(
 
 async def _learn_cluster_hosts(
     hass: HomeAssistant, client: ProxmoxClient, proxmox: ProxmoxAPI
-) -> None:
+) -> str | None:
     """
     Tell the client what the other nodes of the cluster answer on.
 
@@ -877,20 +883,94 @@ async def _learn_cluster_hosts(
     turn instead of taking the whole cluster out of Home Assistant. Not
     being able to read the list - a single node, or credentials without
     Sys.Audit on `/` - changes nothing about setup.
+
+    Returns the name of the node the configured host is, which the same
+    listing marks as `local`, or None when that could not be read.
     """
     try:
         status = await hass.async_add_executor_job(get_api, proxmox, "cluster/status")
     except (AuthenticationError, RequestException, ResourceException) as error:
         LOGGER.debug("Cluster members not read, no fallback hosts: %s", error)
-        return
-    hosts = [
-        entry["ip"]
+        return None
+    nodes = [
+        entry
         for entry in (status if isinstance(status, list) else [])
-        if isinstance(entry, dict) and entry.get("type") == "node" and entry.get("ip")
+        if isinstance(entry, dict) and entry.get("type") == "node"
     ]
-    client.learn_hosts(hosts)
+    client.learn_hosts([entry["ip"] for entry in nodes if entry.get("ip")])
     if len(client.hosts) > 1:
         LOGGER.debug("Fallback hosts for %s: %s", client.host, client.hosts[1:])
+    local = next((entry for entry in nodes if entry.get("local")), None)
+    return str(local["name"]) if local and local.get("name") else None
+
+
+def async_merge_shared_storages(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    resources: Any,
+    preferred_node: str | None,
+) -> None:
+    """
+    Bring a selection made per node up to the one-device form for shared storage.
+
+    Until now a shared storage was tracked once per node, as
+    `storage/<node>/<name>`, and a cluster of four showed the same NFS
+    export four times. It is tracked as `storage/<name>` from here on.
+    Where the selection still carries the per-node ids of a storage the
+    cluster marks as shared, one of them keeps the device and every entity
+    - the one on the node the configured host is, where picked, otherwise
+    the first picked - under the new id, so history is kept; the others
+    lose their device. Runs at every setup and does nothing once the
+    selection is current, which also covers an entry that was set up
+    while the cluster could not be asked.
+    """
+    selection = [str(value) for value in config_entry.data.get(CONF_STORAGE, [])]
+    shared = shared_storage_names(resources)
+    new_selection, keepers, dropped = merge_shared_selection(
+        selection, shared, preferred_node
+    )
+    if new_selection == selection:
+        return
+
+    dev_reg = dr.async_get(hass)
+    ent_reg = er.async_get(hass)
+    prefix = f"{config_entry.entry_id}_{ProxmoxType.Storage.upper()}_"
+    for new_id, old_id in keepers.items():
+        old_identifier = (DOMAIN, prefix + old_id.replace(STORAGE_PREFIX, ""))
+        new_identifier = (DOMAIN, prefix + new_id.replace(STORAGE_PREFIX, ""))
+        device = dev_reg.async_get_device_by_identifier(
+            old_identifier, config_entry.entry_id
+        )
+        if device is not None and new_identifier not in device.identifiers:
+            dev_reg.async_update_device(
+                device_id=device.id, new_identifiers={new_identifier}
+            )
+        for entity in er.async_entries_for_config_entry(ent_reg, config_entry.entry_id):
+            old_unique = f"{config_entry.entry_id}_{old_id}_"
+            if entity.unique_id.startswith(old_unique):
+                ent_reg.async_update_entity(
+                    entity.entity_id,
+                    new_unique_id=f"{config_entry.entry_id}_{new_id}_"
+                    + entity.unique_id[len(old_unique) :],
+                )
+    for old_id in dropped:
+        device = dev_reg.async_get_device_by_identifier(
+            (DOMAIN, prefix + old_id.replace(STORAGE_PREFIX, "")),
+            config_entry.entry_id,
+        )
+        if device is not None:
+            dev_reg.async_update_device(
+                device_id=device.id, remove_config_entry_id=config_entry.entry_id
+            )
+
+    LOGGER.info(
+        "Shared storage is tracked once now: %s kept, %s merged away",
+        list(keepers.values()),
+        dropped,
+    )
+    hass.config_entries.async_update_entry(
+        config_entry, data={**config_entry.data, CONF_STORAGE: new_selection}
+    )
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
@@ -944,7 +1024,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         raise ConfigEntryNotReady from error
 
     proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
-    await _learn_cluster_hosts(hass, proxmox_client, proxmox)
+    local_node = await _learn_cluster_hosts(hass, proxmox_client, proxmox)
 
     coordinators: dict[
         str,
@@ -960,6 +1040,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     nodes_add_device = []
 
     resources = await _get_api_or_retry_setup(hass, proxmox, "cluster/resources", host)
+    async_merge_shared_storages(hass, config_entry, resources, local_node)
 
     # What these credentials may do, so the button platform can leave out
     # buttons that could only ever fail. None when it cannot be read, in
@@ -1236,7 +1317,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop_polling)
     )
 
-    if proxmox_ha_admin_client is not None:
+    # The cluster device carries the HA features and every shared storage;
+    # it has to exist before those hang their entities under it.
+    if proxmox_ha_admin_client is not None or any(
+        is_shared_storage_id(storage_id) for storage_id in tracked[CONF_STORAGE]
+    ):
         device_info(
             hass=hass,
             config_entry=config_entry,
@@ -1326,12 +1411,19 @@ def device_info(
 
         name = cordinator_resource.name
         identifier = f"{config_entry.entry_id}_{api_category.upper()}_{resource_id.replace('storage/', '')}"
-        url = f"https://{host}:{port}/#v1:0:={resource_id}"
-        via_device = (
-            DOMAIN,
-            f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
-        )
-        model = api_category.capitalize()
+        if is_shared_storage_id(resource_id):
+            # One device for the whole cluster; the web interface still
+            # wants a node in the address, so use the one answering for it.
+            url = f"https://{host}:{port}/#v1:0:=storage/{node}/{storage_name(resource_id)}"
+            via_device = (DOMAIN, f"{config_entry.entry_id}_cluster")
+            model = "Shared storage"
+        else:
+            url = f"https://{host}:{port}/#v1:0:={resource_id}"
+            via_device = (
+                DOMAIN,
+                f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}",
+            )
+            model = api_category.capitalize()
 
     elif api_category in (ProxmoxType.Node, ProxmoxType.Update):
         coordinator = coordinators[f"{ProxmoxType.Node}_{node}"]

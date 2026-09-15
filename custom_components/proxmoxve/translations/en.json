@@ -511,7 +511,12 @@
           "name": "Network out"
         },
         "node": {
-          "name": "Node"
+          "name": "Node",
+          "state_attributes": {
+            "nodes": {
+              "name": "Nodes"
+            }
+          }
         },
         "power_cycles": {
           "name": "Power cycles"

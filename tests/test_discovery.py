@@ -45,7 +45,8 @@ FAKE_EVERYTHING = {
     CONF_NODES: ["pve"],
     CONF_QEMU: ["101"],
     CONF_LXC: ["100"],
-    CONF_STORAGE: ["storage/pve/ext", "storage/pve/local"],
+    # `ext` is shared and listed by two nodes; it is tracked once, node-less.
+    CONF_STORAGE: ["storage/ext", "storage/pve/local"],
 }
 
 
@@ -401,5 +402,5 @@ async def test_a_guest_only_the_cluster_knows_gets_its_entities_at_setup(
     assert device.name != current_entry.title
     # The storage the fake lists but the entry never picked, likewise.
     assert registry.async_get_entity_id(
-        "sensor", DOMAIN, f"{entry_id}_storage/pve/ext_node"
+        "sensor", DOMAIN, f"{entry_id}_storage/ext_node"
     )

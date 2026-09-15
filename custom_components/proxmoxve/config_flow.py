@@ -53,6 +53,7 @@ from .const import (
     VERSION_REMOVE_YAML,
     ProxmoxType,
 )
+from .storage import storage_choices
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -358,9 +359,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                         )
                     else:
                         resource_lxc[str(resource["vmid"])] = f"{resource['vmid']}"
-                if ("type" in resource) and (resource["type"] == ProxmoxType.Storage):
-                    if "storage" in resource:
-                        resource_storage[str(resource["id"])] = resource["id"]
+            resource_storage.update(storage_choices(resources))
 
             return self.async_show_form(
                 step_id="change_expose",
@@ -585,7 +584,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         for storage_id in self.config_entry.data[CONF_STORAGE]:
             if storage_id not in storage_selecition:
                 # Remove device
-                identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage_id}"
+                identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage_id.replace('storage/', '')}"
                 await self.async_remove_device(
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
@@ -1066,8 +1065,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
                     else:
                         resource_lxc[str(resource["vmid"])] = f"{resource['vmid']}"
-                if ("type" in resource) and (resource["type"] == ProxmoxType.Storage):
-                    resource_storage[str(resource["id"])] = f"{resource['id']}"
+            resource_storage.update(storage_choices(resources))
 
             return self.async_show_form(
                 step_id="expose",

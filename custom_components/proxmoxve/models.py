@@ -113,6 +113,9 @@ class ProxmoxStorageData:
     active: bool | UndefinedType
     enabled: bool | UndefinedType
     shared: bool | UndefinedType
+    # For a shared storage: the nodes that currently list it as available,
+    # so the one figure shown says where it can be reached.
+    nodes: tuple[str, ...] = ()
 
 
 @dataclasses.dataclass
