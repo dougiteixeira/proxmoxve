@@ -16,6 +16,8 @@ from __future__ import annotations
 from typing import Any
 
 STORAGE_PREFIX = "storage/"
+# `storage/<node>/<name>` has three parts; the shared form `storage/<name>` two.
+PER_NODE_ID_PARTS = 3
 
 
 def storage_name(storage_id: str) -> str:
@@ -26,7 +28,7 @@ def storage_name(storage_id: str) -> str:
 def storage_node(storage_id: str) -> str | None:
     """Return the node of a per-node id, or None for a shared one."""
     parts = storage_id.split("/")
-    return parts[1] if len(parts) == 3 else None  # noqa: PLR2004
+    return parts[1] if len(parts) == PER_NODE_ID_PARTS else None
 
 
 def is_shared_storage_id(storage_id: str) -> bool:
