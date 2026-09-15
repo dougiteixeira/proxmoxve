@@ -77,6 +77,23 @@ Every node, VM and container has a `Status` sensor. They are proper enum sensors
 
 A state this integration has never heard of reads as unknown rather than breaking the sensor, so a future QEMU release cannot take the entity down.
 
+### Node figures
+
+Beyond CPU, memory, swap and disk, each node reports:
+
+- **`IO delay`** — the share of time the CPUs spent waiting for I/O, what the node summary in Proxmox shows as IO delay and the figure to watch when storage is the bottleneck.
+- **`Load average 1 min`**, and `5 min` / `15 min` disabled by default.
+- **`Version`** — the Proxmox VE version, as a diagnostic sensor rather than only on the device page.
+- **`CPUs`** — the node's logical CPU count, diagnostic, disabled by default.
+
+The node's device also carries the hardware addresses of its physical ports, read from the MAC-based interface names Proxmox lists, so Home Assistant can merge it with what a network integration sees of the same machine.
+
+### CPU per guest
+
+A guest's `CPU used` is relative to its own cores: a two-core guest at 100 % and a twelve-core one at 100 % read the same while costing the host very different amounts. The sensor carries the guest's core count as an attribute, and a second sensor, **`CPU used of host`** (disabled by default), scales the guest's usage by its cores over the node's — the figure the Proxmox summary shows next to each guest.
+
+A container that is not running reports its disk usage as *unknown* rather than 0 % used and 100 % free: Proxmox cannot look inside a stopped container and reports `disk: 0`, but the data is still on the volume. Memory and swap stay at 0 % for a stopped guest, because those really are zero.
+
 ### Storage state
 
 Besides its capacity sensors, each selected storage gets three diagnostic binary sensors read from the node's own storage list (`GET /nodes/{node}/storage`), the same three as in the Home Assistant core integration:
@@ -131,6 +148,10 @@ ls -l /run/pveproxy/pve-mod/sensors.json
 journalctl -u pveproxy --since today | grep -i pve-mod
 ```
 
+#### Physical disks and SMART
+
+The per-disk temperature, power-on hours, power cycles, wearout and health come from `nodes/{node}/disks/smart`. Proxmox hands that out in two shapes — smartctl's numbered attributes for SATA drives, and its text log for NVMe and SAS drives — and both are read, including the SAS labels (`Current Drive Temperature`, `Accumulated start-stop cycles`, `Accumulated power on time, hours:minutes`) an enterprise drive behind an expander uses. A value the drive does not have, such as a virtual NVMe reporting its temperature as `-`, is left out; it no longer takes the whole disk offline.
+
 #### Supported Hardware
 
 | Chip / Driver | Device Type | Examples |
@@ -163,6 +184,17 @@ For QEMU virtual machines with the [QEMU Guest Agent](https://pve.proxmox.com/wi
 - Only VMs where the file can actually be read (guest agent running, file exists and is accessible) get the sensor; it is silently skipped otherwise.
 - Content is capped at 4 KiB per read; the sensor state is further truncated to 255 characters (Home Assistant's state length limit), with the full (capped) content available as the `guest_file_content` attribute.
 - QEMU only — LXC containers have no equivalent guest-agent file-read API.
+
+### The cluster at a glance
+
+Every setup gets a `Proxmox Cluster` device with a summary read from the same resource list the integration already polls — no extra privilege:
+
+- **`Nodes online`**, with the total and the names of any offline nodes as attributes.
+- **`Virtual machines running`** and **`Containers running`** across the cluster, with the totals as attributes. Templates are not counted.
+- **`CPU used`** across the online nodes, weighted by each node's core count — sixteen cores at 50 % and four at 100 % is 60 % of the cluster, not the 75 % a plain average would say.
+- **`Memory used percentage`**, and `Memory used` / `Memory total` in bytes disabled by default.
+
+The optional cluster credentials add the HA status and backup coverage to the same device; shared storage hangs there too.
 
 ### Ceph health
 
@@ -243,6 +275,10 @@ Every request goes through the one host you configured; its `pveproxy` forwards 
 The integration now asks `cluster/status` at setup what address every node answers on, and when the configured host stops answering it moves to the next node that does — logged as a warning — and keeps polling there. Nothing needs to be configured, and nothing is written to the entry: the configured host stays the one shown, and the next reload starts there again.
 
 Two limits. The addresses in `cluster/status` are the ones the nodes joined the cluster on; if your cluster runs corosync on a separate network, Home Assistant cannot reach them and the fallback finds nothing — which leaves things exactly as they were before. And with **Verify SSL certificate** on, a fallback node has to present a certificate valid for that address, which per-node certificates usually are not.
+
+### Nodes that are switched off for a while
+
+With password authentication, a node that is off for longer than two hours used to demand new credentials when it came back: the login ticket had expired and its renewal was refused exactly like a wrong password. The integration now logs in again with the stored password before asking for anything, so a node that is off overnight simply resumes in the morning. A host that answers during boot but is not issuing tickets yet leaves setup retrying rather than asking for credentials. Tokens never had this problem; they do not expire.
 
 ## Features I cannot test myself
 
