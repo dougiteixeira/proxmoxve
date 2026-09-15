@@ -1268,6 +1268,7 @@ def device_info(
     proxmox_version = None
     manufacturer = None
     serial_number = None
+    connections: set[tuple[str, str]] = set()
     if api_category is ProxmoxType.Proxmox:
         name = "Proxmox Cluster"
         identifier = f"{config_entry.entry_id}_cluster"
@@ -1309,6 +1310,10 @@ def device_info(
         if (coordinator_data := coordinator.data) is not None:
             model_processor = coordinator_data.model
             proxmox_version = f"Proxmox {coordinator_data.version}"
+            connections = {
+                (dr.CONNECTION_NETWORK_MAC, mac)
+                for mac in coordinator_data.mac_addresses
+            }
 
         name = f"{ProxmoxType.Node.capitalize()} {node}"
         identifier = f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
@@ -1379,6 +1384,7 @@ def device_info(
             entry_type=dr.DeviceEntryType.SERVICE,
             configuration_url=url,
             identifiers={(DOMAIN, identifier)},
+            connections=connections,
             manufacturer=manufacturer or INTEGRATION_TITLE,
             name=name,
             model=model,
@@ -1391,6 +1397,7 @@ def device_info(
         entry_type=dr.DeviceEntryType.SERVICE,
         configuration_url=url,
         identifiers={(DOMAIN, identifier)},
+        connections=connections,
         manufacturer=manufacturer or INTEGRATION_TITLE,
         name=name,
         model=model,

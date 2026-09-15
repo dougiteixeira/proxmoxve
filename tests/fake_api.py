@@ -200,6 +200,30 @@ def default_routes() -> dict[str, Any]:
             "kversion": "Linux 6.14.11-2-pve",
             "pveversion": "pve-manager/9.0.6/1234abcd",
         },
+        f"nodes/{NODE}/network": [
+            {
+                "iface": "vmbr0",
+                "type": "bridge",
+                "bridge_ports": "nic0",
+                "address": "192.0.2.10",
+                "cidr": "192.0.2.10/24",
+                "active": 1,
+            },
+            {
+                "iface": "nic0",
+                "type": "eth",
+                "altnames": ["enp0s31f6", "enx02000a0b0c0d"],
+                "active": 1,
+                "exists": 1,
+            },
+            {
+                "iface": "nic1",
+                "type": "eth",
+                "altnames": ["enp179s0f0", "enx02000a0b0c0e"],
+                "active": 1,
+                "exists": 1,
+            },
+        ],
         f"nodes/{NODE}/version": {
             "version": "9.0.6",
             "release": "9.0",

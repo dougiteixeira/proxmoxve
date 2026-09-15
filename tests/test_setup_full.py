@@ -237,6 +237,30 @@ async def test_the_node_reports_io_delay_and_its_version(
     assert version.state == "9.0.6"
 
 
+async def test_the_node_device_carries_its_mac_addresses(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test the node device is linked by the hardware addresses of its ports.
+
+    `nodes/{node}/network` carries no MAC field, but systemd's MAC-based
+    interface name sits in `altnames`, and that is enough for Home
+    Assistant to merge the node with what a network integration sees.
+    """
+    await _setup(hass, current_entry)
+
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, f"{current_entry.entry_id}_NODE_{NODE}"), current_entry.entry_id
+    )
+    assert device is not None
+    assert device.connections == {
+        (dr.CONNECTION_NETWORK_MAC, "02:00:0a:0b:0c:0d"),
+        (dr.CONNECTION_NETWORK_MAC, "02:00:0a:0b:0c:0e"),
+    }
+    # Read once, not on every poll.
+    assert sum(1 for call in fake_api.calls if call[1].endswith("/network")) == 1
+
+
 async def test_disks_and_pools_get_their_own_devices(
     hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
 ) -> None:
