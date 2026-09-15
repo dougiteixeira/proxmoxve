@@ -1968,15 +1968,67 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
         return parse_updates(api_status, self.node_name)
 
 
-# SMART attribute ids, as smartctl numbers them. The text form of the NVMe
-# health log carries no ids, so `text_to_smart_id` maps its labels onto the
-# same numbers before the values reach the parser.
+# SMART attribute ids, as smartctl numbers them. The text form Proxmox hands
+# out for NVMe and SAS drives carries no ids, so `parse_smart_text` maps its
+# labels onto the same numbers before the values reach the parser.
 SMART_POWER_CYCLES: Final = 12
 SMART_TEMPERATURE: Final = 194
 SMART_TEMPERATURE_AIR: Final = 190
 SMART_POWER_HOURS: Final = 9
 SMART_LIFE_LEFT: Final = 231
 SMART_POWER_LOSS: Final = 174
+
+
+# The labels smartctl prints in place of numbered attributes, per drive
+# type. NVMe is the health log; SAS is what an enterprise drive behind an
+# expander reports, with its own words for the same three things - one of
+# them a label that itself contains the colon the format splits on.
+SMART_TEXT_LABELS: Final[dict[str, int]] = {
+    # NVMe
+    "Temperature": SMART_TEMPERATURE,
+    "Power Cycles": SMART_POWER_CYCLES,
+    "Power On Hours": SMART_POWER_HOURS,
+    # SAS
+    "Current Drive Temperature": SMART_TEMPERATURE,
+    "Accumulated start-stop cycles": SMART_POWER_CYCLES,
+    "Accumulated power on time, hours:minutes": SMART_POWER_HOURS,
+}
+
+
+def parse_smart_text(text: str) -> list[dict[str, Any]]:
+    """
+    Turn smartctl's text output into the attribute shape the parser reads.
+
+    Each line is `label: value`. The label is matched whole rather than by
+    prefix, so `Temperature Sensor 1` does not pass for `Temperature`; the
+    one SAS label that carries a colon of its own is looked for first.
+    Lines with a label the sensors do not show are left out.
+    """
+    attributes: list[dict[str, Any]] = []
+    for raw_line in text.split("\n"):
+        line = raw_line.strip()
+        if not line:
+            continue
+        label, value = None, ""
+        for known in SMART_TEXT_LABELS:
+            if ":" in known and line.startswith(known):
+                label, value = known, line[len(known) :]
+                break
+        if label is None:
+            head, sep, tail = line.partition(":")
+            if not sep:
+                continue
+            label, value = head.strip(), tail
+        if label not in SMART_TEXT_LABELS:
+            continue
+        attributes.append(
+            {
+                "name": label,
+                "raw": value.strip().replace(",", ""),
+                "id": SMART_TEXT_LABELS[label],
+            }
+        )
+    return attributes
 
 
 def _leading_int(value: Any) -> int | None:
@@ -2056,19 +2108,6 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         self.node_name = node_name
         self.resource_id = disk_id
 
-    def text_to_smart_id(self, text: str) -> str:
-        """Update data  for Proxmox Disk."""
-        match text:
-            case "Temperature":
-                smart_id = "194"
-            case "Power Cycles":
-                smart_id = "12"
-            case "Power On Hours":
-                smart_id = "9"
-            case _:
-                smart_id = "0"
-        return smart_id
-
     async def _async_update_data(self) -> ProxmoxDiskData:
         """Update data  for Proxmox Disk."""
         if self.node_name is not None:
@@ -2136,17 +2175,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     and "type" in disk_attributes_api
                     and disk_attributes_api["type"] == "text"
                 ):
-                    attributes_text = disk_attributes_api["text"].split("\n")
-                    for value_text in attributes_text:
-                        value_json = value_text.split(":")
-                        if len(value_json) >= 2:
-                            attributes_json.append(
-                                {
-                                    "name": value_json[0].strip(),
-                                    "raw": value_json[1].strip().replace(",", ""),
-                                    "id": self.text_to_smart_id(value_json[0].strip()),
-                                }
-                            )
+                    attributes_json = parse_smart_text(disk_attributes_api["text"])
 
                 disk_attributes = parse_smart_attributes(attributes_json)
 
