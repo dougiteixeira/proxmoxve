@@ -10,19 +10,32 @@ from typing import TYPE_CHECKING, Any
 
 from attr import Attribute, asdict
 from homeassistant.components.diagnostics import async_redact_data
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import UNDEFINED
 from proxmoxer.core import ResourceException
 
 from .api import get_api
-from .const import CONF_DISKS_ENABLE, COORDINATORS, PROXMOX_CLIENT
+from .const import (
+    CONF_DISKS_ENABLE,
+    CONF_HA_ADMIN_PASSWORD,
+    CONF_HA_ADMIN_USERNAME,
+    COORDINATORS,
+    PROXMOX_CLIENT,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
-TO_REDACT_CONFIG = {"host", "username", "password"}
+TO_REDACT_CONFIG = {
+    CONF_HOST,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_HA_ADMIN_USERNAME,
+    CONF_HA_ADMIN_PASSWORD,
+}
 TO_REDACT_COORD: set[str] = set()
 TO_REDACT_API: set[str] = set()
 TO_REDACT_DATA = {"configuration_url"}
