@@ -38,6 +38,15 @@ The integration provides sensors that monitor failed tasks on your Proxmox nodes
 
 The failed task sensors help you monitor the health of your Proxmox operations and quickly identify when automated tasks encounter issues.
 
+### Storage state
+
+Besides its capacity sensors, each selected storage gets three binary sensors read from the node's own storage list (`GET /nodes/{node}/storage`):
+
+- `Active` — whether the node can currently reach the storage. On by default: this is the one that changes on its own, when an NFS server goes away or a USB disk is unplugged.
+- `Enabled` and `Shared` — how the storage is configured. Diagnostic and **disabled by default**, since they only change when someone edits the storage.
+
+They need the same `Datastore.Audit` on the storage as the capacity sensors. When that list cannot be read, the entities are not created rather than left permanently off.
+
 ### Hardware Sensors
 
 The integration automatically discovers and exposes hardware temperature, voltage, power, current, and fan speed sensors from Proxmox VE hosts via `lm-sensors`.

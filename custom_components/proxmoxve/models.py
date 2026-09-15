@@ -87,7 +87,13 @@ class ProxmoxLXCData:
 
 @dataclasses.dataclass
 class ProxmoxStorageData:
-    """Data parsed from the Proxmox API for Storage."""
+    """
+    Data parsed from the Proxmox API for Storage.
+
+    `active`, `enabled` and `shared` come from the node's own view of the
+    storage (`nodes/{node}/storage`), which the cluster resource list does
+    not carry in full. They stay UNDEFINED when that view could not be read.
+    """
 
     type: str
     node: str
@@ -95,6 +101,9 @@ class ProxmoxStorageData:
     content: str | UndefinedType
     disk_used: float | UndefinedType
     disk_total: float | UndefinedType
+    active: bool | UndefinedType
+    enabled: bool | UndefinedType
+    shared: bool | UndefinedType
 
 
 @dataclasses.dataclass

@@ -186,7 +186,28 @@
             },
             "update_avail": {
                 "name": "Pakete aktualisieren"
+            },
+          "storage_active": {
+            "name": "Aktiv",
+            "state": {
+              "on": "Aktiv",
+              "off": "Inaktiv"
             }
+          },
+          "storage_enabled": {
+            "name": "Aktiviert",
+            "state": {
+              "on": "Aktiviert",
+              "off": "Deaktiviert"
+            }
+          },
+          "storage_shared": {
+            "name": "Gemeinsam genutzt",
+            "state": {
+              "on": "Gemeinsam genutzt",
+              "off": "Nicht gemeinsam genutzt"
+            }
+          }
         },
         "button": {
             "start_all": {

@@ -12,7 +12,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.const import Platform
+from homeassistant.const import EntityCategory, Platform
 from homeassistant.helpers.typing import UNDEFINED
 
 from . import COORDINATORS, async_migrate_old_unique_ids, device_info
@@ -20,6 +20,7 @@ from .const import (
     CONF_LXC,
     CONF_NODES,
     CONF_QEMU,
+    CONF_STORAGE,
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
@@ -109,6 +110,41 @@ PROXMOX_BINARYSENSOR_VM: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]]
     ),
 )
 
+PROXMOX_BINARYSENSOR_STORAGE: Final[
+    tuple[ProxmoxBinarySensorEntityDescription, ...]
+] = (
+    # Whether the node can currently reach the storage. This is the one
+    # that changes on its own - an NFS server going away, a USB disk
+    # unplugged - so it is the one on by default.
+    ProxmoxBinarySensorEntityDescription(
+        key="active",
+        name="Active",
+        icon="mdi:database-check-outline",
+        on_value=[True],
+        translation_key="storage_active",
+    ),
+    # Configuration rather than state: these change when someone edits the
+    # storage, so they are diagnostic and off until asked for.
+    ProxmoxBinarySensorEntityDescription(
+        key="enabled",
+        name="Enabled",
+        icon="mdi:database-cog-outline",
+        on_value=[True],
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        translation_key="storage_enabled",
+    ),
+    ProxmoxBinarySensorEntityDescription(
+        key="shared",
+        name="Shared",
+        icon="mdi:database-sync-outline",
+        on_value=[True],
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        translation_key="storage_shared",
+    ),
+)
+
 PROXMOX_BINARYSENSOR_HA_MANAGED: Final[ProxmoxBinarySensorEntityDescription] = (
     ProxmoxBinarySensorEntityDescription(
         key="ha_managed",
@@ -168,8 +204,45 @@ async def async_setup_entry(
     async_add_entities(await async_setup_binary_sensors_nodes(hass, config_entry))
     async_add_entities(await async_setup_binary_sensors_qemu(hass, config_entry))
     async_add_entities(await async_setup_binary_sensors_lxc(hass, config_entry))
+    async_add_entities(await async_setup_binary_sensors_storages(hass, config_entry))
     async_add_entities(await async_setup_binary_sensors_ha_status(hass, config_entry))
     async_add_entities(await async_setup_binary_sensors_replication(hass, config_entry))
+
+
+async def async_setup_binary_sensors_storages(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up the per-storage binary sensors."""
+    coordinators = config_entry.runtime_data[COORDINATORS]
+    sensors = []
+
+    for storage_id in config_entry.data[CONF_STORAGE]:
+        coordinator = coordinators.get(f"{ProxmoxType.Storage}_{storage_id}")
+        if coordinator is None or coordinator.data is None:
+            continue
+
+        sensors.extend(
+            create_binary_sensor(
+                coordinator=coordinator,
+                info_device=device_info(
+                    hass=hass,
+                    config_entry=config_entry,
+                    api_category=ProxmoxType.Storage,
+                    resource_id=storage_id,
+                    cordinator_resource=coordinator.data,
+                ),
+                description=description,
+                resource_id=storage_id,
+                config_entry=config_entry,
+            )
+            for description in PROXMOX_BINARYSENSOR_STORAGE
+            # The flags come from the node's own storage list; when that
+            # could not be read there is nothing honest to report.
+            if getattr(coordinator.data, description.key, UNDEFINED) is not UNDEFINED
+        )
+
+    return sensors
 
 
 async def async_setup_binary_sensors_ha_status(

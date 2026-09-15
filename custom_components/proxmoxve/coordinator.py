@@ -152,6 +152,19 @@ def _parse_ha_enum(
     return UNDEFINED
 
 
+def _flag_or_undefined(value: Any) -> bool | UndefinedType:
+    """
+    Read one of the API's 0/1 flags, keeping an absent one unknown.
+
+    A flag the response did not carry is not the same as a flag that is
+    off: `active` missing means the node's view of the storage could not be
+    read, not that the storage is down.
+    """
+    if value is None:
+        return UNDEFINED
+    return bool(value)
+
+
 def _positive_or_undefined(value: Any) -> Any:
     """Return a number only when it is above zero, else UNDEFINED."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
@@ -1554,6 +1567,29 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
 
         storage_id = api_status["id"]
         name = f"Storage {storage_id.replace('storage/', '')}"
+
+        # The cluster resource list says how full a storage is, but not
+        # whether the node can currently reach it (`active`) or whether it
+        # is enabled there at all; the node's own storage list carries both.
+        # Filtered to this one storage so the answer stays small.
+        node_view: dict[str, Any] = {}
+        storage_name = api_status.get("storage")
+        if node_name is not None and storage_name:
+            api_path = f"nodes/{node_name}/storage?storage={quote(str(storage_name))}"
+            node_storages = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Storage,
+                self.resource_id,
+            )
+            for entry in node_storages if isinstance(node_storages, list) else []:
+                if isinstance(entry, dict) and entry.get("storage") == storage_name:
+                    node_view = entry
+                    break
+
         return ProxmoxStorageData(
             type=ProxmoxType.Storage,
             node=node_name,
@@ -1561,6 +1597,9 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             disk_total=api_status.get("maxdisk", UNDEFINED),
             disk_used=api_status.get("disk", UNDEFINED),
             content=api_status.get("content", UNDEFINED),
+            active=_flag_or_undefined(node_view.get("active")),
+            enabled=_flag_or_undefined(node_view.get("enabled")),
+            shared=_flag_or_undefined(node_view.get("shared")),
         )
 
 

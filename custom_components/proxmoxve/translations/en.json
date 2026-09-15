@@ -214,6 +214,27 @@
         },
         "ha_crm_master_stale": {
           "name": "CRM master stale"
+        },
+        "storage_active": {
+          "name": "Active",
+          "state": {
+            "on": "Active",
+            "off": "Inactive"
+          }
+        },
+        "storage_enabled": {
+          "name": "Enabled",
+          "state": {
+            "on": "Enabled",
+            "off": "Disabled"
+          }
+        },
+        "storage_shared": {
+          "name": "Shared",
+          "state": {
+            "on": "Shared",
+            "off": "Not shared"
+          }
         }
       },
       "button": {
