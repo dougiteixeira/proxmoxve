@@ -215,9 +215,9 @@ def test_token_name_only(typed: str | None, expected: str) -> None:
 def test_client_logs_in_with_the_bare_token_name() -> None:
     """Test a full token id in the entry still builds a working client."""
     client = ProxmoxClient(
-        "node.example.invalid",
-        "homeassistant",
-        "secret",
+        host="node.example.invalid",
+        user="homeassistant",
+        password="secret",  # noqa: S106 - invented
         token_name="homeassistant@pve!homeassistant",  # noqa: S106 - not a secret
         realm="pve",
         verify_ssl=False,
