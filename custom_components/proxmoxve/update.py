@@ -14,6 +14,7 @@ from homeassistant.components.update import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import UNDEFINED
+from packaging.version import InvalidVersion, Version
 
 from . import device_info
 from .const import CONF_NODES, COORDINATORS, ProxmoxType
@@ -37,12 +38,69 @@ class ProxmoxUpdateEntityDescription(ProxmoxEntityDescription, UpdateEntityDescr
 PROXMOX_UPDATE_NODE: Final[ProxmoxUpdateEntityDescription] = (
     ProxmoxUpdateEntityDescription(
         key="node_update",
-        name="Updates",
+        name="Software update",
         icon="mdi:package-up",
         entity_category=EntityCategory.CONFIG,
         translation_key="node_update",
     )
 )
+
+
+@dataclass(frozen=True)
+class ProxmoxUpdateInfo:
+    """What the update entity says about a node's pending upgrade."""
+
+    latest_version: str
+    latest_version_id: str
+    total_updates: int
+    proxmox_updates: int
+    other_updates: int
+
+
+def _comparable(version: str) -> Version:
+    """
+    Turn a Debian version into something `packaging` can order.
+
+    Proxmox versions carry `-pve1`-style suffixes, which are dropped like
+    the core integration does. Anything `packaging` still cannot read - an
+    epoch such as `2:1.0`, say - sorts lowest instead of raising.
+    """
+    try:
+        return Version(version.split("-", maxsplit=1)[0])
+    except InvalidVersion:
+        return Version("0")
+
+
+def latest_version(versions: list[str]) -> str:
+    """Return the highest of the given versions, suffixes ignored."""
+    return max((version.split("-")[0] for version in versions), key=_comparable)
+
+
+def update_version(installed: str, packages: list[dict]) -> ProxmoxUpdateInfo:
+    """
+    Describe a pending upgrade the way the core integration does.
+
+    The latest version is the highest version among the installed release
+    and Proxmox's own pending packages; the id Home Assistant compares
+    against the installed version carries the pending counts as well, so
+    it changes whenever the set of pending packages does, not only when a
+    Proxmox package is among them.
+    """
+    total = len(packages)
+    proxmox = [entry for entry in packages if entry["proxmox"]]
+    other = total - len(proxmox)
+    latest = (
+        latest_version([installed, *(str(entry["version"]) for entry in proxmox)])
+        if proxmox
+        else installed
+    )
+    return ProxmoxUpdateInfo(
+        latest_version=latest if total else installed,
+        latest_version_id=f"{latest}-p{len(proxmox)}-d{other}" if total else installed,
+        total_updates=total,
+        proxmox_updates=len(proxmox),
+        other_updates=other,
+    )
 
 
 async def async_setup_entry(
@@ -99,7 +157,6 @@ class ProxmoxUpdateEntity(ProxmoxEntity, UpdateEntity):
 
     entity_description: ProxmoxUpdateEntityDescription
     _attr_supported_features = UpdateEntityFeature.RELEASE_NOTES
-    _attr_title = "Proxmox VE"
 
     def __init__(
         self,
@@ -116,70 +173,47 @@ class ProxmoxUpdateEntity(ProxmoxEntity, UpdateEntity):
         self._attr_device_info = info_device
         self._node_coordinator = node_coordinator
 
-    @property
-    def _updates(self) -> ProxmoxUpdateData | None:
-        """Return the update data when the node could be read."""
-        data = self.coordinator.data
+    def _update_info(self) -> ProxmoxUpdateInfo | None:
+        """Return the pending upgrade, or None when it could not be read."""
+        data: ProxmoxUpdateData | None = self.coordinator.data
         if data is None or data.total is UNDEFINED:
             return None
-        return data
+        return update_version(self.installed_version or "unknown", data.packages)
 
     @property
     def available(self) -> bool:
         """Return whether the pending updates could be read."""
-        return super().available and self._updates is not None
+        return super().available and self._update_info() is not None
 
     @property
     def installed_version(self) -> str | None:
         """Return the Proxmox VE version the node runs."""
         if (node_data := self._node_coordinator.data) is None:
-            return None
+            return "unknown"
         version = node_data.version
-        return None if version is UNDEFINED else str(version)
+        return "unknown" if version is UNDEFINED else str(version)
 
     @property
     def latest_version(self) -> str | None:
-        """
-        Return what the node would run after upgrading.
-
-        Home Assistant shows an update whenever this differs from the
-        installed version. A pending `pve-manager` names the release; when
-        only other packages wait, the release stays the same, so the count
-        is appended to make the difference visible - and to move again when
-        further packages arrive.
-        """
-        if (data := self._updates) is None:
-            return None
-        installed = self.installed_version
-        if not data.total:
-            return installed
-        release = data.proxmox_version_pending or installed or "unknown"
-        noun = "update" if data.total == 1 else "updates"
-        return f"{release} ({data.total} {noun})"
+        """Return the version id Home Assistant compares with the installed one."""
+        info = self._update_info()
+        return info.latest_version_id if info else None
 
     @property
     def release_summary(self) -> str | None:
-        """Return a one-line account of what is pending."""
-        if (data := self._updates) is None or not data.total:
+        """Return the core integration's account of what is pending."""
+        info = self._update_info()
+        if info is None or not info.total_updates:
             return None
-        noun = "package" if data.total == 1 else "packages"
+        url = self.device_info.get("configuration_url") if self.device_info else None
         return (
-            f"{data.total} {noun} pending: {data.proxmox_updates} from Proxmox, "
-            f"{data.other_updates} from Debian or other repositories."
+            f"A total of {info.total_updates} package update(s) are pending "
+            f"installation: of these {info.proxmox_updates} relate to Proxmox and "
+            f"{info.other_updates} to other updates. Please visit the "
+            f"[Proxmox VE node]({url}) for details on the pending updates and to "
+            f"upgrade to {info.latest_version}."
         )
 
     def release_notes(self) -> str | None:
-        """Return the pending packages as a Markdown list."""
-        if (data := self._updates) is None or not data.packages:
-            return None
-        lines = [
-            f"- `{entry['package']}` {entry['version']}"
-            + ("" if entry["proxmox"] else " *(other)*")
-            for entry in data.packages
-        ]
-        return (
-            f"{self.release_summary}\n\n"
-            + "\n".join(lines)
-            + "\n\nUpgrade from the node's shell (`apt dist-upgrade`) or its web "
-            "interface; the API offers no way to do it from here."
-        )
+        """Return the release notes for the update."""
+        return self.release_summary

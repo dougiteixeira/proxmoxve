@@ -5,6 +5,7 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import UNDEFINED
 
 from custom_components.proxmoxve.binary_sensor import (
@@ -174,15 +175,8 @@ def test_binary_sensors_follow_the_flags() -> None:
     assert _binary_sensor("shared", data).is_on is True
 
 
-def test_only_active_is_on_by_default() -> None:
-    """
-    Test the configuration flags stay off until asked for.
-
-    `enabled` and `shared` change when someone edits the storage; only
-    `active` changes on its own.
-    """
-    defaults = {
-        d.key: d.entity_registry_enabled_default for d in PROXMOX_BINARYSENSOR_STORAGE
-    }
-
-    assert defaults == {"active": True, "enabled": False, "shared": False}
+def test_defaults_match_the_core_integration() -> None:
+    """Test all three are diagnostic and on, as in the core integration."""
+    for description in PROXMOX_BINARYSENSOR_STORAGE:
+        assert description.entity_registry_enabled_default is True
+        assert description.entity_category is EntityCategory.DIAGNOSTIC

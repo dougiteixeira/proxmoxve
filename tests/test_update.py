@@ -8,7 +8,12 @@ from unittest.mock import MagicMock
 from homeassistant.helpers.typing import UNDEFINED
 
 from custom_components.proxmoxve.coordinator import is_proxmox_package, parse_updates
-from custom_components.proxmoxve.update import PROXMOX_UPDATE_NODE, ProxmoxUpdateEntity
+from custom_components.proxmoxve.update import (
+    PROXMOX_UPDATE_NODE,
+    ProxmoxUpdateEntity,
+    latest_version,
+    update_version,
+)
 
 # Shaped like `GET /nodes/<node>/apt/update`: one entry per pending package.
 # The real response also carries Description, ChangeLogUrl, Arch, Section and
@@ -58,7 +63,7 @@ def _entity(
     return ProxmoxUpdateEntity(
         coordinator=coordinator,
         node_coordinator=node_coordinator,
-        info_device={},
+        info_device={"configuration_url": "https://pve.example.invalid:8006/"},
         description=PROXMOX_UPDATE_NODE,
         unique_id="test_update",
     )
@@ -81,7 +86,6 @@ def test_parse_updates_counts_and_orders() -> None:
     assert data.update is True
     assert data.proxmox_updates == 3
     assert data.other_updates == 1
-    assert data.proxmox_version_pending == "9.0.10"
     assert [entry["package"] for entry in data.packages] == [
         "libpve-common-perl",
         "proxmox-kernel-6.14",
@@ -94,13 +98,12 @@ def test_parse_updates_counts_and_orders() -> None:
     )
 
 
-def test_parse_updates_without_pve_manager() -> None:
-    """Test a pending set that does not include pve-manager names no release."""
+def test_parse_updates_without_proxmox_packages() -> None:
+    """Test a pending set of Debian packages only."""
     data = parse_updates([PENDING[0]], "pve")
 
     assert data.total == 1
     assert data.proxmox_updates == 0
-    assert data.proxmox_version_pending is None
 
 
 def test_parse_updates_nothing_pending() -> None:
@@ -112,32 +115,54 @@ def test_parse_updates_nothing_pending() -> None:
     assert data.packages == []
 
 
+def test_latest_version_ignores_debian_suffixes() -> None:
+    """Test `-pve1`-style suffixes do not take part in the comparison."""
+    assert latest_version(["9.0.6", "9.0.10-1", "6.14.11-2"]) == "9.0.10"
+
+
+def test_latest_version_survives_a_version_packaging_cannot_read() -> None:
+    """Test an epoch such as `2:1.0` sorts lowest instead of raising."""
+    assert latest_version(["9.0.6", "2:1.0"]) == "9.0.6"
+
+
+def test_update_version_matches_the_core_integration() -> None:
+    """Test the id carries the release and both pending counts, like core."""
+    info = update_version("9.0.6", parse_updates(PENDING, "pve").packages)
+
+    assert info.latest_version == "9.0.10"
+    assert info.latest_version_id == "9.0.10-p3-d1"
+    assert info.total_updates == 4
+    assert info.proxmox_updates == 3
+    assert info.other_updates == 1
+
+
 def test_entity_reports_the_pending_release() -> None:
-    """Test the pending pve-manager version becomes the latest version."""
+    """Test the entity reads exactly like the core integration's."""
     entity = _entity(parse_updates(PENDING, "pve"))
 
     assert entity.available
     assert entity.installed_version == "9.0.6"
-    assert entity.latest_version == "9.0.10 (4 updates)"
+    assert entity.latest_version == "9.0.10-p3-d1"
     assert entity.release_summary == (
-        "4 packages pending: 3 from Proxmox, 1 from Debian or other repositories."
+        "A total of 4 package update(s) are pending installation: of these 3 "
+        "relate to Proxmox and 1 to other updates. Please visit the "
+        "[Proxmox VE node](https://pve.example.invalid:8006/) for details on "
+        "the pending updates and to upgrade to 9.0.10."
     )
-    notes = entity.release_notes()
-    assert "- `pve-manager` 9.0.10" in notes
-    assert "- `openssl` 3.5.1-1+deb13u1 *(other)*" in notes
+    assert entity.release_notes() == entity.release_summary
 
 
 def test_entity_shows_an_update_for_other_packages_alone() -> None:
     """
     Test pending Debian packages still count as an update.
 
-    The release stays the same, so the count has to make the difference to
-    the installed version - Home Assistant compares the two strings.
+    The release stays the same, so the counts in the id have to make the
+    difference to the installed version - Home Assistant compares the two.
     """
     entity = _entity(parse_updates([PENDING[0]], "pve"))
 
     assert entity.installed_version == "9.0.6"
-    assert entity.latest_version == "9.0.6 (1 update)"
+    assert entity.latest_version == "9.0.6-p0-d1"
     assert entity.latest_version != entity.installed_version
 
 
@@ -152,17 +177,15 @@ def test_entity_up_to_date() -> None:
 
 def test_entity_unavailable_without_permission() -> None:
     """Test a node whose apt/update could not be read leaves the entity unavailable."""
-    entity = _entity(
-        SimpleNamespace(total=UNDEFINED, packages=[], proxmox_version_pending=None)
-    )
+    entity = _entity(SimpleNamespace(total=UNDEFINED, packages=[]))
 
     assert not entity.available
     assert entity.latest_version is None
 
 
 def test_entity_without_node_version() -> None:
-    """Test a missing node version does not break the comparison."""
+    """Test a missing node version reads as unknown, like core, and still compares."""
     entity = _entity(parse_updates(PENDING, "pve"), node_version=UNDEFINED)
 
-    assert entity.installed_version is None
-    assert entity.latest_version == "9.0.10 (4 updates)"
+    assert entity.installed_version == "unknown"
+    assert entity.latest_version == "9.0.10-p3-d1"

@@ -110,37 +110,35 @@ PROXMOX_BINARYSENSOR_VM: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]]
     ),
 )
 
+# Same three flags, same category and defaults as the Home Assistant core
+# integration: all diagnostic, all on.
 PROXMOX_BINARYSENSOR_STORAGE: Final[
     tuple[ProxmoxBinarySensorEntityDescription, ...]
 ] = (
-    # Whether the node can currently reach the storage. This is the one
-    # that changes on its own - an NFS server going away, a USB disk
-    # unplugged - so it is the one on by default.
+    # Whether the node can currently reach the storage - an NFS server
+    # going away, a USB disk unplugged.
     ProxmoxBinarySensorEntityDescription(
         key="active",
-        name="Active",
+        name="Storage active",
         icon="mdi:database-check-outline",
         on_value=[True],
+        entity_category=EntityCategory.DIAGNOSTIC,
         translation_key="storage_active",
     ),
-    # Configuration rather than state: these change when someone edits the
-    # storage, so they are diagnostic and off until asked for.
     ProxmoxBinarySensorEntityDescription(
         key="enabled",
-        name="Enabled",
+        name="Storage enabled",
         icon="mdi:database-cog-outline",
         on_value=[True],
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
         translation_key="storage_enabled",
     ),
     ProxmoxBinarySensorEntityDescription(
         key="shared",
-        name="Shared",
+        name="Storage shared",
         icon="mdi:database-sync-outline",
         on_value=[True],
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
         translation_key="storage_shared",
     ),
 )
@@ -182,16 +180,19 @@ PROXMOX_BINARYSENSOR_HA_STATUS: Final[
 PROXMOX_BINARYSENSOR_BACKUP: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
     # On when the most recent run did not end with "OK" - the task log's
     # verdict, which also covers "job errors", where some guests were
-    # backed up and some were not.
+    # backed up and some were not. Diagnostic and off by default, as in
+    # the Home Assistant core integration.
     ProxmoxBinarySensorEntityDescription(
         key="status",
-        name="Backup failed",
+        name="Backup status",
         icon="mdi:backup-restore",
         device_class=BinarySensorDeviceClass.PROBLEM,
         on_value=["OK"],
         inverted=True,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         extra_attrs=["status", "guests", "user"],
-        translation_key="backup_failed",
+        translation_key="backup_status",
     ),
 )
 

@@ -588,19 +588,14 @@ def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateD
     Turn a node's `apt/update` response into update data.
 
     Besides the count and the flat list the sensors already carried, this
-    keeps enough per package for the update entity to describe the upgrade,
-    and picks out the pending `pve-manager` version because that is the
-    Proxmox VE release the node would run afterwards.
+    keeps enough per package for the update entity to describe the upgrade.
     """
     packages: list[dict[str, str | bool]] = []
-    proxmox_version_pending: str | None = None
     for update in api_status:
         if not isinstance(update, dict) or "Package" not in update:
             continue
         package = str(update["Package"])
         version = str(update.get("Version", ""))
-        if package == "pve-manager" and version:
-            proxmox_version_pending = version
         packages.append(
             {
                 "package": package,
@@ -629,7 +624,6 @@ def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateD
         packages=packages,
         proxmox_updates=proxmox_updates,
         other_updates=total - proxmox_updates,
-        proxmox_version_pending=proxmox_version_pending,
     )
 
 

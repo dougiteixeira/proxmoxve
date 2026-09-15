@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import homeassistant.util.dt as dt_util
+from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import UNDEFINED
 
 from custom_components.proxmoxve.binary_sensor import (
@@ -141,9 +142,8 @@ def test_problem_sensor_follows_the_verdict() -> None:
     )
 
 
-def test_duration_is_off_by_default() -> None:
-    """Test only the timestamp and the verdict are on without asking."""
-    defaults = {d.key: d.entity_registry_enabled_default for d in PROXMOX_SENSOR_BACKUP}
-
-    assert defaults == {"finished": True, "duration": False}
-    assert PROXMOX_BINARYSENSOR_BACKUP[0].entity_registry_enabled_default is True
+def test_defaults_match_the_core_integration() -> None:
+    """Test all three are diagnostic and off, as in the core integration."""
+    for description in (*PROXMOX_SENSOR_BACKUP, *PROXMOX_BINARYSENSOR_BACKUP):
+        assert description.entity_registry_enabled_default is False
+        assert description.entity_category is EntityCategory.DIAGNOSTIC

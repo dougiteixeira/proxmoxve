@@ -220,28 +220,28 @@
           "name": "CRM master stale"
         },
         "storage_active": {
-          "name": "Active",
+          "name": "Storage active",
           "state": {
             "on": "Active",
             "off": "Inactive"
           }
         },
         "storage_enabled": {
-          "name": "Enabled",
+          "name": "Storage enabled",
           "state": {
             "on": "Enabled",
             "off": "Disabled"
           }
         },
         "storage_shared": {
-          "name": "Shared",
+          "name": "Storage shared",
           "state": {
             "on": "Shared",
             "off": "Not shared"
           }
         },
-        "backup_failed": {
-          "name": "Backup failed",
+        "backup_status": {
+          "name": "Backup status",
           "state_attributes": {
             "status": {
               "name": "Status"
@@ -594,7 +594,7 @@
       },
       "update": {
         "node_update": {
-          "name": "Updates"
+          "name": "Software update"
         }
       }
     },

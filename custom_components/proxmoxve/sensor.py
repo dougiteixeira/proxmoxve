@@ -697,10 +697,6 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         icon="mdi:server",
         device_class=SensorDeviceClass.ENUM,
         options=list(NODE_STATES),
-        # The `Status` binary sensor already says online or not; this adds
-        # the "unknown" a cluster reports for a node it has lost touch with,
-        # which is worth having but not worth a second entity by default.
-        entity_registry_enabled_default=False,
         translation_key="node_status",
         value_fn=lambda x: _known_state(x.status, NODE_STATES),
     ),
@@ -979,12 +975,15 @@ PROXMOX_SENSOR_BACKUP_INFO: Final[tuple[ProxmoxSensorEntityDescription, ...]] = 
 )
 
 
+# Diagnostic and off by default, as in the Home Assistant core integration.
 PROXMOX_SENSOR_BACKUP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ProxmoxSensorEntityDescription(
         key="finished",
         name="Last backup",
         icon="mdi:backup-restore",
         device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         extra_attrs=["status", "guests", "user"],
         translation_key="backup_last",
     ),
@@ -998,8 +997,6 @@ PROXMOX_SENSOR_BACKUP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        # How long a backup takes is worth a graph once you are tuning it,
-        # and noise until then.
         entity_registry_enabled_default=False,
         translation_key="backup_duration",
     ),

@@ -192,28 +192,28 @@
                 "name": "Pakete aktualisieren"
             },
           "storage_active": {
-            "name": "Aktiv",
+            "name": "Storage aktiv",
             "state": {
               "on": "Aktiv",
               "off": "Inaktiv"
             }
           },
           "storage_enabled": {
-            "name": "Aktiviert",
+            "name": "Storage aktiviert",
             "state": {
               "on": "Aktiviert",
               "off": "Deaktiviert"
             }
           },
           "storage_shared": {
-            "name": "Gemeinsam genutzt",
+            "name": "Storage gemeinsam genutzt",
             "state": {
               "on": "Gemeinsam genutzt",
               "off": "Nicht gemeinsam genutzt"
             }
           },
-          "backup_failed": {
-            "name": "Backup fehlgeschlagen",
+          "backup_status": {
+            "name": "Backup-Status",
             "state_attributes": {
               "status": {
                 "name": "Status"
@@ -453,7 +453,7 @@
         },
       "update": {
         "node_update": {
-          "name": "Updates"
+          "name": "Softwareupdate"
         }
       }
     },

@@ -127,9 +127,6 @@ class ProxmoxUpdateData:
     `packages` carries what the update entity needs to describe the pending
     upgrade: each entry has a `package`, `title` and `version`, plus a
     `proxmox` flag telling Proxmox's own packages from the Debian ones.
-    `proxmox_version_pending` is the version of `pve-manager` waiting to be
-    installed - the Proxmox VE release the node would run after upgrading -
-    or None when that package is not among the updates.
     """
 
     type: str
@@ -140,7 +137,6 @@ class ProxmoxUpdateData:
     packages: list[dict[str, str | bool]] = dataclasses.field(default_factory=list)
     proxmox_updates: int = 0
     other_updates: int = 0
-    proxmox_version_pending: str | None = None
 
 
 @dataclasses.dataclass

@@ -149,8 +149,7 @@ def test_every_status_has_an_english_name(
     assert set(description.options) <= set(translated)
 
 
-def test_only_the_guest_status_is_on_by_default() -> None:
-    """Test the node's enum stays off: its binary sensor already says online."""
-    assert _description(PROXMOX_SENSOR_QEMU).entity_registry_enabled_default is True
-    assert _description(PROXMOX_SENSOR_LXC).entity_registry_enabled_default is True
-    assert _description(PROXMOX_SENSOR_NODES).entity_registry_enabled_default is False
+def test_status_sensors_are_on_by_default() -> None:
+    """Test all three are on, as in the core integration."""
+    for descriptions in (PROXMOX_SENSOR_QEMU, PROXMOX_SENSOR_LXC, PROXMOX_SENSOR_NODES):
+        assert _description(descriptions).entity_registry_enabled_default is True

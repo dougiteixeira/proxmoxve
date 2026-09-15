@@ -18,7 +18,7 @@ After configuring this integration, the following information is available:
 
 ### Package updates
 
-Each node gets an `Updates` entity of Home Assistant's `update` type, so pending package upgrades show up under Settings → Updates and in the update card, next to everything else that wants upgrading. The installed version is the node's Proxmox VE release; the latest version is the release `pve-manager` would bring — or the same release with the number of pending packages, when only Debian or kernel packages are waiting. The release notes list every pending package, Proxmox's own first.
+Each node gets a `Software update` entity of Home Assistant's `update` type, so pending package upgrades show up under Settings → Updates and in the update card, next to everything else that wants upgrading. It behaves exactly like the entity in the Home Assistant core integration: the installed version is the node's Proxmox VE release, the latest version is the highest version among the installed release and Proxmox's own pending packages, written as `<version>-p<proxmox packages>-d<other packages>` so it changes whenever the set of pending packages does, and the release notes say how many packages are pending and link to the node.
 
 It reads `GET /nodes/{node}/apt/update`, which needs `Sys.Modify` on the node. Without that privilege the entity is not created and a repair tells you which permission is missing. There is no install button: the API offers no way to run the upgrade, and a dist-upgrade of a hypervisor is not something to start from a dashboard anyway.
 
@@ -26,11 +26,11 @@ The older `Total updates` sensor and `Updates packages` binary sensor stay as th
 
 ### Last backup per node
 
-Each node reports its most recent finished backup run, read from the node's task log (`GET /nodes/{node}/tasks?typefilter=vzdump`):
+Each node reports its most recent finished backup run, read from the node's task log (`GET /nodes/{node}/tasks?typefilter=vzdump`). All three are diagnostic and **disabled by default**, as in the Home Assistant core integration:
 
 - `Last backup` — when the run finished, with the run's verdict, the guests it covered and the user that started it as attributes.
-- `Backup failed` — a problem binary sensor, on when the run's verdict was anything but `OK`. That includes `job errors`, where some guests were backed up and some were not.
-- `Backup duration` — how long the run took. Diagnostic and **disabled by default**; worth a graph once you are tuning a backup window, and noise until then.
+- `Backup status` — a problem binary sensor, on when the run's verdict was anything but `OK`. That includes `job errors`, where some guests were backed up and some were not.
+- `Backup duration` — how long the run took.
 
 Only finished runs count. A backup still in progress has no end time and no verdict yet, and reporting it would make every backup look like a failure while it runs. Nodes that have never run a backup get no entities. Polled every five minutes; needs `Sys.Audit` on the node to see runs other users started.
 
@@ -52,16 +52,16 @@ The failed task sensors help you monitor the health of your Proxmox operations a
 
 ### Status sensors
 
-Every VM and container has a `Status` sensor, and every node one that is **disabled by default** (its `Status` binary sensor already says online or not). They are proper enum sensors: the states are translated, usable in the history graph, and offered as a pick-list in automation conditions. A VM reports QEMU's finer run state where there is one — `paused`, `prelaunch`, `io-error`, `guest-panicked`, a migration in progress — and `running`/`stopped`/`suspended` otherwise; a container is `running` or `stopped`; a node is `online`, `offline` or `unknown`.
+Every node, VM and container has a `Status` sensor. They are proper enum sensors: the states are translated, usable in the history graph, and offered as a pick-list in automation conditions. A VM reports QEMU's finer run state where there is one — `paused`, `prelaunch`, `io-error`, `guest-panicked`, a migration in progress — and `running`/`stopped`/`suspended` otherwise; a container is `running` or `stopped`; a node is `online`, `offline` or `unknown`.
 
 A state this integration has never heard of reads as unknown rather than breaking the sensor, so a future QEMU release cannot take the entity down.
 
 ### Storage state
 
-Besides its capacity sensors, each selected storage gets three binary sensors read from the node's own storage list (`GET /nodes/{node}/storage`):
+Besides its capacity sensors, each selected storage gets three diagnostic binary sensors read from the node's own storage list (`GET /nodes/{node}/storage`), the same three as in the Home Assistant core integration:
 
-- `Active` — whether the node can currently reach the storage. On by default: this is the one that changes on its own, when an NFS server goes away or a USB disk is unplugged.
-- `Enabled` and `Shared` — how the storage is configured. Diagnostic and **disabled by default**, since they only change when someone edits the storage.
+- `Storage active` — whether the node can currently reach the storage, which is what changes when an NFS server goes away or a USB disk is unplugged.
+- `Storage enabled` and `Storage shared` — how the storage is configured.
 
 They need the same `Datastore.Audit` on the storage as the capacity sensors. When that list cannot be read, the entities are not created rather than left permanently off.
 
