@@ -31,7 +31,7 @@ from custom_components.proxmoxve.const import (
     ProxmoxType,
 )
 
-from .fake_api import NODE, FakeProxmox
+from .fake_api import NODE, FakeProxmox, lxc_status
 
 
 async def _setup(hass: HomeAssistant, entry: MockConfigEntry) -> None:
@@ -191,6 +191,50 @@ async def test_unknown_permissions_still_create_the_update_entity(
     await _setup(hass, current_entry)
 
     assert f"{ProxmoxType.Update}_{NODE}" in current_entry.runtime_data[COORDINATORS]
+
+
+async def test_a_stopped_container_has_no_disk_usage_to_report(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test a container that is off reads unknown for disk, and 0 for memory.
+
+    Proxmox reports `disk: 0` for a stopped container because it cannot
+    look inside - the data is still on the volume. That 0 became 0% used
+    and 100% free on every stop, a spike in every graph. Memory really is
+    zero then, so that one stays a measurement.
+    """
+    fake_api.routes[f"nodes/{NODE}/lxc/100/status/current"] = lxc_status(
+        100, "lxc-test-100", status="stopped"
+    )
+
+    await _setup(hass, current_entry)
+
+    entry_id = current_entry.entry_id
+    disk_used = _state(hass, current_entry, f"{entry_id}_100_disk_used_perc", "sensor")
+    assert disk_used.state == "unknown"
+    memory = _state(hass, current_entry, f"{entry_id}_100_memory_used_perc", "sensor")
+    assert memory.state == "0"
+
+
+async def test_the_node_reports_io_delay_and_its_version(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test the two node figures people kept asking for are entities now.
+
+    `wait` is the share of time the CPUs spent waiting for I/O, on the same
+    0..1 scale as `cpu`; Proxmox shows it as IO delay. The version was only
+    ever visible on the device page.
+    """
+    await _setup(hass, current_entry)
+
+    entry_id = current_entry.entry_id
+    io_delay = _state(hass, current_entry, f"{entry_id}_pve_io_wait", "sensor")
+    assert float(io_delay.state) == 0.42
+    assert io_delay.attributes["unit_of_measurement"] == "%"
+    version = _state(hass, current_entry, f"{entry_id}_pve_version", "sensor")
+    assert version.state == "9.0.6"
 
 
 async def test_disks_and_pools_get_their_own_devices(

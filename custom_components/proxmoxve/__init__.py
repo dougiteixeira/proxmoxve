@@ -43,7 +43,7 @@ from requests.exceptions import (
 )
 from urllib3.exceptions import InsecureRequestWarning
 
-from .api import ProxmoxClient, get_api
+from .api import ProxmoxClient, auth_error_status, get_api
 from .const import (
     CONF_AUTO_DISCOVERY,
     CONF_CONTAINERS,
@@ -892,6 +892,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     try:
         await hass.async_add_executor_job(proxmox_client.build_client)
     except AuthenticationError as error:
+        # proxmoxer raises the same error for a refused password and for an
+        # API that is up but not issuing tickets yet, as during boot. Only
+        # 401 says anything about the credentials; the rest is "try later".
+        if auth_error_status(error) not in (None, 401):
+            raise ConfigEntryNotReady(str(error)) from error
         raise ConfigEntryAuthFailed from error
     except SSLError as error:
         msg = (

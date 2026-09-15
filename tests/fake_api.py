@@ -127,7 +127,8 @@ def lxc_status(vmid: int, name: str, status: str = "running") -> dict:
         "maxmem": 1_073_741_824,
         "swap": 0,
         "maxswap": 536_870_912,
-        "disk": 911_167_488,
+        # Proxmox cannot see inside a stopped container and reports 0.
+        "disk": 911_167_488 if running else 0,
         "maxdisk": 2_040_373_248,
         "netin": 370_783_656,
         "netout": 117_493_824,
@@ -194,6 +195,7 @@ def default_routes() -> dict[str, Any]:
                 "free": 92_271_792_128,
             },
             "uptime": 1_209_600,
+            "wait": 0.0042,
             "loadavg": ["0.10", "0.12", "0.09"],
             "kversion": "Linux 6.14.11-2-pve",
             "pveversion": "pve-manager/9.0.6/1234abcd",

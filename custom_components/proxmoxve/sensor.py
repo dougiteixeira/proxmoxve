@@ -720,6 +720,23 @@ PROXMOX_SENSOR_NODES: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         translation_key="lxc_on",
         extra_attrs=["lxc_on_list"],
     ),
+    ProxmoxSensorEntityDescription(
+        key="io_wait",
+        name="IO delay",
+        icon="mdi:timer-sand",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=percentage_or_unknown,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        translation_key="io_wait",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="version",
+        name="Version",
+        icon="mdi:information-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        translation_key="version",
+    ),
 )
 
 PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (

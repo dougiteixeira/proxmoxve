@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Handle API for Proxmox VE."""
 
+import re
 from typing import Any
 
 import homeassistant.util.dt as dt_util
@@ -9,6 +10,7 @@ from homeassistant.const import CONF_USERNAME
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 from proxmoxer import ProxmoxAPI
+from proxmoxer.backends.https import ProxmoxHTTPAuth
 from proxmoxer.core import ResourceException
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectTimeout
@@ -23,6 +25,21 @@ from .const import (
     ProxmoxCommand,
     ProxmoxType,
 )
+
+AUTH_STATUS_PATTERN = re.compile(r"code: (\d+)")
+API_TIMEOUT = 30
+
+
+def auth_error_status(error: BaseException) -> int | None:
+    """
+    Return the HTTP status behind a proxmoxer AuthenticationError, if it says.
+
+    proxmoxer raises the same exception for a wrong password (401) and for a
+    host whose API is up but not ready to issue tickets yet (500, 595, ...).
+    Only the first is a reason to ask for new credentials.
+    """
+    match = AUTH_STATUS_PATTERN.search(str(error))
+    return int(match.group(1)) if match else None
 
 
 def token_name_only(value: str | None) -> str:
@@ -71,7 +88,7 @@ class ProxmoxClient:
 
         Allows inserting the realm within the `user` value.
         """
-        user_id = self._user if "@" in self._user else f"{self._user}@{self._realm}"
+        user_id = self._user_id()
 
         if token_name := token_name_only(self._token_name):
             self._proxmox = ProxmoxAPI(
@@ -81,7 +98,7 @@ class ProxmoxClient:
                 token_name=token_name,
                 token_value=self._password,
                 verify_ssl=self._verify_ssl,
-                timeout=30,
+                timeout=API_TIMEOUT,
             )
         else:
             self._proxmox = ProxmoxAPI(
@@ -90,7 +107,7 @@ class ProxmoxClient:
                 user=user_id,
                 password=self._password,
                 verify_ssl=self._verify_ssl,
-                timeout=30,
+                timeout=API_TIMEOUT,
             )
 
         # One coordinator per node/QEMU/LXC/disk means many refreshes fire at
@@ -113,6 +130,39 @@ class ProxmoxClient:
     def get_api_client(self) -> ProxmoxAPI:
         """Return the ProxmoxAPI client."""
         return self._proxmox
+
+    def relogin(self) -> bool:
+        """
+        Log in again with the stored password, keeping every reference valid.
+
+        proxmoxer does not keep the password. It renews the ticket with the
+        ticket itself, and a ticket is valid for two hours - so once the host
+        has been unreachable for longer than that, the next renewal is
+        refused with 401, exactly as a wrong password would be, and the
+        session can never recover on its own. This performs the login the
+        way the backend does at construction and swaps the result in, so the
+        coordinators holding the client see the new ticket.
+
+        Returns False for token authentication, which has nothing to renew.
+        Raises AuthenticationError when the password really is wrong.
+        """
+        if self._token_name:
+            return False
+        backend = self._proxmox._backend  # noqa: SLF001
+        auth = ProxmoxHTTPAuth(
+            self._user_id(),
+            self._password,
+            base_url=backend.get_base_url(),
+            verify_ssl=self._verify_ssl,
+            timeout=API_TIMEOUT,
+        )
+        backend.auth = auth
+        self._proxmox._store["session"].auth = auth  # noqa: SLF001
+        return True
+
+    def _user_id(self) -> str:
+        """Return the user with its realm, as Proxmox wants it."""
+        return self._user if "@" in self._user else f"{self._user}@{self._realm}"
 
 
 def get_api(

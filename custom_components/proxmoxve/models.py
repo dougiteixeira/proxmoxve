@@ -7,6 +7,8 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
+from homeassistant.helpers.typing import UNDEFINED
+
 if TYPE_CHECKING:
     from datetime import datetime
 
@@ -37,6 +39,9 @@ class ProxmoxNodeData:
     lxc_on_list: list
     sensors: dict[str, float] | None = None
     sensors_raw: str | None = None
+    # `wait` from the node status: the share of time the CPUs spent waiting
+    # for I/O, on the same 0..1 scale as `cpu`. Proxmox shows it as IO delay.
+    io_wait: float | UndefinedType = UNDEFINED
 
 
 @dataclasses.dataclass

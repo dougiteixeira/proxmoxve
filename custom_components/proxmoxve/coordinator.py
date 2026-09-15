@@ -31,7 +31,7 @@ from requests.exceptions import (
     SSLError,
 )
 
-from .api import get_api
+from .api import ProxmoxClient, get_api
 from .const import (
     CONF_GUEST_FILE_PATH,
     CONF_HA_ADMIN_USERNAME,
@@ -39,6 +39,8 @@ from .const import (
     DOMAIN,
     GUEST_FILE_READ_MAX_BYTES,
     LOGGER,
+    PROXMOX_CLIENT,
+    PROXMOX_HA_ADMIN_CLIENT,
     SLOW_UPDATE_INTERVAL,
     TASKS_UPDATE_INTERVAL,
     UPDATE_INTERVAL,
@@ -1361,6 +1363,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 ),
                 uptime=api_status.get("uptime", UNDEFINED),
                 cpu=api_status.get("cpu", UNDEFINED),
+                io_wait=api_status.get("wait", UNDEFINED),
                 disk_total=api_status.get("disk_max", UNDEFINED),
                 disk_used=api_status.get("disk_used", UNDEFINED),
                 memory_total=(
@@ -1711,7 +1714,16 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             network_in=api_status.get("netin", UNDEFINED),
             network_out=api_status.get("netout", UNDEFINED),
             disk_total=api_status.get("maxdisk", UNDEFINED),
-            disk_used=api_status.get("disk", UNDEFINED),
+            disk_used=(
+                api_status.get("disk", UNDEFINED)
+                # Proxmox cannot look inside a container that is not running
+                # and reports `disk: 0` - which is not "empty": the data is
+                # still on the volume. That 0 turned into 0% used and 100%
+                # free every time a container stopped, a spike in every
+                # graph. Memory and swap really are zero then; disk is not.
+                if api_status.get("status") == "running"
+                else UNDEFINED
+            ),
             swap_total=api_status.get("maxswap", UNDEFINED),
             swap_used=api_status.get("swap", UNDEFINED),
             swap_free=(
@@ -1966,15 +1978,67 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
         return parse_updates(api_status, self.node_name)
 
 
-# SMART attribute ids, as smartctl numbers them. The text form of the NVMe
-# health log carries no ids, so `text_to_smart_id` maps its labels onto the
-# same numbers before the values reach the parser.
+# SMART attribute ids, as smartctl numbers them. The text form Proxmox hands
+# out for NVMe and SAS drives carries no ids, so `parse_smart_text` maps its
+# labels onto the same numbers before the values reach the parser.
 SMART_POWER_CYCLES: Final = 12
 SMART_TEMPERATURE: Final = 194
 SMART_TEMPERATURE_AIR: Final = 190
 SMART_POWER_HOURS: Final = 9
 SMART_LIFE_LEFT: Final = 231
 SMART_POWER_LOSS: Final = 174
+
+
+# The labels smartctl prints in place of numbered attributes, per drive
+# type. NVMe is the health log; SAS is what an enterprise drive behind an
+# expander reports, with its own words for the same three things - one of
+# them a label that itself contains the colon the format splits on.
+SMART_TEXT_LABELS: Final[dict[str, int]] = {
+    # NVMe
+    "Temperature": SMART_TEMPERATURE,
+    "Power Cycles": SMART_POWER_CYCLES,
+    "Power On Hours": SMART_POWER_HOURS,
+    # SAS
+    "Current Drive Temperature": SMART_TEMPERATURE,
+    "Accumulated start-stop cycles": SMART_POWER_CYCLES,
+    "Accumulated power on time, hours:minutes": SMART_POWER_HOURS,
+}
+
+
+def parse_smart_text(text: str) -> list[dict[str, Any]]:
+    """
+    Turn smartctl's text output into the attribute shape the parser reads.
+
+    Each line is `label: value`. The label is matched whole rather than by
+    prefix, so `Temperature Sensor 1` does not pass for `Temperature`; the
+    one SAS label that carries a colon of its own is looked for first.
+    Lines with a label the sensors do not show are left out.
+    """
+    attributes: list[dict[str, Any]] = []
+    for raw_line in text.split("\n"):
+        line = raw_line.strip()
+        if not line:
+            continue
+        label, value = None, ""
+        for known in SMART_TEXT_LABELS:
+            if ":" in known and line.startswith(known):
+                label, value = known, line[len(known) :]
+                break
+        if label is None:
+            head, sep, tail = line.partition(":")
+            if not sep:
+                continue
+            label, value = head.strip(), tail
+        if label not in SMART_TEXT_LABELS:
+            continue
+        attributes.append(
+            {
+                "name": label,
+                "raw": value.strip().replace(",", ""),
+                "id": SMART_TEXT_LABELS[label],
+            }
+        )
+    return attributes
 
 
 def _leading_int(value: Any) -> int | None:
@@ -2054,19 +2118,6 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         self.node_name = node_name
         self.resource_id = disk_id
 
-    def text_to_smart_id(self, text: str) -> str:
-        """Update data  for Proxmox Disk."""
-        match text:
-            case "Temperature":
-                smart_id = "194"
-            case "Power Cycles":
-                smart_id = "12"
-            case "Power On Hours":
-                smart_id = "9"
-            case _:
-                smart_id = "0"
-        return smart_id
-
     async def _async_update_data(self) -> ProxmoxDiskData:
         """Update data  for Proxmox Disk."""
         if self.node_name is not None:
@@ -2134,17 +2185,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
                     and "type" in disk_attributes_api
                     and disk_attributes_api["type"] == "text"
                 ):
-                    attributes_text = disk_attributes_api["text"].split("\n")
-                    for value_text in attributes_text:
-                        value_json = value_text.split(":")
-                        if len(value_json) >= 2:
-                            attributes_json.append(
-                                {
-                                    "name": value_json[0].strip(),
-                                    "raw": value_json[1].strip().replace(",", ""),
-                                    "id": self.text_to_smart_id(value_json[0].strip()),
-                                }
-                            )
+                    attributes_json = parse_smart_text(disk_attributes_api["text"])
 
                 disk_attributes = parse_smart_attributes(attributes_json)
 
@@ -2346,6 +2387,51 @@ def update_device_via(
 # Keyword-only arguments are not an option here: every caller reaches this
 # through `hass.async_add_executor_job(poll_api, ...)`, which forwards its
 # arguments positionally and accepts no keywords.
+def _client_for(config_entry: ConfigEntry, proxmox: ProxmoxAPI) -> ProxmoxClient | None:
+    """Return the client that built `proxmox`, if setup has stored one."""
+    runtime = getattr(config_entry, "runtime_data", None)
+    if not isinstance(runtime, dict):
+        return None
+    for key in (PROXMOX_CLIENT, PROXMOX_HA_ADMIN_CLIENT):
+        client = runtime.get(key)
+        if client is not None and client.get_api_client() is proxmox:
+            return client
+    return None
+
+
+def _retry_after_relogin(
+    config_entry: ConfigEntry,
+    proxmox: ProxmoxAPI,
+    api_path: str,
+    error: AuthenticationError,
+) -> dict[str, Any] | None:
+    """
+    Log in once more and repeat the request before asking for credentials.
+
+    A ticket outlives a host that is off for more than two hours, and the
+    renewal proxmoxer then attempts is refused like a wrong password. Nodes
+    that are switched off overnight hit this every morning and ended up in
+    the reauthentication flow although nothing about the credentials had
+    changed. A fresh login with the stored password settles it either way:
+    it works, or it fails for a reason that really is the credentials.
+    """
+    client = _client_for(config_entry, proxmox)
+    if client is None:
+        raise ConfigEntryAuthFailed from error
+    try:
+        renewed = client.relogin()
+    except AuthenticationError as again:
+        raise ConfigEntryAuthFailed from again
+    if not renewed:
+        # Token authentication has nothing to renew; this failure is real.
+        raise ConfigEntryAuthFailed from error
+    LOGGER.debug("Logged in again after the ticket was refused for %s", api_path)
+    try:
+        return get_api(proxmox, api_path)
+    except AuthenticationError as again:
+        raise ConfigEntryAuthFailed from again
+
+
 def poll_api(  # noqa: PLR0917
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -2387,9 +2473,10 @@ def poll_api(  # noqa: PLR0917
                 return "Unmapped"
 
     try:
-        api_data = get_api(proxmox, api_path)
-    except AuthenticationError as error:
-        raise ConfigEntryAuthFailed from error
+        try:
+            api_data = get_api(proxmox, api_path)
+        except AuthenticationError as error:
+            api_data = _retry_after_relogin(config_entry, proxmox, api_path, error)
     except (
         SSLError,
         ConnectTimeout,

@@ -306,6 +306,12 @@
         "cpu_used": {
           "name": "CPU used"
         },
+        "io_wait": {
+          "name": "IO delay"
+        },
+        "version": {
+          "name": "Version"
+        },
         "disk_free": {
           "name": "Disk free"
         },
