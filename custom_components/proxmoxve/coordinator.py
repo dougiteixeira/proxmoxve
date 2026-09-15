@@ -673,8 +673,10 @@ class ProxmoxDiscoveryCoordinator(DataUpdateCoordinator[dict[str, list[str]]]):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         add_resource: Callable[[ProxmoxType, str], Awaitable[None]],
         remove_resource: Callable[[ProxmoxType, str], Awaitable[None]],
     ) -> None:
@@ -682,6 +684,7 @@ class ProxmoxDiscoveryCoordinator(DataUpdateCoordinator[dict[str, list[str]]]):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name="proxmox_coordinator_discovery",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -743,13 +746,16 @@ class ProxmoxHAResourcesCoordinator(DataUpdateCoordinator[set[str]]):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Proxmox HA resources coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name="proxmox_coordinator_ha_resources",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -792,13 +798,16 @@ class ProxmoxHAStatusCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Proxmox cluster HA status coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name="proxmox_coordinator_ha_status",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -842,13 +851,16 @@ class ProxmoxBackupInfoCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Proxmox backup info coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name="proxmox_coordinator_backup_info",
             update_interval=timedelta(seconds=SLOW_UPDATE_INTERVAL),
         )
@@ -883,14 +895,17 @@ class ProxmoxBackupCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         node_name: str,
     ) -> None:
         """Initialize the Proxmox backup coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_backup_{node_name}",
             update_interval=timedelta(seconds=TASKS_UPDATE_INTERVAL),
         )
@@ -927,14 +942,17 @@ class ProxmoxReplicationCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         node_name: str,
     ) -> None:
         """Initialize the Proxmox replication coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_replication_{node_name}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -971,14 +989,17 @@ class ProxmoxSubscriptionCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         node_name: str,
     ) -> None:
         """Initialize the Proxmox subscription coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_subscription_{node_name}",
             update_interval=timedelta(seconds=SLOW_UPDATE_INTERVAL),
         )
@@ -1020,13 +1041,16 @@ class ProxmoxCephCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Proxmox Ceph coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name="proxmox_coordinator_ceph",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1061,14 +1085,17 @@ class ProxmoxCertificateCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         node_name: str,
     ) -> None:
         """Initialize the Proxmox certificate coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_certificate_{node_name}",
             update_interval=timedelta(seconds=SLOW_UPDATE_INTERVAL),
         )
@@ -1105,8 +1132,10 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
     ) -> None:
@@ -1114,6 +1143,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1394,8 +1424,10 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         qemu_id: int,
     ) -> None:
@@ -1403,6 +1435,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{qemu_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1595,8 +1628,10 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         container_id: int,
     ) -> None:
@@ -1604,6 +1639,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{container_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1690,8 +1726,10 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         storage_id: str,
     ) -> None:
@@ -1699,6 +1737,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{storage_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1792,8 +1831,10 @@ class ProxmoxZFSCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
         zfs_id: str,
@@ -1802,6 +1843,7 @@ class ProxmoxZFSCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{zfs_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1850,8 +1892,10 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
     ) -> None:
@@ -1859,6 +1903,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -1925,8 +1970,10 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
         disk_id: str,
@@ -1935,6 +1982,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}_{disk_id}",
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
@@ -2120,8 +2168,10 @@ class ProxmoxTaskCoordinator(ProxmoxCoordinator):
 
     def __init__(
         self,
+        *,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
         api_category: str,
         node_name: str,
     ) -> None:
@@ -2129,6 +2179,7 @@ class ProxmoxTaskCoordinator(ProxmoxCoordinator):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}",
             update_interval=timedelta(seconds=TASKS_UPDATE_INTERVAL),
         )

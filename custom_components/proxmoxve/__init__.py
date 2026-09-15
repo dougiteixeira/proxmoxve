@@ -37,6 +37,7 @@ from requests.exceptions import (
 )
 from requests.exceptions import (
     ConnectTimeout,
+    RequestException,
     RetryError,
     SSLError,
 )
@@ -105,6 +106,8 @@ from .disk import colliding_disk_wwns, resolve_disk_id
 from .permissions import async_fetch_permissions
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from homeassistant.core import Event, HomeAssistant
     from homeassistant.helpers.typing import ConfigType
     from proxmoxer import ProxmoxAPI
@@ -335,159 +338,46 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         )
 
     if config_entry.version == 4:
-        for storage in config_entry.data.get(CONF_STORAGE):
-            dev_reg = dr.async_get(hass)
-            device = dev_reg.async_get_or_create(
-                config_entry_id=config_entry.entry_id,
-                identifiers={
-                    (
-                        DOMAIN,
-                        (
-                            f"{config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage}"
-                        ),
-                    )
-                },
+        # Storage devices used to be keyed by name; they are recreated under
+        # the storage id by the next setup, so the old ones go.
+        dev_reg = dr.async_get(hass)
+        for storage in config_entry.data.get(CONF_STORAGE, []):
+            device = dev_reg.async_get_device_by_identifier(
+                (
+                    DOMAIN,
+                    f"{config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage}",
+                ),
+                config_entry.entry_id,
             )
-            dev_reg.async_update_device(
-                device_id=device.id,
-                remove_config_entry_id=config_entry.entry_id,
-            )
+            if device is not None:
+                dev_reg.async_update_device(
+                    device_id=device.id,
+                    remove_config_entry_id=config_entry.entry_id,
+                )
+        # This step never advanced the version, so entries created before
+        # the storage id change ran it again on every start and never
+        # reached the disk identifier migrations below.
+        hass.config_entries.async_update_entry(config_entry, version=5, minor_version=1)
 
     if config_entry.version == 5:
-        entry_data = config_entry.data
-
-        host = entry_data[CONF_HOST]
-        port = entry_data[CONF_PORT]
-        user = entry_data[CONF_USERNAME]
-        token_name = entry_data[CONF_TOKEN_NAME]
-        realm = entry_data[CONF_REALM]
-        password = entry_data[CONF_PASSWORD]
-        verify_ssl = entry_data[CONF_VERIFY_SSL]
-
-        proxmox_client = ProxmoxClient(
-            host=host,
-            port=port,
-            user=user,
-            token_name=token_name,
-            realm=realm,
-            password=password,
-            verify_ssl=verify_ssl,
+        # Disk devices move from the device path to a stable disk id.
+        await _async_rename_disk_devices(
+            hass, config_entry, lambda disk: disk["devpath"]
         )
-        try:
-            await hass.async_add_executor_job(proxmox_client.build_client)
-        except ResourceException:
-            LOGGER.warning(
-                "Migration from version 5 to version 6 failed due to API connection"
-            )
-
-        proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
-
-        for node in config_entry.data.get(CONF_NODES):
-            try:
-                disks = await hass.async_add_executor_job(
-                    get_api, proxmox, f"nodes/{node}/disks/list"
-                )
-            except ResourceException:
-                continue
-
-            disks = disks if disks is not None else []
-            colliding_wwns = colliding_disk_wwns(disks)
-            dev_reg = dr.async_get(hass)
-            for disk in disks:
-                device = dev_reg.async_get_or_create(
-                    config_entry_id=config_entry.entry_id,
-                    identifiers={
-                        (
-                            DOMAIN,
-                            (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['devpath']}"
-                            ),
-                        )
-                    },
-                )
-                disk_id = resolve_disk_id(disk, colliding_wwns=colliding_wwns)
-                dev_reg.async_update_device(
-                    device_id=device.id,
-                    new_identifiers={
-                        (
-                            DOMAIN,
-                            (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk_id}"
-                            ),
-                        )
-                    },
-                )
+        hass.config_entries.async_update_entry(config_entry, version=6, minor_version=1)
 
     if config_entry.version == 6:
-        entry_data = config_entry.data
-
-        host = entry_data[CONF_HOST]
-        port = entry_data[CONF_PORT]
-        user = entry_data[CONF_USERNAME]
-        token_name = entry_data[CONF_TOKEN_NAME]
-        realm = entry_data[CONF_REALM]
-        password = entry_data[CONF_PASSWORD]
-        verify_ssl = entry_data[CONF_VERIFY_SSL]
-
-        proxmox_client = ProxmoxClient(
-            host=host,
-            port=port,
-            user=user,
-            token_name=token_name,
-            realm=realm,
-            password=password,
-            verify_ssl=verify_ssl,
+        # Disk devices move from the by-id link or serial to the disk id.
+        await _async_rename_disk_devices(
+            hass,
+            config_entry,
+            lambda disk: disk["by_id_link"] if "by_id_link" in disk else disk["serial"],
         )
-        try:
-            await hass.async_add_executor_job(proxmox_client.build_client)
-        except ResourceException:
-            LOGGER.warning(
-                "Migration from version 6 to version 7 failed due to API connection"
-            )
-
-        proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
-
-        for node in config_entry.data.get(CONF_NODES):
-            try:
-                disks = await hass.async_add_executor_job(
-                    get_api, proxmox, f"nodes/{node}/disks/list"
-                )
-            except ResourceException:
-                continue
-
-            disks = disks if disks is not None else []
-            colliding_wwns = colliding_disk_wwns(disks)
-            dev_reg = dr.async_get(hass)
-            for disk in disks:
-                device = dev_reg.async_get_or_create(
-                    config_entry_id=config_entry.entry_id,
-                    identifiers={
-                        (
-                            DOMAIN,
-                            (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['by_id_link'] if 'by_id_link' in disk else disk['serial']}"
-                            ),
-                        )
-                    },
-                )
-                disk_id = resolve_disk_id(disk, colliding_wwns=colliding_wwns)
-                dev_reg.async_update_device(
-                    device_id=device.id,
-                    new_identifiers={
-                        (
-                            DOMAIN,
-                            (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk_id}"
-                            ),
-                        )
-                    },
-                )
-
         data_new = {
             CONF_HOST: config_entry.data.get(CONF_HOST),
             CONF_PORT: config_entry.data.get(CONF_PORT),
             CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
-            CONF_TOKEN_NAME: config_entry.data.get(CONF_TOKEN_NAME),
+            CONF_TOKEN_NAME: config_entry.data.get(CONF_TOKEN_NAME, ""),
             CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
             CONF_REALM: config_entry.data.get(CONF_REALM),
             CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
@@ -507,6 +397,80 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True
+
+
+async def _async_rename_disk_devices(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    old_id: Callable[[dict[str, Any]], str],
+) -> None:
+    """
+    Move each node's disk devices from an older identifier to the disk id.
+
+    Only devices that actually carry the old identifier are touched. The
+    earlier form of this used `async_get_or_create`, which invented a device
+    under the old identifier and then renamed it onto an identifier the
+    real disk device already had - a duplicate on every start for entries
+    whose migration never advanced.
+    """
+    entry_data = config_entry.data
+    proxmox_client = ProxmoxClient(
+        host=entry_data[CONF_HOST],
+        port=entry_data[CONF_PORT],
+        user=entry_data[CONF_USERNAME],
+        token_name=entry_data.get(CONF_TOKEN_NAME, ""),
+        realm=entry_data[CONF_REALM],
+        password=entry_data[CONF_PASSWORD],
+        verify_ssl=entry_data[CONF_VERIFY_SSL],
+    )
+    try:
+        await hass.async_add_executor_job(proxmox_client.build_client)
+    except (AuthenticationError, RequestException, ResourceException):
+        LOGGER.warning("Disk device migration skipped: Proxmox is not reachable")
+        return
+    proxmox = proxmox_client.get_api_client()
+
+    dev_reg = dr.async_get(hass)
+    for node in config_entry.data.get(CONF_NODES, []):
+        try:
+            disks = await hass.async_add_executor_job(
+                get_api, proxmox, f"nodes/{node}/disks/list"
+            )
+        except (ResourceException, RequestException):
+            continue
+
+        disks = disks if isinstance(disks, list) else []
+        colliding_wwns = colliding_disk_wwns(disks)
+        for disk in disks:
+            try:
+                old = old_id(disk)
+            except KeyError:
+                continue
+            prefix = f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_"
+            device = dev_reg.async_get_device_by_identifier(
+                (DOMAIN, f"{prefix}{old}"), config_entry.entry_id
+            )
+            new_identifier = (
+                DOMAIN,
+                f"{prefix}{resolve_disk_id(disk, colliding_wwns=colliding_wwns)}",
+            )
+            if device is None or new_identifier in device.identifiers:
+                continue
+            if (
+                dev_reg.async_get_device_by_identifier(
+                    new_identifier, config_entry.entry_id
+                )
+                is not None
+            ):
+                # The new device already exists; the old one is a leftover.
+                dev_reg.async_update_device(
+                    device_id=device.id,
+                    remove_config_entry_id=config_entry.entry_id,
+                )
+                continue
+            dev_reg.async_update_device(
+                device_id=device.id, new_identifiers={new_identifier}
+            )
 
 
 async def _get_api_or_retry_setup(
@@ -604,6 +568,7 @@ async def _async_setup_node(  # noqa: PLR0917
     coordinator_node = ProxmoxNodeCoordinator(
         hass=hass,
         proxmox=proxmox,
+        config_entry=config_entry,
         api_category=ProxmoxType.Node,
         node_name=node,
     )
@@ -613,6 +578,7 @@ async def _async_setup_node(  # noqa: PLR0917
     coordinator_updates = ProxmoxUpdateCoordinator(
         hass=hass,
         proxmox=proxmox,
+        config_entry=config_entry,
         api_category=ProxmoxType.Update,
         node_name=node,
     )
@@ -622,6 +588,7 @@ async def _async_setup_node(  # noqa: PLR0917
     coordinator_certificate = ProxmoxCertificateCoordinator(
         hass=hass,
         proxmox=proxmox,
+        config_entry=config_entry,
         node_name=node,
     )
     await coordinator_certificate.async_refresh()
@@ -630,6 +597,7 @@ async def _async_setup_node(  # noqa: PLR0917
     coordinator_subscription = ProxmoxSubscriptionCoordinator(
         hass=hass,
         proxmox=proxmox,
+        config_entry=config_entry,
         node_name=node,
     )
     await coordinator_subscription.async_refresh()
@@ -638,6 +606,7 @@ async def _async_setup_node(  # noqa: PLR0917
     coordinator_replication = ProxmoxReplicationCoordinator(
         hass=hass,
         proxmox=proxmox,
+        config_entry=config_entry,
         node_name=node,
     )
     await coordinator_replication.async_refresh()
@@ -646,6 +615,7 @@ async def _async_setup_node(  # noqa: PLR0917
     coordinator_backup = ProxmoxBackupCoordinator(
         hass=hass,
         proxmox=proxmox,
+        config_entry=config_entry,
         node_name=node,
     )
     await coordinator_backup.async_refresh()
@@ -655,6 +625,7 @@ async def _async_setup_node(  # noqa: PLR0917
         coordinator_tasks = ProxmoxTaskCoordinator(
             hass=hass,
             proxmox=proxmox,
+            config_entry=config_entry,
             api_category=ProxmoxType.Tasks,
             node_name=node,
         )
@@ -676,6 +647,7 @@ async def _async_setup_node(  # noqa: PLR0917
             coordinator_disk = ProxmoxDiskCoordinator(
                 hass=hass,
                 proxmox=proxmox,
+                config_entry=config_entry,
                 api_category=ProxmoxType.Disk,
                 node_name=node,
                 disk_id=resolve_disk_id(disk, colliding_wwns=colliding_wwns),
@@ -697,6 +669,7 @@ async def _async_setup_node(  # noqa: PLR0917
             coordinator_zfs = ProxmoxZFSCoordinator(
                 hass=hass,
                 proxmox=proxmox,
+                config_entry=config_entry,
                 api_category=ProxmoxType.ZFS,
                 node_name=node,
                 zfs_id=pool["name"],
@@ -747,6 +720,7 @@ async def _async_setup_guest(  # noqa: PLR0917
             ProxmoxQEMUCoordinator(
                 hass=hass,
                 proxmox=proxmox,
+                config_entry=config_entry,
                 api_category=ProxmoxType.QEMU,
                 qemu_id=vm_id,
             )
@@ -755,6 +729,7 @@ async def _async_setup_guest(  # noqa: PLR0917
         coordinator = ProxmoxLXCCoordinator(
             hass=hass,
             proxmox=proxmox,
+            config_entry=config_entry,
             api_category=ProxmoxType.LXC,
             container_id=vm_id,
         )
@@ -799,6 +774,7 @@ async def _async_setup_storage(  # noqa: PLR0917
     coordinator_storage = ProxmoxStorageCoordinator(
         hass=hass,
         proxmox=proxmox,
+        config_entry=config_entry,
         api_category=ProxmoxType.Storage,
         storage_id=storage_id,
     )
@@ -847,7 +823,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     host = entry_data[CONF_HOST]
     port = entry_data[CONF_PORT]
     user = entry_data[CONF_USERNAME]
-    token_name = entry_data[CONF_TOKEN_NAME]
+    token_name = entry_data.get(CONF_TOKEN_NAME, "")
     realm = entry_data[CONF_REALM]
     password = entry_data[CONF_PASSWORD]
     verify_ssl = entry_data[CONF_VERIFY_SSL]
@@ -1010,6 +986,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         ha_resources_coordinator = ProxmoxHAResourcesCoordinator(
             hass=hass,
             proxmox=proxmox_ha_admin,
+            config_entry=config_entry,
         )
         await ha_resources_coordinator.async_refresh()
         coordinators[f"{ProxmoxType.Proxmox}_ha_resources"] = ha_resources_coordinator
@@ -1017,6 +994,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         ha_status_coordinator = ProxmoxHAStatusCoordinator(
             hass=hass,
             proxmox=proxmox_ha_admin,
+            config_entry=config_entry,
         )
         await ha_status_coordinator.async_refresh()
         coordinators[f"{ProxmoxType.Proxmox}_ha_status"] = ha_status_coordinator
@@ -1024,6 +1002,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         backup_info_coordinator = ProxmoxBackupInfoCoordinator(
             hass=hass,
             proxmox=proxmox_ha_admin,
+            config_entry=config_entry,
         )
         await backup_info_coordinator.async_refresh()
         coordinators[f"{ProxmoxType.Proxmox}_backup_info"] = backup_info_coordinator
@@ -1053,6 +1032,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             ceph_coordinator = ProxmoxCephCoordinator(
                 hass=hass,
                 proxmox=proxmox_ha_admin,
+                config_entry=config_entry,
             )
             await ceph_coordinator.async_refresh()
             coordinators[f"{ProxmoxType.Proxmox}_ceph"] = ceph_coordinator
@@ -1140,6 +1120,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         discovery_coordinator = ProxmoxDiscoveryCoordinator(
             hass=hass,
             proxmox=proxmox,
+            config_entry=config_entry,
             add_resource=_async_add_resource,
             remove_resource=_async_remove_resource,
         )

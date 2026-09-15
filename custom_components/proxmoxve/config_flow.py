@@ -517,7 +517,10 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                         if (coordinator_data := coordinator_zfs.data) is None:
                             continue
 
-                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.ZFS.upper()}_{node}_{coordinator_data.path}"
+                        # The pool device is registered under the data's
+                        # display name, "ZFS Pool <pool>", by the sensor
+                        # platform; there is no `path` on pool data.
+                        identifier = f"{self.config_entry.entry_id}_{ProxmoxType.ZFS.upper()}_{node}_{coordinator_data.name}"
                         await self.async_remove_device(
                             entry_id=self.config_entry.entry_id,
                             device_identifier=identifier,
@@ -747,6 +750,9 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             and (import_nodes := import_config.get(CONF_NODES)) is not None
         ):
             config = import_config.copy()
+            # The UI always stores a token name, empty for password logins;
+            # setup reads it the same way for both.
+            config.setdefault(CONF_TOKEN_NAME, "")
             config[CONF_NODES] = []
             for node_data in import_nodes:
                 node = node_data[CONF_NODE]
