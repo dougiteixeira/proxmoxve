@@ -18,12 +18,15 @@ from custom_components.proxmoxve.const import (
     CONF_QEMU,
     CONF_STORAGE,
     CONF_TOKEN_NAME,
+    TRACKED,
     ProxmoxType,
 )
 from custom_components.proxmoxve.coordinator import ProxmoxDiscoveryCoordinator
 from custom_components.proxmoxve.discovery import (
-    apply_discovery,
     discovered_resources,
+    remember_resources,
+    remove_stale_devices,
+    selected_resources,
     tracked_resources,
 )
 
@@ -60,59 +63,62 @@ def test_guests_are_sorted_numerically() -> None:
     assert discovered_resources(MOCK_GET_RESPONSE)[CONF_QEMU] == ["101", "1001"]
 
 
-async def test_apply_discovery_when_nothing_changed(hass: HomeAssistant) -> None:
-    """Test an identical listing changes nothing and says so."""
-    entry = MockConfigEntry(
-        domain=DOMAIN, data={**USER_INPUT_OK, **EVERYTHING}, options={}
-    )
+def test_tracked_falls_back_to_the_selection() -> None:
+    """Test what is tracked is the selection until setup has decided otherwise."""
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT_OK)
+
+    assert tracked_resources(entry) == selected_resources(entry)
+    assert tracked_resources(entry)[CONF_QEMU] == ["101"]
+
+
+async def test_remember_resources_leaves_the_selection_alone(
+    hass: HomeAssistant,
+) -> None:
+    """
+    Test discovery changes what is tracked, never what was picked.
+
+    That is what lets the old selection come back untouched when discovery
+    is switched off again.
+    """
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT_OK)
     entry.add_to_hass(hass)
+    entry.runtime_data = {TRACKED: selected_resources(entry)}
 
-    assert apply_discovery(hass, entry, EVERYTHING) is False
+    remember_resources(entry, EVERYTHING)
+
     assert tracked_resources(entry) == EVERYTHING
+    assert selected_resources(entry)[CONF_QEMU] == ["101"]
+    assert entry.data[CONF_QEMU] == ["101"]
 
 
-async def test_apply_discovery_picks_up_new_guests(hass: HomeAssistant) -> None:
-    """Test a guest the entry did not track is added to it."""
+async def test_stale_devices_are_removed_at_setup(hass: HomeAssistant) -> None:
+    """Test devices of guests the cluster no longer lists are detached."""
     entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT_OK, options={})
-    entry.add_to_hass(hass)
-
-    assert apply_discovery(hass, entry, EVERYTHING) is True
-    assert tracked_resources(entry) == EVERYTHING
-    # The rest of the entry is untouched.
-    assert entry.data["host"] == USER_INPUT_OK["host"]
-
-
-async def test_apply_discovery_drops_a_vanished_guest(hass: HomeAssistant) -> None:
-    """Test a guest the cluster no longer lists loses its device."""
-    entry = MockConfigEntry(
-        domain=DOMAIN, data={**USER_INPUT_OK, **EVERYTHING}, options={}
-    )
     entry.add_to_hass(hass)
     dev_reg = dr.async_get(hass)
     gone = dev_reg.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, f"{entry.entry_id}_{ProxmoxType.QEMU.upper()}_1001")},
+        identifiers={(DOMAIN, f"{entry.entry_id}_{ProxmoxType.QEMU.upper()}_4711")},
     )
     kept = dev_reg.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, f"{entry.entry_id}_{ProxmoxType.QEMU.upper()}_101")},
     )
+    cluster = dev_reg.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{entry.entry_id}_cluster")},
+    )
 
-    listing = {**EVERYTHING, CONF_QEMU: ["101"]}
-    assert apply_discovery(hass, entry, listing) is True
+    remove_stale_devices(hass, entry, EVERYTHING)
 
-    assert tracked_resources(entry)[CONF_QEMU] == ["101"]
     assert dev_reg.async_get(gone.id) is None
     assert dev_reg.async_get(kept.id) is not None
+    assert dev_reg.async_get(cluster.id) is not None
 
 
 async def test_a_vanished_node_takes_its_disks_along(hass: HomeAssistant) -> None:
     """Test the disk and pool devices under a removed node go with it."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={**USER_INPUT_OK, **EVERYTHING, CONF_NODES: ["pve", "pve2"]},
-        options={},
-    )
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT_OK, options={})
     entry.add_to_hass(hass)
     dev_reg = dr.async_get(hass)
     devices = [
@@ -127,15 +133,17 @@ async def test_a_vanished_node_takes_its_disks_along(hass: HomeAssistant) -> Non
             # Same prefix as a name, different node: must survive.
             "NODE_pve",
             "DISK_pve_ata-OTHERDISK",
+            "STORAGE_pve/local",
         )
     ]
 
-    assert apply_discovery(hass, entry, EVERYTHING) is True
+    remove_stale_devices(hass, entry, EVERYTHING)
 
     assert [dev_reg.async_get(device.id) is not None for device in devices] == [
         False,
         False,
         False,
+        True,
         True,
         True,
     ]
@@ -150,6 +158,7 @@ def _discovery_coordinator(
     Constructing the real thing would register it with the entry's lifecycle;
     the update method only needs these attributes.
     """
+    entry.runtime_data = {TRACKED: selected_resources(entry)}
     coordinator = object.__new__(ProxmoxDiscoveryCoordinator)
     coordinator.hass = hass
     coordinator.config_entry = entry
@@ -179,6 +188,8 @@ async def test_coordinator_adds_what_is_new(hass: HomeAssistant) -> None:
 
     assert found == EVERYTHING
     assert tracked_resources(entry) == EVERYTHING
+    # The selection in the entry is not what discovery writes to.
+    assert entry.data[CONF_QEMU] == ["101"]
     assert [call.args for call in add.await_args_list] == [
         (ProxmoxType.Node, "pve"),
         (ProxmoxType.QEMU, "1001"),
@@ -250,6 +261,9 @@ async def test_setup_with_discovery_tracks_everything(hass: HomeAssistant) -> No
 
     assert entry.state is ConfigEntryState.LOADED
     assert tracked_resources(entry) == EVERYTHING
+    # ... while the picked selection in the entry stays exactly as it was.
+    assert entry.data[CONF_QEMU] == ["101"]
+    assert entry.data[CONF_LXC] == ["100"]
     assert f"{ProxmoxType.Proxmox}_discovery" in entry.runtime_data["coordinators"]
 
 

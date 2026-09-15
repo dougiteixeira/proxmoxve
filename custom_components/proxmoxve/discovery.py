@@ -4,12 +4,16 @@
 Keep the tracked nodes, guests and storages in step with the cluster.
 
 By default this integration tracks exactly what was picked in the options.
-With automatic discovery on, the picked set becomes the starting point and
-`cluster/resources` the truth: whatever the cluster lists is tracked, and
-whatever it no longer lists is dropped, devices included.
+With automatic discovery on, `cluster/resources` is the truth instead:
+whatever the cluster lists is tracked, and whatever it no longer lists is
+dropped, devices included.
 
-At setup the config entry is brought in line before the coordinators are
-built from it. Afterwards a coordinator keeps comparing, and - like the
+The selection in the config entry is never touched by this. What is tracked
+lives in the entry's runtime data, so switching discovery off again brings
+the old selection back at the next reload, exactly as it was.
+
+At setup the tracked set is taken from the cluster before the coordinators
+are built from it. Afterwards a coordinator keeps comparing, and - like the
 Home Assistant core integration - adds the coordinators, device and
 entities of a new resource on the spot and removes those of a vanished one,
 without reloading anything.
@@ -28,6 +32,7 @@ from .const import (
     CONF_STORAGE,
     DOMAIN,
     LOGGER,
+    TRACKED,
     ProxmoxType,
 )
 
@@ -83,12 +88,25 @@ def discovered_resources(resources: list[dict[str, Any]]) -> dict[str, list[str]
     }
 
 
-def tracked_resources(config_entry: ConfigEntry) -> dict[str, list[str]]:
-    """Return what the config entry tracks, as strings like the discovery."""
+def selected_resources(config_entry: ConfigEntry) -> dict[str, list[str]]:
+    """Return what was picked in the config entry, as strings like the discovery."""
     return {
         key: [str(value) for value in config_entry.data.get(key, [])]
         for key in RESOURCE_KEYS.values()
     }
+
+
+def tracked_resources(config_entry: ConfigEntry) -> dict[str, list[str]]:
+    """
+    Return what this setup tracks.
+
+    That is the runtime set once setup has decided it - the selection, or
+    the cluster's list with discovery on - and the selection before that.
+    """
+    runtime = getattr(config_entry, "runtime_data", None)
+    if isinstance(runtime, dict) and TRACKED in runtime:
+        return {key: list(values) for key, values in runtime[TRACKED].items()}
+    return selected_resources(config_entry)
 
 
 def resource_changes(
@@ -114,11 +132,10 @@ def _sort_key(value: str) -> tuple[int, str]:
 
 
 def remember_resources(
-    hass: HomeAssistant,
     config_entry: ConfigEntry,
     found: dict[str, list[str]],
 ) -> None:
-    """Make the config entry track exactly `found`, and log the difference."""
+    """Make the runtime track exactly `found`, and log the difference."""
     added, removed = resource_changes(config_entry, found)
     for key in RESOURCE_KEYS.values():
         if added[key] or removed[key]:
@@ -128,31 +145,55 @@ def remember_resources(
                 added[key] or "nothing",
                 removed[key] or "nothing",
             )
-    hass.config_entries.async_update_entry(
-        config_entry,
-        data={**config_entry.data, **found},
-    )
+    tracked = config_entry.runtime_data[TRACKED]
+    tracked.clear()
+    tracked.update({key: list(values) for key, values in found.items()})
 
 
-def apply_discovery(
+def remove_stale_devices(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     found: dict[str, list[str]],
-) -> bool:
+) -> None:
     """
-    Bring the config entry in line with the cluster at setup.
+    Detach every device of a node, guest or storage the cluster does not list.
 
-    Returns whether anything changed. Devices of resources the cluster no
-    longer has are detached from the entry, which removes them; the
-    coordinators for anything new are created by the setup that follows.
+    Run at setup with discovery on, so devices left over from an earlier
+    session - a guest deleted while Home Assistant was down, or one picked
+    by hand that no longer exists - do not linger. The cluster device and
+    anything else this cannot place are left alone.
     """
-    added, removed = resource_changes(config_entry, found)
-    if not any(added.values()) and not any(removed.values()):
-        return False
+    nodes = set(found[CONF_NODES])
+    present = {
+        ProxmoxType.QEMU.upper(): set(found[CONF_QEMU]),
+        ProxmoxType.LXC.upper(): set(found[CONF_LXC]),
+        ProxmoxType.Storage.upper(): {
+            storage.replace("storage/", "") for storage in found[CONF_STORAGE]
+        },
+        ProxmoxType.Node.upper(): nodes,
+    }
+    prefix = f"{config_entry.entry_id}_"
 
-    remove_resource_devices(hass, config_entry, removed)
-    remember_resources(hass, config_entry, found)
-    return True
+    def _stale(identifier: str) -> bool:
+        if not identifier.startswith(prefix):
+            return False
+        kind, _, rest = identifier.removeprefix(prefix).partition("_")
+        if kind in (ProxmoxType.Disk.upper(), ProxmoxType.ZFS.upper()):
+            # `<DISK|ZFS>_<node>_<id>`; node names carry no underscore.
+            return rest.partition("_")[0] not in nodes
+        return kind in present and rest not in present[kind]
+
+    dev_reg = dr.async_get(hass)
+    for device in dr.async_entries_for_config_entry(dev_reg, config_entry.entry_id):
+        identifiers = [
+            identifier for domain, identifier in device.identifiers if domain == DOMAIN
+        ]
+        if any(_stale(identifier) for identifier in identifiers):
+            LOGGER.debug("Discovery: removing stale device %s", identifiers)
+            dev_reg.async_update_device(
+                device_id=device.id,
+                remove_config_entry_id=config_entry.entry_id,
+            )
 
 
 def remove_resource_devices(

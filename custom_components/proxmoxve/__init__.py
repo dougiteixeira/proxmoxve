@@ -72,6 +72,7 @@ from .const import (
     PROXMOX_HA_ADMIN_PERMISSIONS,
     PROXMOX_PERMISSIONS,
     RESOURCE_CALLBACKS,
+    TRACKED,
     VERSION_REMOVE_YAML,
     ProxmoxType,
 )
@@ -94,7 +95,12 @@ from .coordinator import (
     ProxmoxUpdateCoordinator,
     ProxmoxZFSCoordinator,
 )
-from .discovery import apply_discovery, discovered_resources
+from .discovery import (
+    RESOURCE_KEYS,
+    discovered_resources,
+    remove_stale_devices,
+    selected_resources,
+)
 from .disk import colliding_disk_wwns, resolve_disk_id
 from .permissions import async_fetch_permissions
 
@@ -900,23 +906,38 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # which case nothing is left out.
     permissions = await async_fetch_permissions(hass, proxmox)
 
-    # With automatic discovery on, the cluster's own list decides what is
-    # tracked - brought in line here, before the coordinators are built from
-    # it, and followed afterwards by a coordinator that adds and removes
-    # resources as they come and go.
+    # What this setup tracks. By default the selection from the config
+    # entry; with automatic discovery on, the cluster's own list - decided
+    # here, before the coordinators are built from it, and followed
+    # afterwards by a coordinator that adds and removes resources as they
+    # come and go. The selection itself stays as it is, so switching
+    # discovery off again brings it back.
+    selection = selected_resources(config_entry)
     auto_discovery = config_entry.options.get(CONF_AUTO_DISCOVERY, False)
     if auto_discovery and isinstance(resources, list):
-        apply_discovery(hass, config_entry, discovered_resources(resources))
+        tracked = discovered_resources(resources)
+        remove_stale_devices(hass, config_entry, tracked)
+        # A picked resource the cluster does not have is simply not tracked
+        # while discovery is on; the repair that says so no longer applies.
+        for key in RESOURCE_KEYS.values():
+            for resource_id in set(selection[key]) - set(tracked[key]):
+                ir.async_delete_issue(
+                    hass,
+                    DOMAIN,
+                    f"{config_entry.entry_id}_{resource_id}_resource_nonexistent",
+                )
+    else:
+        tracked = selection
 
     nodes_api = await _get_api_or_retry_setup(hass, proxmox, "nodes", host)
-    for node in config_entry.data[CONF_NODES]:
+    for node in tracked[CONF_NODES]:
         coordinator_node = await _async_setup_node(
             hass, config_entry, proxmox, node, coordinators, nodes_api
         )
         if coordinator_node is not None and coordinator_node.data is not None:
             nodes_add_device.append(node)
 
-    for vm_id in config_entry.data[CONF_QEMU]:
+    for vm_id in tracked[CONF_QEMU]:
         await _async_setup_guest(
             hass,
             config_entry,
@@ -927,7 +948,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             resources,
         )
 
-    for container_id in config_entry.data[CONF_LXC]:
+    for container_id in tracked[CONF_LXC]:
         await _async_setup_guest(
             hass,
             config_entry,
@@ -938,7 +959,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             resources,
         )
 
-    for storage_id in config_entry.data[CONF_STORAGE]:
+    for storage_id in tracked[CONF_STORAGE]:
         await _async_setup_storage(
             hass, config_entry, proxmox, storage_id, coordinators, resources
         )
@@ -1043,6 +1064,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         PROXMOX_HA_ADMIN_PERMISSIONS: ha_admin_permissions,
         COORDINATORS: coordinators,
         RESOURCE_CALLBACKS: [],
+        TRACKED: tracked,
     }
 
     if auto_discovery:

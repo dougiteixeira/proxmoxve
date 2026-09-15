@@ -715,7 +715,7 @@ class ProxmoxDiscoveryCoordinator(DataUpdateCoordinator[dict[str, list[str]]]):
         if not any(added.values()) and not any(removed.values()):
             return found
 
-        remember_resources(self.hass, self.config_entry, found)
+        remember_resources(self.config_entry, found)
 
         # Gone first, so a guest deleted and recreated under the same id in
         # one interval ends up with fresh coordinators rather than stale ones.

@@ -28,6 +28,10 @@ COORDINATORS = "coordinators"
 # Callbacks the platforms register so discovery can hand them a resource
 # that appeared at runtime: `await callback(api_category, resource_id)`.
 RESOURCE_CALLBACKS = "resource_callbacks"
+# What this setup actually tracks: the selection from the config entry, or
+# with automatic discovery on, whatever the cluster lists. Runtime only, so
+# the selection in the entry is never overwritten.
+TRACKED = "tracked"
 
 DEFAULT_PORT = 8006
 DEFAULT_REALM = "pam"
