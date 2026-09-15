@@ -43,7 +43,13 @@ from .const import (
     UPDATE_INTERVAL,
     ProxmoxType,
 )
-from .discovery import apply_discovery, discovered_resources
+from .discovery import (
+    RESOURCE_KEYS,
+    discovered_resources,
+    remember_resources,
+    remove_resource_devices,
+    resource_changes,
+)
 from .disk import disk_matches_id
 from .models import (
     ProxmoxBackupData,
@@ -64,6 +70,8 @@ from .models import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
@@ -654,16 +662,21 @@ class ProxmoxDiscoveryCoordinator(DataUpdateCoordinator[dict[str, list[str]]]):
     Watch the cluster for nodes, guests and storages appearing or leaving.
 
     Only created when automatic discovery is switched on. When the listing
-    differs from what the config entry tracks, the entry is brought in
-    line and reloaded, since coordinators and entities are built at setup.
-    The reload is scheduled, not awaited: this coordinator is one of the
-    things the reload tears down.
+    differs from what the config entry tracks, the entry is brought in line
+    and the difference acted on the way the Home Assistant core integration
+    does it: what is new gets its coordinators, device and entities right
+    away, what is gone loses them. Nothing is reloaded.
+
+    The callables come from setup, which owns the coordinator map and the
+    per-resource setup helpers; importing them here would be circular.
     """
 
     def __init__(
         self,
         hass: HomeAssistant,
         proxmox: ProxmoxAPI,
+        add_resource: Callable[[ProxmoxType, str], Awaitable[None]],
+        remove_resource: Callable[[ProxmoxType, str], Awaitable[None]],
     ) -> None:
         """Initialize the Proxmox discovery coordinator."""
         super().__init__(
@@ -678,6 +691,8 @@ class ProxmoxDiscoveryCoordinator(DataUpdateCoordinator[dict[str, list[str]]]):
         self.proxmox = proxmox
         self.resource_id = "discovery"
         self.api_category = ProxmoxType.Proxmox
+        self._add_resource = add_resource
+        self._remove_resource = remove_resource
 
     async def _async_update_data(self) -> dict[str, list[str]]:
         """Compare the cluster's resource list with what is tracked."""
@@ -696,11 +711,23 @@ class ProxmoxDiscoveryCoordinator(DataUpdateCoordinator[dict[str, list[str]]]):
             raise UpdateFailed(msg)
 
         found = discovered_resources(resources)
-        if apply_discovery(self.hass, self.config_entry, found):
-            LOGGER.info(
-                "Discovery: the cluster's resources changed, reloading the integration"
-            )
-            self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+        added, removed = resource_changes(self.config_entry, found)
+        if not any(added.values()) and not any(removed.values()):
+            return found
+
+        remember_resources(self.hass, self.config_entry, found)
+
+        # Gone first, so a guest deleted and recreated under the same id in
+        # one interval ends up with fresh coordinators rather than stale ones.
+        for api_category, key in RESOURCE_KEYS.items():
+            for resource_id in removed[key]:
+                await self._remove_resource(api_category, resource_id)
+        remove_resource_devices(self.hass, self.config_entry, removed)
+
+        # Nodes before guests and storages: their devices hang off the node's.
+        for api_category, key in RESOURCE_KEYS.items():
+            for resource_id in added[key]:
+                await self._add_resource(api_category, resource_id)
         return found
 
 

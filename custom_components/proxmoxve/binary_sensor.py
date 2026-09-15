@@ -21,9 +21,11 @@ from .const import (
     CONF_NODES,
     CONF_QEMU,
     CONF_STORAGE,
+    RESOURCE_CALLBACKS,
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
+from .discovery import selected
 from .entity import ProxmoxEntity, ProxmoxEntityDescription
 
 if TYPE_CHECKING:
@@ -226,16 +228,40 @@ async def async_setup_entry(
     async_add_entities(await async_setup_binary_sensors_replication(hass, config_entry))
     async_add_entities(await async_setup_binary_sensors_backup(hass, config_entry))
 
+    async def _async_add_resource(api_category: ProxmoxType, resource_id: str) -> None:
+        """Build the binary sensors of a resource discovery found at runtime."""
+        only = [resource_id]
+        entities: list = []
+        if api_category is ProxmoxType.Node:
+            for builder in (
+                async_setup_binary_sensors_nodes,
+                async_setup_binary_sensors_replication,
+                async_setup_binary_sensors_backup,
+            ):
+                entities.extend(await builder(hass, config_entry, only))
+        elif api_category is ProxmoxType.QEMU:
+            entities = await async_setup_binary_sensors_qemu(hass, config_entry, only)
+        elif api_category is ProxmoxType.LXC:
+            entities = await async_setup_binary_sensors_lxc(hass, config_entry, only)
+        elif api_category is ProxmoxType.Storage:
+            entities = await async_setup_binary_sensors_storages(
+                hass, config_entry, only
+            )
+        async_add_entities(entities)
+
+    config_entry.runtime_data[RESOURCE_CALLBACKS].append(_async_add_resource)
+
 
 async def async_setup_binary_sensors_storages(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up the per-storage binary sensors."""
     coordinators = config_entry.runtime_data[COORDINATORS]
     sensors = []
 
-    for storage_id in config_entry.data[CONF_STORAGE]:
+    for storage_id in selected(config_entry, CONF_STORAGE, only):
         coordinator = coordinators.get(f"{ProxmoxType.Storage}_{storage_id}")
         if coordinator is None or coordinator.data is None:
             continue
@@ -297,12 +323,13 @@ async def async_setup_binary_sensors_ha_status(
 async def async_setup_binary_sensors_replication(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up the per-node replication binary sensors."""
     coordinators = config_entry.runtime_data[COORDINATORS]
     sensors = []
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         coordinator = coordinators.get(f"{ProxmoxType.Replication}_{node}")
         # A node with no replication jobs gets no entity at all.
         if coordinator is None or coordinator.data is None or not coordinator.data.jobs:
@@ -330,12 +357,13 @@ async def async_setup_binary_sensors_replication(
 async def async_setup_binary_sensors_backup(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up the per-node backup run binary sensors."""
     coordinators = config_entry.runtime_data[COORDINATORS]
     sensors = []
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         coordinator = coordinators.get(f"{ProxmoxType.Backup}_{node}")
         # A node that has never run a backup gets no entity at all.
         if coordinator is None or coordinator.data is None or not coordinator.data.runs:
@@ -364,6 +392,7 @@ async def async_setup_binary_sensors_backup(
 async def async_setup_binary_sensors_nodes(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up binary sensors."""
     sensors = []
@@ -371,7 +400,7 @@ async def async_setup_binary_sensors_nodes(
 
     coordinators = config_entry.runtime_data[COORDINATORS]
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         if f"{ProxmoxType.Node}_{node}" in coordinators:
             coordinator = coordinators[f"{ProxmoxType.Node}_{node}"]
         else:
@@ -472,6 +501,7 @@ async def async_setup_binary_sensors_nodes(
 async def async_setup_binary_sensors_qemu(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up binary sensors."""
     sensors = []
@@ -479,7 +509,7 @@ async def async_setup_binary_sensors_qemu(
     coordinators = config_entry.runtime_data[COORDINATORS]
     ha_resources_coordinator = coordinators.get(f"{ProxmoxType.Proxmox}_ha_resources")
 
-    for vm_id in config_entry.data[CONF_QEMU]:
+    for vm_id in selected(config_entry, CONF_QEMU, only):
         if f"{ProxmoxType.QEMU}_{vm_id}" in coordinators:
             coordinator = coordinators[f"{ProxmoxType.QEMU}_{vm_id}"]
         else:
@@ -528,6 +558,7 @@ async def async_setup_binary_sensors_qemu(
 async def async_setup_binary_sensors_lxc(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up binary sensors."""
     sensors = []
@@ -535,7 +566,7 @@ async def async_setup_binary_sensors_lxc(
     coordinators = config_entry.runtime_data[COORDINATORS]
     ha_resources_coordinator = coordinators.get(f"{ProxmoxType.Proxmox}_ha_resources")
 
-    for container_id in config_entry.data[CONF_LXC]:
+    for container_id in selected(config_entry, CONF_LXC, only):
         if f"{ProxmoxType.LXC}_{container_id}" in coordinators:
             coordinator = coordinators[f"{ProxmoxType.LXC}_{container_id}"]
         else:

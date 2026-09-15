@@ -141,62 +141,91 @@ async def test_a_vanished_node_takes_its_disks_along(hass: HomeAssistant) -> Non
     ]
 
 
-async def test_coordinator_reloads_on_a_change() -> None:
-    """Test a changed listing brings the entry in line and schedules a reload."""
+def _discovery_coordinator(
+    hass: HomeAssistant, entry: MockConfigEntry
+) -> tuple[ProxmoxDiscoveryCoordinator, AsyncMock, AsyncMock]:
+    """
+    Build a discovery coordinator over a real entry, with mocked add/remove.
+
+    Constructing the real thing would register it with the entry's lifecycle;
+    the update method only needs these attributes.
+    """
     coordinator = object.__new__(ProxmoxDiscoveryCoordinator)
-    coordinator.hass = MagicMock()
-    coordinator.hass.async_add_executor_job = AsyncMock(
-        side_effect=lambda func, *args: func(*args)
-    )
-    coordinator.config_entry = MagicMock()
+    coordinator.hass = hass
+    coordinator.config_entry = entry
     coordinator.proxmox = MagicMock()
     coordinator.resource_id = "discovery"
+    add = AsyncMock()
+    remove = AsyncMock()
+    coordinator._add_resource = add  # noqa: SLF001
+    coordinator._remove_resource = remove  # noqa: SLF001
+    return coordinator, add, remove
 
-    with (
-        patch(
-            "custom_components.proxmoxve.coordinator.poll_api",
-            return_value=MOCK_GET_RESPONSE,
-        ),
-        patch(
-            "custom_components.proxmoxve.coordinator.apply_discovery",
-            return_value=True,
-        ) as apply,
+
+async def test_coordinator_adds_what_is_new(hass: HomeAssistant) -> None:
+    """Test a guest the cluster gained is set up on the spot - nodes first."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={**USER_INPUT_OK, **EVERYTHING, CONF_QEMU: ["101"], CONF_NODES: []},
+    )
+    entry.add_to_hass(hass)
+    coordinator, add, remove = _discovery_coordinator(hass, entry)
+
+    with patch(
+        "custom_components.proxmoxve.coordinator.poll_api",
+        return_value=MOCK_GET_RESPONSE,
     ):
         found = await coordinator._async_update_data()  # noqa: SLF001
 
     assert found == EVERYTHING
-    apply.assert_called_once_with(
-        coordinator.hass, coordinator.config_entry, EVERYTHING
-    )
-    coordinator.hass.config_entries.async_schedule_reload.assert_called_once_with(
-        coordinator.config_entry.entry_id
-    )
+    assert tracked_resources(entry) == EVERYTHING
+    assert [call.args for call in add.await_args_list] == [
+        (ProxmoxType.Node, "pve"),
+        (ProxmoxType.QEMU, "1001"),
+    ]
+    remove.assert_not_awaited()
 
 
-async def test_coordinator_stays_quiet_without_a_change() -> None:
-    """Test an unchanged listing does not reload anything."""
-    coordinator = object.__new__(ProxmoxDiscoveryCoordinator)
-    coordinator.hass = MagicMock()
-    coordinator.hass.async_add_executor_job = AsyncMock(
-        side_effect=lambda func, *args: func(*args)
+async def test_coordinator_removes_what_is_gone(hass: HomeAssistant) -> None:
+    """Test a guest the cluster lost is stopped and loses its device."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={**USER_INPUT_OK, **EVERYTHING, CONF_LXC: ["100", "1000", "2000"]},
     )
-    coordinator.config_entry = MagicMock()
-    coordinator.proxmox = MagicMock()
-    coordinator.resource_id = "discovery"
+    entry.add_to_hass(hass)
+    dev_reg = dr.async_get(hass)
+    gone = dev_reg.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{entry.entry_id}_{ProxmoxType.LXC.upper()}_2000")},
+    )
+    coordinator, add, remove = _discovery_coordinator(hass, entry)
 
-    with (
-        patch(
-            "custom_components.proxmoxve.coordinator.poll_api",
-            return_value=MOCK_GET_RESPONSE,
-        ),
-        patch(
-            "custom_components.proxmoxve.coordinator.apply_discovery",
-            return_value=False,
-        ),
+    with patch(
+        "custom_components.proxmoxve.coordinator.poll_api",
+        return_value=MOCK_GET_RESPONSE,
     ):
         await coordinator._async_update_data()  # noqa: SLF001
 
-    coordinator.hass.config_entries.async_schedule_reload.assert_not_called()
+    assert tracked_resources(entry) == EVERYTHING
+    remove.assert_awaited_once_with(ProxmoxType.LXC, "2000")
+    assert dev_reg.async_get(gone.id) is None
+    add.assert_not_awaited()
+
+
+async def test_coordinator_stays_quiet_without_a_change(hass: HomeAssistant) -> None:
+    """Test an unchanged listing touches nothing."""
+    entry = MockConfigEntry(domain=DOMAIN, data={**USER_INPUT_OK, **EVERYTHING})
+    entry.add_to_hass(hass)
+    coordinator, add, remove = _discovery_coordinator(hass, entry)
+
+    with patch(
+        "custom_components.proxmoxve.coordinator.poll_api",
+        return_value=MOCK_GET_RESPONSE,
+    ):
+        await coordinator._async_update_data()  # noqa: SLF001
+
+    add.assert_not_awaited()
+    remove.assert_not_awaited()
 
 
 async def test_setup_with_discovery_tracks_everything(hass: HomeAssistant) -> None:
@@ -245,3 +274,77 @@ async def test_setup_without_discovery_leaves_the_selection(
     assert entry.state is ConfigEntryState.LOADED
     assert tracked_resources(entry)[CONF_QEMU] == ["101"]
     assert f"{ProxmoxType.Proxmox}_discovery" not in entry.runtime_data["coordinators"]
+
+
+async def test_a_discovered_guest_is_wired_up_without_a_reload(
+    hass: HomeAssistant,
+) -> None:
+    """
+    Test the add path builds coordinators and hands the guest to every platform.
+
+    The shared mock cannot answer a guest's status, so no entity comes out
+    of it here; what this pins down is the wiring - a coordinator appears,
+    each platform's callback is asked, and nothing is reloaded.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Test",
+        data={**USER_INPUT_OK, CONF_TOKEN_NAME: "", CONF_STORAGE: []},
+        options={CONF_AUTO_DISCOVERY: True, CONF_DISKS_ENABLE: False},
+        version=7,
+    )
+
+    with (
+        patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
+        NO_AUTH_CALL,
+    ):
+        await async_init_integration(hass, entry)
+        coordinators = entry.runtime_data["coordinators"]
+        discovery = coordinators[f"{ProxmoxType.Proxmox}_discovery"]
+        callbacks = entry.runtime_data["resource_callbacks"]
+        # sensor, binary_sensor, button and update each registered one.
+        assert len(callbacks) == 4
+
+        # Pretend guest 1001 had not been tracked, then let discovery add it.
+        await discovery._remove_resource(ProxmoxType.QEMU, "1001")  # noqa: SLF001
+        assert f"{ProxmoxType.QEMU}_1001" not in coordinators
+
+        with (
+            patch.object(hass.config_entries, "async_schedule_reload") as reload,
+            patch(
+                "custom_components.proxmoxve.update.async_setup_updates",
+                return_value=[],
+            ) as update_builder,
+        ):
+            await discovery._add_resource(ProxmoxType.QEMU, "1001")  # noqa: SLF001
+
+    assert f"{ProxmoxType.QEMU}_1001" in coordinators
+    reload.assert_not_called()
+    # The update platform only builds for nodes; it was asked and declined.
+    update_builder.assert_not_called()
+
+
+async def test_removing_a_node_drops_everything_it_owned(hass: HomeAssistant) -> None:
+    """Test a vanished node takes its update, backup and task coordinators along."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Test",
+        data={**USER_INPUT_OK, CONF_TOKEN_NAME: "", CONF_STORAGE: []},
+        options={CONF_AUTO_DISCOVERY: True, CONF_DISKS_ENABLE: False},
+        version=7,
+    )
+
+    with (
+        patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
+        NO_AUTH_CALL,
+    ):
+        await async_init_integration(hass, entry)
+        coordinators = entry.runtime_data["coordinators"]
+        discovery = coordinators[f"{ProxmoxType.Proxmox}_discovery"]
+        owned_before = [key for key in coordinators if key.endswith("_pve")]
+        assert f"{ProxmoxType.Node}_pve" in owned_before
+        assert f"{ProxmoxType.Backup}_pve" in owned_before
+
+        await discovery._remove_resource(ProxmoxType.Node, "pve")  # noqa: SLF001
+
+    assert not [key for key in coordinators if key.endswith("_pve")]

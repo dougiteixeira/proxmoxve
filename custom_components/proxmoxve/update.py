@@ -17,7 +17,8 @@ from homeassistant.helpers.typing import UNDEFINED
 from packaging.version import InvalidVersion, Version
 
 from . import device_info
-from .const import CONF_NODES, COORDINATORS, ProxmoxType
+from .const import CONF_NODES, COORDINATORS, RESOURCE_CALLBACKS, ProxmoxType
+from .discovery import selected
 from .entity import ProxmoxEntity, ProxmoxEntityDescription
 
 if TYPE_CHECKING:
@@ -109,10 +110,28 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the per-node update entities."""
+    async_add_entities(await async_setup_updates(hass, config_entry))
+
+    async def _async_add_resource(api_category: ProxmoxType, resource_id: str) -> None:
+        """Build the update entity of a node discovery found at runtime."""
+        if api_category is ProxmoxType.Node:
+            async_add_entities(
+                await async_setup_updates(hass, config_entry, [resource_id])
+            )
+
+    config_entry.runtime_data[RESOURCE_CALLBACKS].append(_async_add_resource)
+
+
+async def async_setup_updates(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    only: list[str] | None = None,
+) -> list:
+    """Build the update entities of the given nodes, or of all tracked ones."""
     coordinators = config_entry.runtime_data[COORDINATORS]
     entities = []
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         coordinator = coordinators.get(f"{ProxmoxType.Update}_{node}")
         node_coordinator = coordinators.get(f"{ProxmoxType.Node}_{node}")
         if coordinator is None or node_coordinator is None:
@@ -139,7 +158,7 @@ async def async_setup_entry(
             )
         )
 
-    async_add_entities(entities)
+    return entities
 
 
 class ProxmoxUpdateEntity(ProxmoxEntity, UpdateEntity):

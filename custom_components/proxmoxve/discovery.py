@@ -8,11 +8,11 @@ With automatic discovery on, the picked set becomes the starting point and
 `cluster/resources` the truth: whatever the cluster lists is tracked, and
 whatever it no longer lists is dropped, devices included.
 
-The integration builds one coordinator per resource at setup, so a change
-here is followed by a reload of the config entry rather than by creating
-entities on the fly. A new guest is a rare event, and a reload takes a few
-seconds; that is a far smaller price than teaching every platform to add
-and remove entities at runtime.
+At setup the config entry is brought in line before the coordinators are
+built from it. Afterwards a coordinator keeps comparing, and - like the
+Home Assistant core integration - adds the coordinators, device and
+entities of a new resource on the spot and removes those of a vanished one,
+without reloading anything.
 """
 
 from __future__ import annotations
@@ -42,6 +42,16 @@ RESOURCE_KEYS: dict[str, str] = {
     ProxmoxType.LXC: CONF_LXC,
     ProxmoxType.Storage: CONF_STORAGE,
 }
+
+
+def selected(config_entry: ConfigEntry, key: str, only: list[str] | None) -> list[str]:
+    """
+    Return the resources a platform should build entities for.
+
+    At setup that is everything the config entry tracks under `key`; when
+    discovery adds a resource at runtime, only that one.
+    """
+    return only if only is not None else list(config_entry.data.get(key, []))
 
 
 def discovered_resources(resources: list[dict[str, Any]]) -> dict[str, list[str]]:
@@ -81,50 +91,71 @@ def tracked_resources(config_entry: ConfigEntry) -> dict[str, list[str]]:
     }
 
 
+def resource_changes(
+    config_entry: ConfigEntry,
+    found: dict[str, list[str]],
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Return what `found` adds to and removes from what the entry tracks."""
+    tracked = tracked_resources(config_entry)
+    added = {
+        key: sorted(set(found[key]) - set(tracked[key]), key=_sort_key)
+        for key in RESOURCE_KEYS.values()
+    }
+    removed = {
+        key: sorted(set(tracked[key]) - set(found[key]), key=_sort_key)
+        for key in RESOURCE_KEYS.values()
+    }
+    return added, removed
+
+
+def _sort_key(value: str) -> tuple[int, str]:
+    """Order guest ids numerically and everything else by name."""
+    return (int(value), "") if value.isdigit() else (0, value)
+
+
+def remember_resources(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    found: dict[str, list[str]],
+) -> None:
+    """Make the config entry track exactly `found`, and log the difference."""
+    added, removed = resource_changes(config_entry, found)
+    for key in RESOURCE_KEYS.values():
+        if added[key] or removed[key]:
+            LOGGER.info(
+                "Discovery: %s added %s, removed %s",
+                key,
+                added[key] or "nothing",
+                removed[key] or "nothing",
+            )
+    hass.config_entries.async_update_entry(
+        config_entry,
+        data={**config_entry.data, **found},
+    )
+
+
 def apply_discovery(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     found: dict[str, list[str]],
 ) -> bool:
     """
-    Make the config entry track exactly what the cluster lists.
+    Bring the config entry in line with the cluster at setup.
 
     Returns whether anything changed. Devices of resources the cluster no
     longer has are detached from the entry, which removes them; the
     coordinators for anything new are created by the setup that follows.
     """
-    tracked = tracked_resources(config_entry)
-    if all(set(tracked[key]) == set(found[key]) for key in RESOURCE_KEYS.values()):
+    added, removed = resource_changes(config_entry, found)
+    if not any(added.values()) and not any(removed.values()):
         return False
 
-    for key in RESOURCE_KEYS.values():
-        added = sorted(set(found[key]) - set(tracked[key]))
-        removed = sorted(set(tracked[key]) - set(found[key]))
-        if added or removed:
-            LOGGER.info(
-                "Discovery: %s added %s, removed %s",
-                key,
-                added or "nothing",
-                removed or "nothing",
-            )
-
-    _remove_devices(
-        hass,
-        config_entry,
-        {
-            key: sorted(set(tracked[key]) - set(found[key]))
-            for key in RESOURCE_KEYS.values()
-        },
-    )
-
-    hass.config_entries.async_update_entry(
-        config_entry,
-        data={**config_entry.data, **found},
-    )
+    remove_resource_devices(hass, config_entry, removed)
+    remember_resources(hass, config_entry, found)
     return True
 
 
-def _remove_devices(
+def remove_resource_devices(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     removed: dict[str, list[str]],

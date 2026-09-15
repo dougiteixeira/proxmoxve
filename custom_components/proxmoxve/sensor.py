@@ -37,9 +37,11 @@ from .const import (
     CONF_QEMU,
     CONF_STORAGE,
     COORDINATORS,
+    RESOURCE_CALLBACKS,
     ProxmoxKeyAPIParse,
     ProxmoxType,
 )
+from .discovery import selected
 from .entity import ProxmoxEntity, ProxmoxEntityDescription
 
 if TYPE_CHECKING:
@@ -1133,6 +1135,31 @@ async def async_setup_entry(
     async_add_entities(await async_setup_sensors_backup(hass, config_entry))
     async_add_entities(await async_setup_sensors_ceph(hass, config_entry))
 
+    async def _async_add_resource(api_category: ProxmoxType, resource_id: str) -> None:
+        """Build the sensors of a resource discovery found at runtime."""
+        only = [resource_id]
+        entities: list = []
+        if api_category is ProxmoxType.Node:
+            for builder in (
+                async_setup_sensors_nodes,
+                async_setup_sensors_tasks,
+                async_setup_hardware_sensors,
+                async_setup_sensors_certificates,
+                async_setup_sensors_subscription,
+                async_setup_sensors_replication,
+                async_setup_sensors_backup,
+            ):
+                entities.extend(await builder(hass, config_entry, only))
+        elif api_category is ProxmoxType.QEMU:
+            entities = await async_setup_sensors_qemu(hass, config_entry, only)
+        elif api_category is ProxmoxType.LXC:
+            entities = await async_setup_sensors_lxc(hass, config_entry, only)
+        elif api_category is ProxmoxType.Storage:
+            entities = await async_setup_sensors_storages(hass, config_entry, only)
+        async_add_entities(entities)
+
+    config_entry.runtime_data[RESOURCE_CALLBACKS].append(_async_add_resource)
+
 
 async def async_setup_sensors_ha_status(
     hass: HomeAssistant,
@@ -1232,12 +1259,13 @@ async def async_setup_sensors_ceph(
 async def async_setup_sensors_replication(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up the per-node replication sensors."""
     coordinators = config_entry.runtime_data[COORDINATORS]
     sensors = []
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         coordinator = coordinators.get(f"{ProxmoxType.Replication}_{node}")
         # A node with no replication jobs gets no entity at all, rather than
         # one that can only ever say "nothing to report".
@@ -1267,12 +1295,13 @@ async def async_setup_sensors_replication(
 async def async_setup_sensors_backup(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up the per-node backup run sensors."""
     coordinators = config_entry.runtime_data[COORDINATORS]
     sensors = []
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         coordinator = coordinators.get(f"{ProxmoxType.Backup}_{node}")
         # A node that has never run a backup gets no entity at all, rather
         # than one that can only ever say "never".
@@ -1302,12 +1331,13 @@ async def async_setup_sensors_backup(
 async def async_setup_sensors_subscription(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up the per-node subscription sensors."""
     coordinators = config_entry.runtime_data[COORDINATORS]
     sensors = []
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         coordinator = coordinators.get(f"{ProxmoxType.Subscription}_{node}")
         if coordinator is None or coordinator.data is None:
             continue
@@ -1335,12 +1365,13 @@ async def async_setup_sensors_subscription(
 async def async_setup_sensors_certificates(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up the per-node certificate sensors."""
     coordinators = config_entry.runtime_data[COORDINATORS]
     sensors = []
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         coordinator = coordinators.get(f"{ProxmoxType.Certificate}_{node}")
         if coordinator is None or coordinator.data is None:
             continue
@@ -1370,6 +1401,7 @@ async def async_setup_sensors_certificates(
 async def async_setup_sensors_nodes(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up sensor."""
     sensors = []
@@ -1377,7 +1409,7 @@ async def async_setup_sensors_nodes(
 
     coordinators = coordinator = config_entry.runtime_data[COORDINATORS]
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         if f"{ProxmoxType.Node}_{node}" in coordinators:
             coordinator = coordinators[f"{ProxmoxType.Node}_{node}"]
         else:
@@ -1550,13 +1582,14 @@ async def async_setup_sensors_nodes(
 async def async_setup_sensors_qemu(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up sensor."""
     sensors = []
 
     coordinators = config_entry.runtime_data[COORDINATORS]
 
-    for vm_id in config_entry.data[CONF_QEMU]:
+    for vm_id in selected(config_entry, CONF_QEMU, only):
         if f"{ProxmoxType.QEMU}_{vm_id}" in coordinators:
             coordinator = coordinators[f"{ProxmoxType.QEMU}_{vm_id}"]
         else:
@@ -1598,13 +1631,14 @@ async def async_setup_sensors_qemu(
 async def async_setup_sensors_lxc(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up sensor."""
     sensors = []
 
     coordinators = config_entry.runtime_data[COORDINATORS]
 
-    for ct_id in config_entry.data[CONF_LXC]:
+    for ct_id in selected(config_entry, CONF_LXC, only):
         if f"{ProxmoxType.LXC}_{ct_id}" in coordinators:
             coordinator = coordinators[f"{ProxmoxType.LXC}_{ct_id}"]
         else:
@@ -1646,13 +1680,14 @@ async def async_setup_sensors_lxc(
 async def async_setup_sensors_storages(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up sensor."""
     sensors = []
 
     coordinators = config_entry.runtime_data[COORDINATORS]
 
-    for storage_id in config_entry.data[CONF_STORAGE]:
+    for storage_id in selected(config_entry, CONF_STORAGE, only):
         if f"{ProxmoxType.Storage}_{storage_id}" in coordinators:
             coordinator = coordinators[f"{ProxmoxType.Storage}_{storage_id}"]
         else:
@@ -1807,12 +1842,13 @@ class ProxmoxSensorEntity(ProxmoxEntity, SensorEntity):
 async def async_setup_sensors_tasks(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up task sensors."""
     sensors = []
     coordinators = config_entry.runtime_data[COORDINATORS]
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         coordinator_key = f"{ProxmoxType.Tasks}_{node}"
         if coordinator_key in coordinators:
             coordinator = coordinators[coordinator_key]
@@ -1840,12 +1876,13 @@ async def async_setup_sensors_tasks(
 async def async_setup_hardware_sensors(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
+    only: list[str] | None = None,
 ) -> list:
     """Set up hardware sensor entities from sensors -j output."""
     sensors = []
     coordinators = config_entry.runtime_data[COORDINATORS]
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         coordinator_key = f"{ProxmoxType.Node}_{node}"
         if coordinator_key not in coordinators:
             continue

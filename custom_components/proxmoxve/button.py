@@ -21,9 +21,11 @@ from .const import (
     PROXMOX_HA_ADMIN_CLIENT,
     PROXMOX_HA_ADMIN_PERMISSIONS,
     PROXMOX_PERMISSIONS,
+    RESOURCE_CALLBACKS,
     ProxmoxCommand,
     ProxmoxType,
 )
+from .discovery import selected
 from .entity import ProxmoxEntity, ProxmoxEntityDescription
 from .permissions import (
     Permissions,
@@ -261,160 +263,177 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up button."""
-    buttons = []
+    async_add_entities(
+        [
+            *await async_setup_buttons_nodes(hass, config_entry),
+            *await async_setup_buttons_guests(hass, config_entry, ProxmoxType.QEMU),
+            *await async_setup_buttons_guests(hass, config_entry, ProxmoxType.LXC),
+            *await async_setup_buttons_cluster(hass, config_entry),
+        ]
+    )
 
+    async def _async_add_resource(api_category: ProxmoxType, resource_id: str) -> None:
+        """Build the buttons of a resource discovery found at runtime."""
+        if api_category is ProxmoxType.Node:
+            async_add_entities(
+                await async_setup_buttons_nodes(hass, config_entry, [resource_id])
+            )
+        elif api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
+            async_add_entities(
+                await async_setup_buttons_guests(
+                    hass, config_entry, api_category, [resource_id]
+                )
+            )
+
+    config_entry.runtime_data[RESOURCE_CALLBACKS].append(_async_add_resource)
+
+
+async def async_setup_buttons_nodes(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    only: list[str] | None = None,
+) -> list:
+    """Build the buttons of the given nodes, or of all tracked ones."""
+    buttons = []
     coordinators = config_entry.runtime_data[COORDINATORS]
     proxmox_client = config_entry.runtime_data[PROXMOX_CLIENT]
     permissions = config_entry.runtime_data.get(PROXMOX_PERMISSIONS)
 
-    for node in config_entry.data[CONF_NODES]:
+    for node in selected(config_entry, CONF_NODES, only):
         if f"{ProxmoxType.Node}_{node}" in coordinators:
             coordinator = coordinators[f"{ProxmoxType.Node}_{node}"]
         else:
             continue
 
-        # unfound vm case
-        if coordinator.data is not None:
-            for description in PROXMOX_BUTTON_NODE:
-                if not button_permitted(
-                    permissions, description, ProxmoxType.Node, node
-                ):
-                    LOGGER.debug(
-                        "Leaving out the %s button of node %s: no %s",
-                        description.key,
-                        node,
-                        description.privilege,
-                    )
-                    continue
-                buttons.append(
-                    create_button(
-                        coordinator=coordinator,
-                        info_device=device_info(
-                            hass=hass,
-                            config_entry=config_entry,
-                            api_category=ProxmoxType.Node,
-                            node=node,
-                        ),
-                        description=description,
-                        resource_id=node,
-                        proxmox_client=proxmox_client,
-                        api_category=ProxmoxType.Node,
-                        config_entry=config_entry,
-                    )
-                )
-
-    for vm_id in config_entry.data[CONF_QEMU]:
-        if f"{ProxmoxType.QEMU}_{vm_id}" in coordinators:
-            coordinator = coordinators[f"{ProxmoxType.QEMU}_{vm_id}"]
-        else:
-            continue
-
-        # unfound vm case
+        # unfound node case
         if coordinator.data is None:
             continue
-        for description in PROXMOX_BUTTON_VM:
-            if (
-                (api_category := description.api_category)
-                and ProxmoxType.QEMU in api_category
-            ) or api_category is None:
-                if not button_permitted(
-                    permissions, description, ProxmoxType.QEMU, vm_id
-                ):
-                    LOGGER.debug(
-                        "Leaving out the %s button of QEMU %s: no %s",
-                        description.key,
-                        vm_id,
-                        description.privilege,
-                    )
-                    continue
-                buttons.append(
-                    create_button(
-                        coordinator=coordinator,
-                        info_device=device_info(
-                            hass=hass,
-                            config_entry=config_entry,
-                            api_category=ProxmoxType.QEMU,
-                            resource_id=vm_id,
-                        ),
-                        description=description,
-                        resource_id=vm_id,
-                        proxmox_client=proxmox_client,
-                        api_category=ProxmoxType.QEMU,
-                        config_entry=config_entry,
-                    )
-                )
-
-    for ct_id in config_entry.data[CONF_LXC]:
-        if f"{ProxmoxType.LXC}_{ct_id}" in coordinators:
-            coordinator = coordinators[f"{ProxmoxType.LXC}_{ct_id}"]
-        else:
-            continue
-        # unfound container case
-        if coordinator.data is None:
-            continue
-        for description in PROXMOX_BUTTON_VM:
-            if (
-                (api_category := description.api_category)
-                and ProxmoxType.LXC in api_category
-            ) or api_category is None:
-                if not button_permitted(
-                    permissions, description, ProxmoxType.LXC, ct_id
-                ):
-                    LOGGER.debug(
-                        "Leaving out the %s button of LXC %s: no %s",
-                        description.key,
-                        ct_id,
-                        description.privilege,
-                    )
-                    continue
-                buttons.append(
-                    create_button(
-                        coordinator=coordinator,
-                        info_device=device_info(
-                            hass=hass,
-                            config_entry=config_entry,
-                            api_category=ProxmoxType.LXC,
-                            resource_id=ct_id,
-                        ),
-                        description=description,
-                        resource_id=ct_id,
-                        proxmox_client=proxmox_client,
-                        api_category=ProxmoxType.LXC,
-                        config_entry=config_entry,
-                    )
-                )
-
-    proxmox_ha_admin_client = config_entry.runtime_data.get(PROXMOX_HA_ADMIN_CLIENT)
-    ha_resources_coordinator = coordinators.get(f"{ProxmoxType.Proxmox}_ha_resources")
-    ha_admin_permissions = config_entry.runtime_data.get(PROXMOX_HA_ADMIN_PERMISSIONS)
-    if proxmox_ha_admin_client is not None and ha_resources_coordinator is not None:
-        for description in PROXMOX_BUTTON_CLUSTER:
-            if not button_permitted(
-                ha_admin_permissions, description, ProxmoxType.Proxmox, "cluster"
-            ):
+        for description in PROXMOX_BUTTON_NODE:
+            if not button_permitted(permissions, description, ProxmoxType.Node, node):
                 LOGGER.debug(
-                    "Leaving out the %s button: the cluster credentials have no %s",
+                    "Leaving out the %s button of node %s: no %s",
                     description.key,
+                    node,
                     description.privilege,
                 )
                 continue
             buttons.append(
                 create_button(
-                    coordinator=ha_resources_coordinator,
+                    coordinator=coordinator,
                     info_device=device_info(
                         hass=hass,
                         config_entry=config_entry,
-                        api_category=ProxmoxType.Proxmox,
+                        api_category=ProxmoxType.Node,
+                        node=node,
                     ),
                     description=description,
-                    resource_id="cluster",
-                    proxmox_client=proxmox_ha_admin_client,
-                    api_category=ProxmoxType.Proxmox,
+                    resource_id=node,
+                    proxmox_client=proxmox_client,
+                    api_category=ProxmoxType.Node,
                     config_entry=config_entry,
                 )
             )
 
-    async_add_entities(buttons)
+    return buttons
+
+
+async def async_setup_buttons_guests(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    api_category: ProxmoxType,
+    only: list[str] | None = None,
+) -> list:
+    """Build the buttons of the given VMs or containers, or of all tracked ones."""
+    buttons = []
+    coordinators = config_entry.runtime_data[COORDINATORS]
+    proxmox_client = config_entry.runtime_data[PROXMOX_CLIENT]
+    permissions = config_entry.runtime_data.get(PROXMOX_PERMISSIONS)
+    key = CONF_QEMU if api_category is ProxmoxType.QEMU else CONF_LXC
+
+    for vm_id in selected(config_entry, key, only):
+        if f"{api_category}_{vm_id}" in coordinators:
+            coordinator = coordinators[f"{api_category}_{vm_id}"]
+        else:
+            continue
+
+        # unfound guest case
+        if coordinator.data is None:
+            continue
+        for description in PROXMOX_BUTTON_VM:
+            if (
+                description.api_category is not None
+                and api_category not in description.api_category
+            ):
+                continue
+            if not button_permitted(permissions, description, api_category, vm_id):
+                LOGGER.debug(
+                    "Leaving out the %s button of %s %s: no %s",
+                    description.key,
+                    api_category.upper(),
+                    vm_id,
+                    description.privilege,
+                )
+                continue
+            buttons.append(
+                create_button(
+                    coordinator=coordinator,
+                    info_device=device_info(
+                        hass=hass,
+                        config_entry=config_entry,
+                        api_category=api_category,
+                        resource_id=vm_id,
+                    ),
+                    description=description,
+                    resource_id=vm_id,
+                    proxmox_client=proxmox_client,
+                    api_category=api_category,
+                    config_entry=config_entry,
+                )
+            )
+
+    return buttons
+
+
+async def async_setup_buttons_cluster(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Build the cluster-wide HA buttons, when the cluster credentials allow."""
+    buttons = []
+    coordinators = config_entry.runtime_data[COORDINATORS]
+    proxmox_ha_admin_client = config_entry.runtime_data.get(PROXMOX_HA_ADMIN_CLIENT)
+    ha_admin_permissions = config_entry.runtime_data.get(PROXMOX_HA_ADMIN_PERMISSIONS)
+    ha_resources_coordinator = coordinators.get(f"{ProxmoxType.Proxmox}_ha_resources")
+    if proxmox_ha_admin_client is None or ha_resources_coordinator is None:
+        return buttons
+
+    for description in PROXMOX_BUTTON_CLUSTER:
+        if not button_permitted(
+            ha_admin_permissions, description, ProxmoxType.Proxmox, "cluster"
+        ):
+            LOGGER.debug(
+                "Leaving out the %s button: the cluster credentials have no %s",
+                description.key,
+                description.privilege,
+            )
+            continue
+        buttons.append(
+            create_button(
+                coordinator=ha_resources_coordinator,
+                info_device=device_info(
+                    hass=hass,
+                    config_entry=config_entry,
+                    api_category=ProxmoxType.Proxmox,
+                ),
+                description=description,
+                resource_id="cluster",
+                proxmox_client=proxmox_ha_admin_client,
+                api_category=ProxmoxType.Proxmox,
+                config_entry=config_entry,
+            )
+        )
+
+    return buttons
 
 
 def create_button(

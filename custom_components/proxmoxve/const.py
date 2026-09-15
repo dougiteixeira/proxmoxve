@@ -25,6 +25,9 @@ CONF_HA_ADMIN_REALM = "ha_admin_realm"
 GUEST_FILE_READ_MAX_BYTES = 4096
 
 COORDINATORS = "coordinators"
+# Callbacks the platforms register so discovery can hand them a resource
+# that appeared at runtime: `await callback(api_category, resource_id)`.
+RESOURCE_CALLBACKS = "resource_callbacks"
 
 DEFAULT_PORT = 8006
 DEFAULT_REALM = "pam"
