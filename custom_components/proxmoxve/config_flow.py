@@ -26,6 +26,7 @@ from requests.exceptions import ConnectTimeout, SSLError
 
 from .api import ProxmoxClient, get_api
 from .const import (
+    CONF_AUTO_DISCOVERY,
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_GUEST_FILE_PATH,
@@ -390,6 +391,12 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                             ),
                         ): selector.BooleanSelector(),
                         vol.Optional(
+                            CONF_AUTO_DISCOVERY,
+                            default=self.config_entry.options.get(
+                                CONF_AUTO_DISCOVERY, False
+                            ),
+                        ): selector.BooleanSelector(),
+                        vol.Optional(
                             CONF_GUEST_FILE_PATH,
                             description={
                                 "suggested_value": self.config_entry.options.get(
@@ -419,6 +426,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         options_data = {
             CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
             CONF_TASKS_ENABLE: user_input.get(CONF_TASKS_ENABLE),
+            CONF_AUTO_DISCOVERY: user_input.get(CONF_AUTO_DISCOVERY, False),
             CONF_GUEST_FILE_PATH: user_input.get(CONF_GUEST_FILE_PATH, "").strip(),
         }
 
@@ -1060,6 +1068,10 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_TASKS_ENABLE,
                             default=True,
                         ): selector.BooleanSelector(),
+                        vol.Optional(
+                            CONF_AUTO_DISCOVERY,
+                            default=False,
+                        ): selector.BooleanSelector(),
                     }
                 ),
             )
@@ -1106,6 +1118,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             options={
                 CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
                 CONF_TASKS_ENABLE: user_input.get(CONF_TASKS_ENABLE),
+                CONF_AUTO_DISCOVERY: user_input.get(CONF_AUTO_DISCOVERY, False),
             },
         )
 

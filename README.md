@@ -201,6 +201,14 @@ Only relevant if you run a Proxmox **cluster with HA-manager configured** — on
 > [!IMPORTANT]  
 > See the section on Proxmox user permissions [here](#proxmox-permissions).
 
+### Tracking everything automatically
+
+By default the integration tracks exactly the nodes, guests and storages you picked during setup, and a new VM shows up only once you add it in the integration options. The option **Track everything automatically** (in the same options step) turns that around: everything the credentials can see is tracked, and the cluster is followed from then on — a guest that is created is picked up within a minute, a guest that is deleted is dropped together with its device, and the same goes for nodes and storages. Templates are never tracked, because nothing on a template ever changes.
+
+The selection lists are ignored while this is on. Under the hood the integration brings its configuration in line with `GET /cluster/resources` and reloads itself when something changed, so every entity is unavailable for a few seconds at that moment; a new guest is a rare enough event for that to be the right trade.
+
+Because `cluster/resources` only lists what the credentials may audit, "everything" means everything this user can see. A guest the user has no `VM.Audit` on is simply not there.
+
 ## Features I cannot test myself
 
 My own cluster does not use every feature this integration reads, so some

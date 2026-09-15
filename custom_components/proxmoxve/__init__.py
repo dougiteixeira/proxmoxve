@@ -44,6 +44,7 @@ from urllib3.exceptions import InsecureRequestWarning
 
 from .api import ProxmoxClient, get_api
 from .const import (
+    CONF_AUTO_DISCOVERY,
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_HA_ADMIN_PASSWORD,
@@ -76,6 +77,7 @@ from .coordinator import (
     ProxmoxBackupInfoCoordinator,
     ProxmoxCephCoordinator,
     ProxmoxCertificateCoordinator,
+    ProxmoxDiscoveryCoordinator,
     ProxmoxDiskCoordinator,
     ProxmoxHAResourcesCoordinator,
     ProxmoxHAStatusCoordinator,
@@ -89,6 +91,7 @@ from .coordinator import (
     ProxmoxUpdateCoordinator,
     ProxmoxZFSCoordinator,
 )
+from .discovery import apply_discovery, discovered_resources
 from .disk import colliding_disk_wwns, resolve_disk_id
 
 if TYPE_CHECKING:
@@ -590,6 +593,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     resources = await _get_api_or_retry_setup(hass, proxmox, "cluster/resources", host)
 
+    # With automatic discovery on, the cluster's own list decides what is
+    # tracked - brought in line here, before the coordinators are built from
+    # it, and watched afterwards by a coordinator that reloads on a change.
+    auto_discovery = config_entry.options.get(CONF_AUTO_DISCOVERY, False)
+    if auto_discovery and isinstance(resources, list):
+        apply_discovery(hass, config_entry, discovered_resources(resources))
+
     nodes_api = await _get_api_or_retry_setup(hass, proxmox, "nodes", host)
     for node in config_entry.data[CONF_NODES]:
         if node in [
@@ -929,6 +939,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             )
             await ceph_coordinator.async_refresh()
             coordinators[f"{ProxmoxType.Proxmox}_ceph"] = ceph_coordinator
+
+    if auto_discovery:
+        discovery_coordinator = ProxmoxDiscoveryCoordinator(hass=hass, proxmox=proxmox)
+        # No entity listens to this coordinator, and a coordinator without a
+        # listener never polls. A no-op listener puts it on the schedule; no
+        # refresh now, since setup just applied the same listing.
+        config_entry.async_on_unload(
+            discovery_coordinator.async_add_listener(lambda: None)
+        )
+        coordinators[f"{ProxmoxType.Proxmox}_discovery"] = discovery_coordinator
 
     config_entry.runtime_data = {
         PROXMOX_CLIENT: proxmox_client,

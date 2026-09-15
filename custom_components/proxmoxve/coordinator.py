@@ -43,6 +43,7 @@ from .const import (
     UPDATE_INTERVAL,
     ProxmoxType,
 )
+from .discovery import apply_discovery, discovered_resources
 from .disk import disk_matches_id
 from .models import (
     ProxmoxBackupData,
@@ -652,6 +653,61 @@ class ProxmoxCoordinator(
     ]
 ):
     """Proxmox VE data update coordinator."""
+
+
+class ProxmoxDiscoveryCoordinator(DataUpdateCoordinator[dict[str, list[str]]]):
+    """
+    Watch the cluster for nodes, guests and storages appearing or leaving.
+
+    Only created when automatic discovery is switched on. When the listing
+    differs from what the config entry tracks, the entry is brought in
+    line and reloaded, since coordinators and entities are built at setup.
+    The reload is scheduled, not awaited: this coordinator is one of the
+    things the reload tears down.
+    """
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+    ) -> None:
+        """Initialize the Proxmox discovery coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            name="proxmox_coordinator_discovery",
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "discovery"
+        self.api_category = ProxmoxType.Proxmox
+
+    async def _async_update_data(self) -> dict[str, list[str]]:
+        """Compare the cluster's resource list with what is tracked."""
+        resources = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            "cluster/resources",
+            ProxmoxType.Resources,
+            self.resource_id,
+        )
+
+        if not isinstance(resources, list):
+            msg = "Cluster resources are not available"
+            raise UpdateFailed(msg)
+
+        found = discovered_resources(resources)
+        if apply_discovery(self.hass, self.config_entry, found):
+            LOGGER.info(
+                "Discovery: the cluster's resources changed, reloading the integration"
+            )
+            self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+        return found
 
 
 class ProxmoxHAResourcesCoordinator(DataUpdateCoordinator[set[str]]):

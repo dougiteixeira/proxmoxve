@@ -21,11 +21,13 @@
                     "lxc": "Linux-Container (LXC)",
                     "storage": "Speicher",
                     "disks_enable": "Aktiviere physische Festplatteninformationen",
-                    "tasks_enable": "Überwachung fehlgeschlagener Aufgaben"
+                    "tasks_enable": "Überwachung fehlgeschlagener Aufgaben",
+                  "auto_discovery": "Alles automatisch erfassen"
                 },
                 "data_description": {
                     "disks_enable": "Wenn du mit Disk-Ruhezustand arbeitest, musst du diese Integrationsoption deaktivieren, damit die Festplatten nicht unnötig reaktiviert werden.",
-                    "tasks_enable": "Fehlerhafte Aufgaben der letzten 24 Stunden auf ausgewählten Knoten verfolgen und melden."
+                    "tasks_enable": "Fehlerhafte Aufgaben der letzten 24 Stunden auf ausgewählten Knoten verfolgen und melden.",
+                  "auto_discovery": "Alle Nodes, virtuellen Maschinen, Container und Storages erfassen, die die Zugangsdaten sehen können, und dem Cluster ab dann folgen: was hinzukommt, wird aufgenommen, was verschwindet, wird entfernt. Die Auswahl oben wird ignoriert, solange dies aktiv ist. Templates werden nie erfasst."
                 }
             },
             "reauth_confirm": {
@@ -145,11 +147,13 @@
                     "qemu": "Virtuelle Maschinen (QEMU)",
                     "storage": "Speicher",
                     "disks_enable": "Aktiviere physische Festplatteninformationen",
-                    "tasks_enable": "Überwachung fehlgeschlagener Aufgaben"
+                    "tasks_enable": "Überwachung fehlgeschlagener Aufgaben",
+                  "auto_discovery": "Alles automatisch erfassen"
                 },
                 "data_description": {
                     "disks_enable": "Wenn du mit Disk-Ruhezustand arbeitest, musst du diese Integrationsoption deaktivieren, damit die Festplatten nicht unnötig reaktiviert werden.",
-                    "tasks_enable": "Fehlgeschlagene Aufgaben der letzten 24 Stunden auf ausgewählten Knoten verfolgen und melden."
+                    "tasks_enable": "Fehlgeschlagene Aufgaben der letzten 24 Stunden auf ausgewählten Knoten verfolgen und melden.",
+                  "auto_discovery": "Alle Nodes, virtuellen Maschinen, Container und Storages erfassen, die die Zugangsdaten sehen können, und dem Cluster ab dann folgen: was hinzukommt, wird aufgenommen, was verschwindet, wird entfernt. Die Auswahl oben wird ignoriert, solange dies aktiv ist. Templates werden nie erfasst."
                 }
             }
         },
