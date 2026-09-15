@@ -20,6 +20,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectTimeout, SSLError
 
 from custom_components.proxmoxve import DOMAIN
+from custom_components.proxmoxve.const import CONF_REALM
 
 from .const import (
     MOCK_GET_RESPONSE,
@@ -64,6 +65,41 @@ async def test_flow_ok(hass: HomeAssistant) -> None:
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert "data" in result
         assert result["data"][CONF_HOST] == USER_INPUT_USER_HOST[CONF_HOST]
+
+
+async def test_flow_accepts_a_realm_outside_the_pick_list(
+    hass: HomeAssistant,
+) -> None:
+    """
+    Test an LDAP or AD realm can still be typed in.
+
+    The realm field offers pam and pve as a pick-list; anything else has to
+    stay possible, and has to reach the entry as typed.
+    """
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+
+    with (
+        patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
+        patch(
+            "proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens",
+            return_value=None,
+        ),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={**USER_INPUT_USER_HOST, CONF_REALM: "ldap"},
+        )
+        assert result["step_id"] == "expose"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input=USER_INPUT_SELECTION,
+        )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_REALM] == "ldap"
 
 
 async def test_flow_port_small(hass: HomeAssistant) -> None:

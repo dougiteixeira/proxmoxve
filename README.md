@@ -265,7 +265,7 @@ Adding Proxmox VE to your Home Assistant instance can be done via the UI using t
 > To use user-based authentication only, you must leave the `Token name` field empty in the configuration flow.
 
 > [!IMPORTANT]
-> It is important to correctly define the user's realm (`pam`, `pve` or other).
+> It is important to correctly define the user's realm. The field offers `pam` (Linux users) and `pve` (users created in Proxmox) as a pick-list; for an LDAP, Active Directory or OpenID realm, type its name into the same field.
 >
 > You can check this in Proxmox under Datacenter > Permissions > Users > Realm column
 

@@ -70,12 +70,23 @@ SCHEMA_HOST_SSL: vol.Schema = vol.Schema(
         vol.Required(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): bool,
     }
 )
+# The two realms every installation has, offered as a pick-list; anything
+# else - an LDAP, Active Directory or OpenID realm - can still be typed in.
+# Guessing the realm was the most common way a first setup went wrong.
+REALM_SELECTOR = selector.SelectSelector(
+    selector.SelectSelectorConfig(
+        options=["pam", "pve"],
+        custom_value=True,
+        mode=selector.SelectSelectorMode.DROPDOWN,
+        translation_key="realm",
+    )
+)
 SCHEMA_HOST_AUTH: vol.Schema = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
         vol.Optional(CONF_TOKEN_NAME, default=""): str,
         vol.Required(CONF_PASSWORD): str,
-        vol.Optional(CONF_REALM, default=DEFAULT_REALM): str,
+        vol.Optional(CONF_REALM, default=DEFAULT_REALM): REALM_SELECTOR,
     }
 )
 SCHEMA_HOST_FULL: vol.Schema = SCHEMA_HOST_BASE.extend(SCHEMA_HOST_SSL.schema).extend(
@@ -86,7 +97,7 @@ SCHEMA_CLUSTER_HA_AUTH: vol.Schema = vol.Schema(
         vol.Optional(CONF_HA_ADMIN_USERNAME, default=""): str,
         vol.Optional(CONF_HA_ADMIN_TOKEN_NAME, default=""): str,
         vol.Optional(CONF_HA_ADMIN_PASSWORD, default=""): str,
-        vol.Optional(CONF_HA_ADMIN_REALM, default=DEFAULT_REALM): str,
+        vol.Optional(CONF_HA_ADMIN_REALM, default=DEFAULT_REALM): REALM_SELECTOR,
     }
 )
 

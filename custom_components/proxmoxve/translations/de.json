@@ -456,5 +456,13 @@
           "name": "Updates"
         }
       }
+    },
+    "selector": {
+      "realm": {
+        "options": {
+          "pam": "pam - Linux-PAM-Standardauthentifizierung",
+          "pve": "pve - Proxmox VE-Authentifizierungsserver"
+        }
+      }
     }
 }
