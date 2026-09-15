@@ -20,7 +20,7 @@ After configuring this integration, the following information is available:
 
 Each node gets a `Software update` entity of Home Assistant's `update` type, so pending package upgrades show up under Settings → Updates and in the update card, next to everything else that wants upgrading. It behaves exactly like the entity in the Home Assistant core integration: the installed version is the node's Proxmox VE release, the latest version is the highest version among the installed release and Proxmox's own pending packages, written as `<version>-p<proxmox packages>-d<other packages>` so it changes whenever the set of pending packages does, and the release notes say how many packages are pending and link to the node.
 
-It reads `GET /nodes/{node}/apt/update`, which needs `Sys.Modify` on the node. Without that privilege the entity is not created and a repair tells you which permission is missing. There is no install button: the API offers no way to run the upgrade, and a dist-upgrade of a hypervisor is not something to start from a dashboard anyway.
+It reads `GET /nodes/{node}/apt/update`, which needs `Sys.Modify` on the node. Without that privilege nothing about package updates is created — no entity, no count sensor, and no repair asking for a permission a read-only setup deliberately does not hold. Grant it and reload the integration to get them. There is no install button: the API offers no way to run the upgrade, and a dist-upgrade of a hypervisor is not something to start from a dashboard anyway.
 
 The older `Total updates` sensor and `Updates packages` binary sensor stay as they are.
 
@@ -259,7 +259,7 @@ Adding Proxmox VE to your Home Assistant instance can be done via the UI using t
 > [!TIP]
 > It is recommended to use token-based authentication for greater integration stability.
 > 
-> In your Home Assistant configuration, enter the value defined in `Token ID` in the `Token name` field and enter the secret token value in the password field.
+> In your Home Assistant configuration, enter the token's **name** — the part after the `!` in what Proxmox shows as `Token ID`, e.g. `homeassistant` from `homeassistant@pve!homeassistant` — in the `Token name` field, and the secret token value in the password field. Pasting the full `user@realm!name` works too; the user and realm are taken from their own fields.
 
 > [!NOTE]
 > To use user-based authentication only, you must leave the `Token name` field empty in the configuration flow.
@@ -405,7 +405,9 @@ Creating a dedicated user token for Home Assistant, limited only to the newly cr
 3. Click `Add`
 4. Select the user linked to the token
 5. Enter a name for the token in the `Token ID` field (e.g.,` homeassistant`)
-6. Uncheck the `Privilege Separation` option to unlink user permissions (in this case, unique permissions must be configured for the token)
+6. Decide how the token gets its permissions — this is the step most setups get wrong, see the note below:
+   - **Uncheck `Privilege Separation`** and the token simply has the permissions of its user. Nothing else to do.
+   - **Leave it checked** and the token has *no permissions of its own*, whatever its user may do. You then have to add the token itself (`homeassistant@pve!homeassistant`) to the same permission paths as the user, under `Datacenter → Permissions → Add → API Token Permission`.
 7. Select the Never option in the `Expire` field
 8. Ensure `Enabled` is checked and `Expire` is set to "never"
 9. Click `Add`
@@ -414,8 +416,11 @@ Creating a dedicated user token for Home Assistant, limited only to the newly cr
 > [!WARNING]
 > After closing the popup it is not possible to recover this value, if you lose the token value you must create a new token.
 
+> [!IMPORTANT]
+> **A token with `Privilege Separation` does not inherit anything from its user.** If the setup lists only the node and none of your VMs or containers, or the log says `Node <name> unable to be found`, while the user itself has every permission the table above asks for, this is why: the permissions sit on the user, the token has none. Either uncheck `Privilege Separation` on the token, or grant the token the same paths and roles as the user. Reload the integration afterwards.
+
 > [!TIP]
-> In your Home Assistant configuration, enter the value defined in `Token ID` in the `Token name` field.
+> In your Home Assistant configuration, enter the token's **name** — `homeassistant` from a `Token ID` of `homeassistant@pve!homeassistant` — in the `Token name` field. The full id is accepted as well.
 
 ## Disabled entities
 
