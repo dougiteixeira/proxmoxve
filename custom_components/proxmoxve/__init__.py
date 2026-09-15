@@ -109,6 +109,7 @@ from .permissions import (
     async_fetch_permissions,
     is_granted,
 )
+from .services import async_register_services
 from .storage import (
     STORAGE_PREFIX,
     is_shared_storage_id,
@@ -178,6 +179,7 @@ warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the platform."""
+    async_register_services(hass)
     # import to config flow
     if DOMAIN in config:
         LOGGER.warning(

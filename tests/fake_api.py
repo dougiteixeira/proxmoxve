@@ -304,6 +304,7 @@ def default_routes() -> dict[str, Any]:
             "url": "https://www.example.invalid/pricing",
         },
         f"nodes/{NODE}/replication": [],
+        f"nodes/{NODE}/tasks?typefilter=vzdump&source=active&limit=1": [],
         f"nodes/{NODE}/tasks?typefilter=vzdump&source=archive&limit=1": [
             {
                 "upid": f"UPID:{NODE}:00001234:0000ABCD:69554B80:vzdump:100,101:root@pam:",
@@ -454,6 +455,8 @@ class FakeProxmox:
         # node of the pretend cluster.
         self.dead_hosts: set[str] = set()
         self.hosts_seen: list[str] = []
+        # Raised on the next POST, for tests of a refused command.
+        self.post_error: Exception | None = None
 
     def request(
         self,
@@ -472,6 +475,8 @@ class FakeProxmox:
             raise RequestsConnectionError(msg)
         self.calls.append((method, path, data, params))
         if method != "GET":
+            if self.post_error is not None:
+                raise self.post_error
             return f"UPID:{NODE}:0000FFFF:0000FFFF:69554D00:{path.rsplit('/', 1)[-1]}::root@pam:"
         if path not in self.routes:
             msg = f"no fake route for GET {path}"

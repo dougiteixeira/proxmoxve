@@ -32,7 +32,24 @@ Each node reports its most recent finished backup run, read from the node's task
 - `Backup status` — a problem binary sensor, on when the run's verdict was anything but `OK`. That includes `job errors`, where some guests were backed up and some were not.
 - `Backup duration` — how long the run took.
 
-Only finished runs count. A backup still in progress has no end time and no verdict yet, and reporting it would make every backup look like a failure while it runs. Nodes that have never run a backup get no entities. Polled every five minutes; needs `Sys.Audit` on the node to see runs other users started.
+Only finished runs count for those three. A run still in progress has no end time and no verdict yet, and reporting it there would make every backup look like a failure while it runs. Nodes that have never run a backup get none of them. Polled once a minute; needs `Sys.Audit` on the node to see runs other users started.
+
+A fourth entity, **`Backup running`**, is on while a `vzdump` run is in progress on the node — with its start and the guests it covers as attributes — and exists for every node, on by default. That is what an automation waits for before shutting a node down.
+
+### Starting a backup
+
+The action **`proxmoxve.backup`** starts a backup run on a node, the way *Backup now* in the Proxmox interface does: name the guests (`vmid`), or turn on `all` for everything the node hosts; pick the `storage`, the `mode` (`snapshot`, `suspend`, `stop`) and the `compress`ion, or leave them to the node's defaults. It returns the task id (`upid`), and the node's `Backup running` sensor turns on with the next poll.
+
+```yaml
+action: proxmoxve.backup
+data:
+  node: pve
+  vmid: [100, 101]
+  storage: backups
+  mode: snapshot
+```
+
+The credentials need `VM.Backup` on each guest and `Datastore.AllocateSpace` on the storage; Proxmox's refusal names what is missing, and the action passes that message on.
 
 For the other direction - which guests no backup job covers at all - see the `Guests without backup` sensor under [Cluster HA Administration](#cluster-ha-administration-advanced-optional).
 

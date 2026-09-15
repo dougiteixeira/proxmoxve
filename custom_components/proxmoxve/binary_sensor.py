@@ -196,6 +196,18 @@ PROXMOX_BINARYSENSOR_BACKUP: Final[tuple[ProxmoxBinarySensorEntityDescription, .
         extra_attrs=["status", "guests", "user"],
         translation_key="backup_status",
     ),
+    # On while a vzdump run is in progress on the node, with its start and
+    # the guests it covers as attributes. On by default: this is what an
+    # automation waits for before shutting a node down.
+    ProxmoxBinarySensorEntityDescription(
+        key="running",
+        name="Backup running",
+        icon="mdi:backup-restore",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        on_value=[True],
+        extra_attrs=["running_since", "running_guests"],
+        translation_key="backup_running",
+    ),
 )
 
 PROXMOX_BINARYSENSOR_REPLICATION: Final[
@@ -365,8 +377,7 @@ async def async_setup_binary_sensors_backup(
 
     for node in selected(config_entry, CONF_NODES, only):
         coordinator = coordinators.get(f"{ProxmoxType.Backup}_{node}")
-        # A node that has never run a backup gets no entity at all.
-        if coordinator is None or coordinator.data is None or not coordinator.data.runs:
+        if coordinator is None or coordinator.data is None:
             continue
 
         sensors.extend(
@@ -383,7 +394,13 @@ async def async_setup_binary_sensors_backup(
                 config_entry=config_entry,
             )
             for description in PROXMOX_BINARYSENSOR_BACKUP
-            if getattr(coordinator.data, description.key, None) is not None
+            # "Backup running" exists for every node; the verdict of the last
+            # run only where there has been one.
+            if description.key == "running"
+            or (
+                coordinator.data.runs
+                and getattr(coordinator.data, description.key, None) is not None
+            )
         )
 
     return sensors

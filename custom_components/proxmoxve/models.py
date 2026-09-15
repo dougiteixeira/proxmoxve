@@ -223,6 +223,11 @@ class ProxmoxBackupData:
     status: str | None
     guests: str | None
     user: str | None
+    # A run in progress right now, from the active task list: whether there
+    # is one, since when, and for which guests. Plain values for attributes.
+    running: bool = False
+    running_since: datetime | None = None
+    running_guests: str | None = None
 
 
 @dataclasses.dataclass

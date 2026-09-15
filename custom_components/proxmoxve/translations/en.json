@@ -198,6 +198,17 @@
         "status": {
           "name": "Status"
         },
+        "backup_running": {
+          "name": "Backup running",
+          "state_attributes": {
+            "running_since": {
+              "name": "Started"
+            },
+            "running_guests": {
+              "name": "Guests"
+            }
+          }
+        },
         "health": {
           "name": "Health"
         },
@@ -683,6 +694,71 @@
           "pam": "pam - Linux PAM standard authentication",
           "pve": "pve - Proxmox VE authentication server"
         }
+      },
+      "backup_mode": {
+        "options": {
+          "snapshot": "Snapshot",
+          "suspend": "Suspend",
+          "stop": "Stop"
+        }
+      },
+      "backup_compress": {
+        "options": {
+          "zstd": "zstd",
+          "gzip": "gzip",
+          "lzo": "lzo",
+          "0": "None"
+        }
+      }
+    },
+    "services": {
+      "backup": {
+        "name": "Back up guests",
+        "description": "Starts a backup run (vzdump) on a node, for the guests named or for everything the node hosts. Returns the task id.",
+        "fields": {
+          "node": {
+            "name": "Node",
+            "description": "The node that runs the backup."
+          },
+          "vmid": {
+            "name": "Guests",
+            "description": "IDs of the VMs and containers to back up. Leave empty and turn on 'All' to back up everything on the node."
+          },
+          "all": {
+            "name": "All",
+            "description": "Back up every guest the node hosts."
+          },
+          "storage": {
+            "name": "Storage",
+            "description": "Where to store the backup. Defaults to the node's backup storage."
+          },
+          "mode": {
+            "name": "Mode",
+            "description": "How to freeze the guest: snapshot (no downtime), suspend, or stop."
+          },
+          "compress": {
+            "name": "Compression",
+            "description": "zstd, gzip, lzo, or none. Defaults to the node's setting."
+          },
+          "notes": {
+            "name": "Notes",
+            "description": "Notes template for the backup, for example {{guestname}}."
+          }
+        }
+      }
+    },
+    "exceptions": {
+      "backup_nothing_selected": {
+        "message": "Name at least one guest, or turn on 'All' to back up everything on the node."
+      },
+      "backup_unknown_node": {
+        "message": "No configured Proxmox VE integration tracks node {node}."
+      },
+      "backup_refused": {
+        "message": "Proxmox refused to start the backup on {node}: {error}"
+      },
+      "backup_unreachable": {
+        "message": "Node {node} could not be reached to start the backup: {error}"
       }
     }
   }

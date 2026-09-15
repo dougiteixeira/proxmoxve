@@ -320,7 +320,27 @@ def _task_timestamp(value: Any) -> datetime | UndefinedType:
     return dt_util.utc_from_timestamp(value)
 
 
-def parse_backup(entries: list[dict[str, Any]], node_name: str) -> ProxmoxBackupData:
+def parse_running_backup(active: Any) -> dict[str, Any]:
+    """Describe the vzdump run in progress, from the active task list."""
+    tasks = [
+        entry
+        for entry in (active if isinstance(active, list) else [])
+        if isinstance(entry, dict) and entry.get("type") == "vzdump"
+    ]
+    if not tasks:
+        return {"running": False, "running_since": None, "running_guests": None}
+    task = tasks[0]
+    since = _task_timestamp(task.get("starttime"))
+    return {
+        "running": True,
+        "running_since": since if since is not UNDEFINED else None,
+        "running_guests": str(task["id"]) if task.get("id") else None,
+    }
+
+
+def parse_backup(
+    entries: list[dict[str, Any]], node_name: str, active: Any = None
+) -> ProxmoxBackupData:
     """
     Describe a node's most recent backup run from its task log.
 
@@ -346,6 +366,7 @@ def parse_backup(entries: list[dict[str, Any]], node_name: str) -> ProxmoxBackup
             status=None,
             guests=None,
             user=None,
+            **parse_running_backup(active),
         )
 
     task = tasks[0]
@@ -370,6 +391,7 @@ def parse_backup(entries: list[dict[str, Any]], node_name: str) -> ProxmoxBackup
         status=str(status) if status is not None else None,
         guests=guests,
         user=str(task["user"]) if task.get("user") else None,
+        **parse_running_backup(active),
     )
 
 
@@ -1076,7 +1098,7 @@ class ProxmoxBackupCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_backup_{node_name}",
-            update_interval=timedelta(seconds=TASKS_UPDATE_INTERVAL),
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
 
         self.hass = hass
@@ -1103,7 +1125,19 @@ class ProxmoxBackupCoordinator(ProxmoxCoordinator):
             msg = f"Backup history for {self.node_name} is not available"
             raise UpdateFailed(msg)
 
-        return parse_backup(api_status, self.node_name)
+        # And the one that may be running right now, which the archive
+        # never lists: no end time, no verdict yet.
+        active = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            f"nodes/{self.node_name}/tasks?typefilter=vzdump&source=active&limit=1",
+            ProxmoxType.Tasks,
+            self.node_name,
+        )
+
+        return parse_backup(api_status, self.node_name, active)
 
 
 class ProxmoxReplicationCoordinator(ProxmoxCoordinator):
