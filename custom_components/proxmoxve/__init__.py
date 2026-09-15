@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -97,7 +97,6 @@ from .coordinator import (
     ProxmoxZFSCoordinator,
 )
 from .discovery import (
-    RESOURCE_KEYS,
     discovered_resources,
     remove_stale_devices,
     selected_resources,
@@ -505,6 +504,40 @@ async def _get_api_or_retry_setup(
         raise ConfigEntryNotReady(msg) from error
 
 
+RESOURCE_NONEXISTENT_SUFFIX: Final = "_resource_nonexistent"
+
+
+def clear_stale_resource_issues(
+    hass: HomeAssistant, config_entry: ConfigEntry, tracked: dict[str, list[Any]]
+) -> None:
+    """
+    Drop the "does not exist" repairs for resources this setup no longer tracks.
+
+    The repair tells you to remove the resource in the options. Doing that
+    reloads the entry, and setup then never looks at the resource again - so
+    nothing ever deleted the repair, and it sat there until it was ignored.
+    With discovery on the same happens to a picked resource the cluster
+    does not list. Either way, a repair for something not tracked any more
+    has nothing left to say.
+    """
+    still_tracked = {
+        str(resource_id) for ids in tracked.values() for resource_id in ids
+    }
+    prefix = f"{config_entry.entry_id}_"
+    registry = ir.async_get(hass)
+    for domain, issue_id in list(registry.issues):
+        if domain != DOMAIN:
+            continue
+        if not (
+            issue_id.startswith(prefix)
+            and issue_id.endswith(RESOURCE_NONEXISTENT_SUFFIX)
+        ):
+            continue
+        resource_id = issue_id[len(prefix) : -len(RESOURCE_NONEXISTENT_SUFFIX)]
+        if resource_id not in still_tracked:
+            ir.async_delete_issue(hass, DOMAIN, issue_id)
+
+
 def _resource_nonexistent_issue(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -893,17 +926,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     if auto_discovery and isinstance(resources, list):
         tracked = discovered_resources(resources)
         remove_stale_devices(hass, config_entry, tracked)
-        # A picked resource the cluster does not have is simply not tracked
-        # while discovery is on; the repair that says so no longer applies.
-        for key in RESOURCE_KEYS.values():
-            for resource_id in set(selection[key]) - set(tracked[key]):
-                ir.async_delete_issue(
-                    hass,
-                    DOMAIN,
-                    f"{config_entry.entry_id}_{resource_id}_resource_nonexistent",
-                )
     else:
         tracked = selection
+    clear_stale_resource_issues(hass, config_entry, tracked)
 
     nodes_api = await _get_api_or_retry_setup(hass, proxmox, "nodes", host)
     for node in tracked[CONF_NODES]:
