@@ -369,6 +369,11 @@
             "uptime": {
                 "name": "Letzter start"
             }
+        },
+      "update": {
+        "node_update": {
+          "name": "Updates"
         }
+      }
     }
 }

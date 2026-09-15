@@ -488,6 +488,75 @@ def parse_ha_status(entries: list[dict[str, Any]]) -> ProxmoxHAStatusData:
     )
 
 
+def is_proxmox_package(update: dict[str, Any]) -> bool:
+    """
+    Tell one of Proxmox's own packages from the rest of the upgrade.
+
+    `apt/update` describes every pending package the same way, whether it
+    is pve-manager or a Debian security fix. Proxmox's packages are either
+    named `pve-*`/`libpve-*`, or come from the Proxmox repository, which the
+    `Origin` field records.
+    """
+    package = str(update.get("Package", ""))
+    origin = str(update.get("Origin", ""))
+    title = str(update.get("Title", ""))
+    return (
+        package.startswith(("pve-", "libpve-"))
+        or "proxmox" in origin.lower()
+        or "proxmox" in title.lower()
+    )
+
+
+def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateData:
+    """
+    Turn a node's `apt/update` response into update data.
+
+    Besides the count and the flat list the sensors already carried, this
+    keeps enough per package for the update entity to describe the upgrade,
+    and picks out the pending `pve-manager` version because that is the
+    Proxmox VE release the node would run afterwards.
+    """
+    packages: list[dict[str, str | bool]] = []
+    proxmox_version_pending: str | None = None
+    for update in api_status:
+        if not isinstance(update, dict) or "Package" not in update:
+            continue
+        package = str(update["Package"])
+        version = str(update.get("Version", ""))
+        if package == "pve-manager" and version:
+            proxmox_version_pending = version
+        packages.append(
+            {
+                "package": package,
+                "title": str(update.get("Title", package)),
+                "version": version,
+                "proxmox": is_proxmox_package(update),
+            }
+        )
+
+    # Proxmox's own packages first, each group alphabetically, so the list
+    # reads as "what changes on the hypervisor, then everything else".
+    packages.sort(key=lambda entry: (not entry["proxmox"], entry["package"]))
+    proxmox_updates = sum(1 for entry in packages if entry["proxmox"])
+
+    updates_list = sorted(
+        f"{entry['title']} - {entry['version']}" for entry in packages
+    )
+    total = len(packages)
+
+    return ProxmoxUpdateData(
+        type=ProxmoxType.Update,
+        node=node,
+        total=total,
+        updates_list=updates_list,
+        update=total > 0,
+        packages=packages,
+        proxmox_updates=proxmox_updates,
+        other_updates=total - proxmox_updates,
+        proxmox_version_pending=proxmox_version_pending,
+    )
+
+
 class ProxmoxCoordinator(
     DataUpdateCoordinator[
         ProxmoxBackupInfoData
@@ -1625,21 +1694,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
                 update=UNDEFINED,
             )
 
-        updates_list = []
-        for update in api_status:
-            updates_list.append(f"{update['Title']} - {update['Version']}")
-
-        updates_list.sort()
-        total = len(updates_list) if updates_list is not None else 0
-        update_avail = total > 0
-
-        return ProxmoxUpdateData(
-            type=ProxmoxType.Update,
-            node=self.node_name,
-            total=total,
-            updates_list=updates_list,
-            update=update_avail,
-        )
+        return parse_updates(api_status, self.node_name)
 
 
 class ProxmoxDiskCoordinator(ProxmoxCoordinator):

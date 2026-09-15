@@ -510,6 +510,11 @@
         "uptime": {
           "name": "Last boot"
         }
+      },
+      "update": {
+        "node_update": {
+          "name": "Updates"
+        }
       }
     }
   }

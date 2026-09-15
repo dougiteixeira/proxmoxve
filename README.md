@@ -16,6 +16,14 @@ After configuring this integration, the following information is available:
  - **Failed task monitoring sensors** that track failed tasks from the last 24 hours on selected nodes, showing the count of failures and details about recent failed tasks.
  - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled, [see how to enable them here](#disabled-entities).
 
+### Package updates
+
+Each node gets an `Updates` entity of Home Assistant's `update` type, so pending package upgrades show up under Settings → Updates and in the update card, next to everything else that wants upgrading. The installed version is the node's Proxmox VE release; the latest version is the release `pve-manager` would bring — or the same release with the number of pending packages, when only Debian or kernel packages are waiting. The release notes list every pending package, Proxmox's own first.
+
+It reads `GET /nodes/{node}/apt/update`, which needs `Sys.Modify` on the node. Without that privilege the entity is not created and a repair tells you which permission is missing. There is no install button: the API offers no way to run the upgrade, and a dist-upgrade of a hypervisor is not something to start from a dashboard anyway.
+
+The older `Total updates` sensor and `Updates packages` binary sensor stay as they are.
+
 ### Failed Task Monitoring
 
 The integration provides sensors that monitor failed tasks on your Proxmox nodes over the last 24 hours. These sensors offer:

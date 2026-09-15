@@ -101,6 +101,7 @@ PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
     Platform.SENSOR,
+    Platform.UPDATE,
 ]
 
 CONFIG_SCHEMA = vol.Schema(
