@@ -183,6 +183,7 @@ def default_routes() -> dict[str, Any]:
                 "VM.Audit": 1,
                 "VM.PowerMgmt": 1,
                 "VM.Snapshot": 1,
+                "VM.Backup": 1,
                 "VM.Config.Options": 1,
                 "Datastore.Audit": 1,
             }

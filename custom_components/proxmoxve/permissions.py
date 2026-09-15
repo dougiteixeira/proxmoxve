@@ -49,6 +49,7 @@ class ProxmoxPrivilege(StrEnum):
     SYS_POWER = "Sys.PowerMgmt"
     SYS_CONSOLE = "Sys.Console"
     SYS_MODIFY = "Sys.Modify"
+    VM_BACKUP = "VM.Backup"
 
 
 async def async_fetch_permissions(

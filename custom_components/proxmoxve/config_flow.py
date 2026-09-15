@@ -27,6 +27,7 @@ from requests.exceptions import ConnectTimeout, SSLError
 from .api import ProxmoxClient, get_api
 from .const import (
     CONF_AUTO_DISCOVERY,
+    CONF_BACKUP_STORAGE,
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_GUEST_FILE_PATH,
@@ -53,7 +54,7 @@ from .const import (
     VERSION_REMOVE_YAML,
     ProxmoxType,
 )
-from .storage import storage_choices
+from .storage import backup_storage_options, storage_choices
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -414,6 +415,20 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                                 )
                             },
                         ): selector.TextSelector(),
+                        vol.Optional(
+                            CONF_BACKUP_STORAGE,
+                            description={
+                                "suggested_value": self.config_entry.options.get(
+                                    CONF_BACKUP_STORAGE, ""
+                                )
+                            },
+                        ): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=backup_storage_options(resources),
+                                custom_value=True,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                            )
+                        ),
                     }
                 ),
             )
@@ -438,6 +453,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             CONF_TASKS_ENABLE: user_input.get(CONF_TASKS_ENABLE),
             CONF_AUTO_DISCOVERY: user_input.get(CONF_AUTO_DISCOVERY, False),
             CONF_GUEST_FILE_PATH: user_input.get(CONF_GUEST_FILE_PATH, "").strip(),
+            CONF_BACKUP_STORAGE: (user_input.get(CONF_BACKUP_STORAGE) or "").strip(),
         }
 
         self.hass.config_entries.async_update_entry(

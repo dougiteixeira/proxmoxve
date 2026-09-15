@@ -18,6 +18,7 @@ from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectTimeout, RequestException
 
 from .const import (
+    CONF_BACKUP_STORAGE,
     CONF_HA_ADMIN_USERNAME,
     DEFAULT_PORT,
     DEFAULT_REALM,
@@ -337,6 +338,21 @@ def post_api_command(
             else:
                 result = post_api(proxmox, f"cluster/ha/status/{command}")
         # START_ALL, STOP_ALL, SUSPEND_ALL, WAKEONLAN are not part of status API
+        elif command in (ProxmoxCommand.BACKUP, ProxmoxCommand.BACKUP_ALL):
+            # One vzdump run, in snapshot mode, to the storage picked in the
+            # options; the button exists only while one is picked. The task
+            # shows up where the backup sensors already look.
+            storage = self.config_entry.options.get(CONF_BACKUP_STORAGE)
+            target = (
+                {"all": 1} if command == ProxmoxCommand.BACKUP_ALL else {"vmid": vm_id}
+            )
+            result = post_api(
+                proxmox,
+                f"nodes/{node}/vzdump",
+                mode="snapshot",
+                storage=storage,
+                **target,
+            )
         elif api_category is ProxmoxType.Node and command in [
             ProxmoxCommand.START_ALL,
             ProxmoxCommand.STOP_ALL,
