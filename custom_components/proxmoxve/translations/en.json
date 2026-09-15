@@ -304,7 +304,27 @@
       },
       "sensor": {
         "cpu_used": {
-          "name": "CPU used"
+          "name": "CPU used",
+          "state_attributes": {
+            "cpus": {
+              "name": "Cores"
+            }
+          }
+        },
+        "cpu_of_host": {
+          "name": "CPU used of host"
+        },
+        "cpus": {
+          "name": "CPUs"
+        },
+        "load_1m": {
+          "name": "Load average 1 min"
+        },
+        "load_5m": {
+          "name": "Load average 5 min"
+        },
+        "load_15m": {
+          "name": "Load average 15 min"
         },
         "io_wait": {
           "name": "IO delay"

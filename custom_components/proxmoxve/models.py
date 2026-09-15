@@ -46,6 +46,10 @@ class ProxmoxNodeData:
     # Home Assistant merges devices on them, so the node can be the same
     # device as the one a network integration sees.
     mac_addresses: tuple[str, ...] = ()
+    # `loadavg` from the node status: 1, 5 and 15 minute averages.
+    load_average: tuple[float, float, float] | UndefinedType = UNDEFINED
+    # Logical CPUs of the node, from `cpuinfo`.
+    cpus: int | UndefinedType = UNDEFINED
 
 
 @dataclasses.dataclass
@@ -69,6 +73,11 @@ class ProxmoxVMData:
     guest_file_content: str | UndefinedType
     guest_file_path: str | UndefinedType
     uptime: int | UndefinedType
+    # Cores the guest may use, and the share of the whole node it is
+    # taking right now: `cpu` is relative to the guest's own cores, so a
+    # two-core guest at 100% is one twelfth of a twelve-thread node.
+    cpus: int | UndefinedType = UNDEFINED
+    cpu_of_host: float | UndefinedType = UNDEFINED
 
 
 @dataclasses.dataclass
@@ -92,6 +101,11 @@ class ProxmoxLXCData:
     swap_free: float | UndefinedType
     swap_used: float | UndefinedType
     uptime: int | UndefinedType
+    # Cores the guest may use, and the share of the whole node it is
+    # taking right now: `cpu` is relative to the guest's own cores, so a
+    # two-core guest at 100% is one twelfth of a twelve-thread node.
+    cpus: int | UndefinedType = UNDEFINED
+    cpu_of_host: float | UndefinedType = UNDEFINED
 
 
 @dataclasses.dataclass

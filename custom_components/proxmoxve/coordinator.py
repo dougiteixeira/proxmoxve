@@ -149,6 +149,9 @@ HA_CRM_MASTER_DEAD_AFTER: Final[timedelta] = timedelta(seconds=30)
 # is gone rather than late.
 SENSORS_HOLD_FOR: Final[timedelta] = timedelta(minutes=10)
 
+# `loadavg` is the 1, 5 and 15 minute average, in that order.
+LOAD_AVERAGE_FIELDS: Final = 3
+
 
 def _parse_ha_enum(
     entry: dict[str, Any],
@@ -186,6 +189,42 @@ def _positive_or_undefined(value: Any) -> Any:
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
         return value
     return UNDEFINED
+
+
+def parse_load_average(value: Any) -> tuple[float, float, float] | UndefinedType:
+    """
+    Return the node's load average, which Proxmox reports as three strings.
+
+    Anything not shaped as three numbers is no reading.
+    """
+    if not isinstance(value, list | tuple) or len(value) != LOAD_AVERAGE_FIELDS:
+        return UNDEFINED
+    try:
+        one, five, fifteen = (float(entry) for entry in value)
+    except (TypeError, ValueError):
+        return UNDEFINED
+    return (one, five, fifteen)
+
+
+def cpu_share_of_host(
+    cpu: Any, guest_cpus: Any, node_cpus: Any
+) -> float | UndefinedType:
+    """
+    Return how much of the whole node a guest is using, as a 0..1 ratio.
+
+    A guest's `cpu` is relative to its own cores. Scaled by its core count
+    over the node's, it says what the guest costs the host - the figure the
+    Proxmox summary shows next to each guest.
+    """
+    values = (cpu, guest_cpus, node_cpus)
+    if not all(
+        isinstance(value, int | float) and not isinstance(value, bool)
+        for value in values
+    ):
+        return UNDEFINED
+    if node_cpus <= 0 or guest_cpus <= 0:
+        return UNDEFINED
+    return max(0.0, float(cpu)) * guest_cpus / node_cpus
 
 
 def qemu_memory_used(api_status: dict[str, Any]) -> int | UndefinedType:
@@ -1451,6 +1490,12 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 uptime=api_status.get("uptime", UNDEFINED),
                 cpu=api_status.get("cpu", UNDEFINED),
                 io_wait=api_status.get("wait", UNDEFINED),
+                load_average=parse_load_average(api_status.get("loadavg")),
+                cpus=(
+                    api_status["cpuinfo"].get("cpus", UNDEFINED)
+                    if isinstance(api_status.get("cpuinfo"), dict)
+                    else UNDEFINED
+                ),
                 disk_total=api_status.get("disk_max", UNDEFINED),
                 disk_used=api_status.get("disk_used", UNDEFINED),
                 memory_total=(
@@ -1554,10 +1599,14 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             None,
         )
 
+        node_cpus: Any = UNDEFINED
         for resource in resources if resources is not None else []:
             if "vmid" in resource:
                 if int(resource["vmid"]) == int(self.resource_id):
                     node_name = resource["node"]
+        for resource in resources if resources is not None else []:
+            if resource.get("type") == "node" and resource.get("node") == node_name:
+                node_cpus = resource.get("maxcpu", UNDEFINED)
 
         if node_name is not None:
             api_path = f"nodes/{node_name!s}/qemu/{self.resource_id}/status/current"
@@ -1692,6 +1741,10 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             health=api_status.get("qmpstatus", UNDEFINED),
             uptime=api_status.get("uptime", UNDEFINED),
             cpu=api_status.get("cpu", UNDEFINED),
+            cpus=api_status.get("cpus", UNDEFINED),
+            cpu_of_host=cpu_share_of_host(
+                api_status.get("cpu"), api_status.get("cpus"), node_cpus
+            ),
             memory_total=memory_total,
             memory_used=memory_used,
             memory_free=memory_free,
@@ -1758,10 +1811,14 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             None,
         )
 
+        node_cpus: Any = UNDEFINED
         for resource in resources if resources is not None else []:
             if "vmid" in resource:
                 if int(resource["vmid"]) == int(self.resource_id):
                     node_name = resource["node"]
+        for resource in resources if resources is not None else []:
+            if resource.get("type") == "node" and resource.get("node") == node_name:
+                node_cpus = resource.get("maxcpu", UNDEFINED)
 
         if node_name is not None:
             api_path = f"nodes/{node_name!s}/lxc/{self.resource_id}/status/current"
@@ -1792,6 +1849,10 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             name=api_status.get("name", UNDEFINED),
             uptime=api_status.get("uptime", UNDEFINED),
             cpu=api_status.get("cpu", UNDEFINED),
+            cpus=api_status.get("cpus", UNDEFINED),
+            cpu_of_host=cpu_share_of_host(
+                api_status.get("cpu"), api_status.get("cpus"), node_cpus
+            ),
             memory_total=api_status.get("maxmem", UNDEFINED),
             memory_used=api_status.get("mem", UNDEFINED),
             memory_free=(
