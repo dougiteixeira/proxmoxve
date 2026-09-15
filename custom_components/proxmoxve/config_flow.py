@@ -461,10 +461,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             identifiers=device_identifiers,
         )
 
-        dev_reg.async_update_device(
-            device_id=device.id,
-            remove_config_entry_id=entry_id,
-        )
+        dev_reg.async_remove_device(device.id)
         LOGGER.debug("Device %s (%s) removed", device.name, device.id)
         return True
 

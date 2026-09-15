@@ -192,10 +192,7 @@ def remove_stale_devices(
         ]
         if any(_stale(identifier) for identifier in identifiers):
             LOGGER.debug("Discovery: removing stale device %s", identifiers)
-            dev_reg.async_update_device(
-                device_id=device.id,
-                remove_config_entry_id=config_entry.entry_id,
-            )
+            dev_reg.async_remove_device(device.id)
 
 
 def remove_resource_devices(
@@ -240,7 +237,4 @@ def remove_resource_devices(
             for identifier in identifiers
         ):
             LOGGER.debug("Discovery: removing device %s", identifiers)
-            dev_reg.async_update_device(
-                device_id=device.id,
-                remove_config_entry_id=config_entry.entry_id,
-            )
+            dev_reg.async_remove_device(device.id)

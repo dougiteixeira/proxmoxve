@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Tests for tracking a shared storage once, not once per node."""
 
+import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -206,7 +207,10 @@ async def test_a_shared_storage_no_node_sees_still_has_an_entity(
 
 
 async def test_an_older_selection_is_merged_at_setup_with_its_history(
-    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+    hass: HomeAssistant,
+    fake_api: FakeProxmox,
+    current_entry: MockConfigEntry,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """
     Test the reported problem: one shared export shown once per node.
@@ -265,6 +269,10 @@ async def test_an_older_selection_is_merged_at_setup_with_its_history(
     )
     # The device that lost this entry is gone entirely: it had no other.
     assert dev_reg.async_get(gone_device.id) is None
+    # Removed the way Home Assistant wants it now - a device belongs to one
+    # entry - and not through the `remove_config_entry_id` it warns about.
+    assert "remove_config_entry_id" not in caplog.text
+    assert "will stop working in Home Assistant" not in caplog.text
     moved = ent_reg.async_get(kept_entity.entity_id)
     assert moved is not None
     assert moved.unique_id == f"{entry_id}_storage/ext_disk_used_perc"
