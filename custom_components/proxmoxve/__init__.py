@@ -289,10 +289,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                 identifiers=device_identifier_migrate,
             )
 
-            dev_reg.async_update_device(
-                device_id=device.id,
-                remove_config_entry_id=config_entry.entry_id,
-            )
+            dev_reg.async_remove_device(device.id)
 
     if config_entry.version == 2:
         device_identifiers = []
@@ -325,10 +322,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                 identifiers=device_identifier_migrate,
             )
 
-            dev_reg.async_update_device(
-                device_id=device.id,
-                remove_config_entry_id=config_entry.entry_id,
-            )
+            dev_reg.async_remove_device(device.id)
 
     if config_entry.version == 3:
         data_new = {
@@ -365,10 +359,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                 config_entry.entry_id,
             )
             if device is not None:
-                dev_reg.async_update_device(
-                    device_id=device.id,
-                    remove_config_entry_id=config_entry.entry_id,
-                )
+                dev_reg.async_remove_device(device.id)
         # This step never advanced the version, so entries created before
         # the storage id change ran it again on every start and never
         # reached the disk identifier migrations below.
@@ -478,10 +469,7 @@ async def _async_rename_disk_devices(
                 is not None
             ):
                 # The new device already exists; the old one is a leftover.
-                dev_reg.async_update_device(
-                    device_id=device.id,
-                    remove_config_entry_id=config_entry.entry_id,
-                )
+                dev_reg.async_remove_device(device.id)
                 continue
             dev_reg.async_update_device(
                 device_id=device.id, new_identifiers={new_identifier}
@@ -962,9 +950,7 @@ def async_merge_shared_storages(
             config_entry.entry_id,
         )
         if device is not None:
-            dev_reg.async_update_device(
-                device_id=device.id, remove_config_entry_id=config_entry.entry_id
-            )
+            dev_reg.async_remove_device(device.id)
 
     LOGGER.info(
         "Shared storage is tracked once now: %s kept, %s merged away",
@@ -1362,10 +1348,7 @@ async def async_remove_config_entry_device(
 ) -> bool:
     """Remove a config entry from a device."""
     dev_reg = dr.async_get(hass)
-    dev_reg.async_update_device(
-        device_id=device_entry.id,
-        remove_config_entry_id=config_entry.entry_id,
-    )
+    dev_reg.async_remove_device(device_entry.id)
     LOGGER.debug("Device %s (%s) removed", device_entry.name, device_entry.id)
     return True
 
