@@ -25,6 +25,21 @@ from .const import (
 )
 
 
+def token_name_only(value: str | None) -> str:
+    """
+    Reduce whatever was typed into the token field to the token's name.
+
+    Proxmox shows a token as `user@realm!name`, and that is what people copy
+    into the field - the login then fails with "no such user
+    ('user@realm!user@realm')", because the user and realm get prepended a
+    second time. A token name itself can never contain `!`, so everything up
+    to the last one is not part of it.
+    """
+    if not value:
+        return ""
+    return value.strip().rsplit("!", 1)[-1].strip()
+
+
 class ProxmoxClient:
     """A wrapper for the proxmoxer ProxmoxAPI client."""
 
@@ -58,12 +73,12 @@ class ProxmoxClient:
         """
         user_id = self._user if "@" in self._user else f"{self._user}@{self._realm}"
 
-        if self._token_name:
+        if token_name := token_name_only(self._token_name):
             self._proxmox = ProxmoxAPI(
                 self._host,
                 port=self._port,
                 user=user_id,
-                token_name=self._token_name,
+                token_name=token_name,
                 token_value=self._password,
                 verify_ssl=self._verify_ssl,
                 timeout=30,

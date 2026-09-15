@@ -14,8 +14,10 @@ from proxmoxer.core import ResourceException
 
 from custom_components.proxmoxve.api import (
     SNAPSHOT_NAME_MAX_LENGTH,
+    ProxmoxClient,
     post_api_command,
     snapshot_name,
+    token_name_only,
 )
 from custom_components.proxmoxve.const import ProxmoxCommand, ProxmoxType
 
@@ -185,3 +187,44 @@ async def test_post_api_command_surfaces_non_403_error(hass: HomeAssistant) -> N
                 vm_id=100,
             )
         )
+
+
+@pytest.mark.parametrize(
+    ("typed", "expected"),
+    [
+        # What the README asks for.
+        ("homeassistant", "homeassistant"),
+        # What the Proxmox web interface shows, and what people copy.
+        ("homeassistant@pve!homeassistant", "homeassistant"),
+        ("root@pam!ha-token", "ha-token"),
+        ("  homeassistant@pve!homeassistant  ", "homeassistant"),
+        ("", ""),
+        (None, ""),
+    ],
+)
+def test_token_name_only(typed: str | None, expected: str) -> None:
+    """
+    Test the token field accepts the token's full id as well as its name.
+
+    Proxmox displays a token as `user@realm!name`; entering that verbatim
+    made the login fail with "no such user ('user@realm!user@realm')".
+    """
+    assert token_name_only(typed) == expected
+
+
+def test_client_logs_in_with_the_bare_token_name() -> None:
+    """Test a full token id in the entry still builds a working client."""
+    client = ProxmoxClient(
+        "node.example.invalid",
+        "homeassistant",
+        "secret",
+        token_name="homeassistant@pve!homeassistant",  # noqa: S106 - not a secret
+        realm="pve",
+        verify_ssl=False,
+    )
+
+    client.build_client()
+
+    backend = client.get_api_client()._backend  # noqa: SLF001
+    assert backend.auth.token_name == "homeassistant"
+    assert backend.auth.username == "homeassistant@pve"
