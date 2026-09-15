@@ -119,6 +119,15 @@ PROXMOX_BUTTON_VM: Final[tuple[ProxmoxButtonEntityDescription, ...]] = (
         entity_registry_enabled_default=False,
         translation_key="stop",
     ),
+    # Needs VM.Snapshot rather than VM.PowerMgmt; the snapshot is named
+    # after the moment it was taken, see snapshot_name() in api.py.
+    ProxmoxButtonEntityDescription(
+        key=ProxmoxCommand.SNAPSHOT,
+        icon="mdi:camera-outline",
+        name="Create snapshot",
+        entity_registry_enabled_default=False,
+        translation_key="snapshot",
+    ),
     ProxmoxButtonEntityDescription(
         key=ProxmoxCommand.UNLOCK,
         icon="mdi:lock-open",

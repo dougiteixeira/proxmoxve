@@ -91,6 +91,7 @@ class ProxmoxCommand(StrEnum):
     STOP_ALL = "stopall"
     SUSPEND_ALL = "suspendall"
     HIBERNATE = "hibernate"
+    SNAPSHOT = "snapshot"
     WAKEONLAN = "wakeonlan"
     UNLOCK = "unlock"
     ARM_HA = "arm-ha"

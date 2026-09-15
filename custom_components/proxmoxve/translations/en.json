@@ -293,6 +293,9 @@
         },
         "suspend_all": {
           "name": "Suspend all"
+        },
+        "snapshot": {
+          "name": "Create snapshot"
         }
       },
       "sensor": {

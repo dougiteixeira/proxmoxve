@@ -431,6 +431,9 @@ Some entities are disabled by default (including control buttons), see below how
    </details>
 
 > [!NOTE]
+> The `Create snapshot` button takes a disk-only snapshot (no RAM state) named `homeassistant_<date>_<time>` in your local time, described as "Created by Home Assistant" so it is recognisable in the snapshot list later. It needs `VM.Snapshot` on the guest; snapshots of a running container additionally need a storage that supports them.
+
+> [!NOTE]
 > The Wake on LAN button only works if the configured node is in a cluster of two or more nodes. If you want to use WOL on a single Node, use the official `Wake-On-Lan` integration.
 
 ## Translations

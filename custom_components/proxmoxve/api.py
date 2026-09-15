@@ -4,6 +4,7 @@
 
 from typing import Any
 
+import homeassistant.util.dt as dt_util
 from homeassistant.const import CONF_USERNAME
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
@@ -112,11 +113,26 @@ def get_api(
 def post_api(
     proxmox: ProxmoxAPI,
     api_path: str,
+    **kwargs: Any,
 ) -> dict[str, Any] | None:
     """Post data to Proxmox API."""
-    api_result = proxmox.post(api_path)
-    LOGGER.debug("API POST - %s: %s", api_path, api_result)
+    api_result = proxmox.post(api_path, **kwargs)
+    LOGGER.debug("API POST - %s %s: %s", api_path, kwargs or "", api_result)
     return api_result
+
+
+# Proxmox accepts a snapshot name matching `[a-zA-Z][a-zA-Z0-9_-]+`, at most
+# 40 characters. This prefix plus a local timestamp comes to 29, and a local
+# timestamp is what reads naturally next to the snapshot list in the web
+# interface, which shows the creation time in local time as well.
+SNAPSHOT_NAME_PREFIX = "homeassistant_"
+SNAPSHOT_NAME_MAX_LENGTH = 40
+
+
+def snapshot_name() -> str:
+    """Return a snapshot name for right now that the API accepts."""
+    name = f"{SNAPSHOT_NAME_PREFIX}{dt_util.now().strftime('%Y%m%d_%H%M%S')}"
+    return name[:SNAPSHOT_NAME_MAX_LENGTH]
 
 
 def put_api(
@@ -185,6 +201,17 @@ def post_api_command(
             result = post_api(
                 proxmox,
                 f"nodes/{node}/{api_category}/{vm_id}/status/{ProxmoxCommand.SUSPEND}?todisk=1",
+            )
+        elif command == ProxmoxCommand.SNAPSHOT:
+            # Not part of the status API either. Without `vmstate` a VM
+            # snapshot captures the disks only, which is the quick, safe
+            # default; the description says where it came from when it
+            # turns up in the snapshot list months later.
+            result = post_api(
+                proxmox,
+                f"nodes/{node}/{api_category}/{vm_id}/snapshot",
+                snapname=snapshot_name(),
+                description="Created by Home Assistant",
             )
         elif command == ProxmoxCommand.UNLOCK:
             # Unlock is not part of the status API; it removes the config
