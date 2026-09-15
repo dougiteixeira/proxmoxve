@@ -1363,6 +1363,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 ),
                 uptime=api_status.get("uptime", UNDEFINED),
                 cpu=api_status.get("cpu", UNDEFINED),
+                io_wait=api_status.get("wait", UNDEFINED),
                 disk_total=api_status.get("disk_max", UNDEFINED),
                 disk_used=api_status.get("disk_used", UNDEFINED),
                 memory_total=(

@@ -195,6 +195,7 @@ def default_routes() -> dict[str, Any]:
                 "free": 92_271_792_128,
             },
             "uptime": 1_209_600,
+            "wait": 0.0042,
             "loadavg": ["0.10", "0.12", "0.09"],
             "kversion": "Linux 6.14.11-2-pve",
             "pveversion": "pve-manager/9.0.6/1234abcd",

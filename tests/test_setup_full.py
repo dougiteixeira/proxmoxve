@@ -217,6 +217,26 @@ async def test_a_stopped_container_has_no_disk_usage_to_report(
     assert memory.state == "0"
 
 
+async def test_the_node_reports_io_delay_and_its_version(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test the two node figures people kept asking for are entities now.
+
+    `wait` is the share of time the CPUs spent waiting for I/O, on the same
+    0..1 scale as `cpu`; Proxmox shows it as IO delay. The version was only
+    ever visible on the device page.
+    """
+    await _setup(hass, current_entry)
+
+    entry_id = current_entry.entry_id
+    io_delay = _state(hass, current_entry, f"{entry_id}_pve_io_wait", "sensor")
+    assert float(io_delay.state) == 0.42
+    assert io_delay.attributes["unit_of_measurement"] == "%"
+    version = _state(hass, current_entry, f"{entry_id}_pve_version", "sensor")
+    assert version.state == "9.0.6"
+
+
 async def test_disks_and_pools_get_their_own_devices(
     hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
 ) -> None:
