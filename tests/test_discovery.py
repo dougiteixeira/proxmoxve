@@ -7,17 +7,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve import DOMAIN
 from custom_components.proxmoxve.const import (
     CONF_AUTO_DISCOVERY,
-    CONF_DISKS_ENABLE,
     CONF_LXC,
     CONF_NODES,
     CONF_QEMU,
     CONF_STORAGE,
-    CONF_TOKEN_NAME,
+    COORDINATORS,
     TRACKED,
     ProxmoxType,
 )
@@ -30,18 +30,21 @@ from custom_components.proxmoxve.discovery import (
     tracked_resources,
 )
 
-from . import async_init_integration
 from .const import MOCK_GET_RESPONSE, USER_INPUT_OK
+from .fake_api import FakeProxmox, add_guest, remove_guest
 
-NO_AUTH_CALL = patch(
-    "proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens",
-    return_value=None,
-)
-
+# What the flat mock's guest list amounts to ...
 EVERYTHING = {
     CONF_NODES: ["pve"],
     CONF_QEMU: ["101", "1001"],
     CONF_LXC: ["100", "1000"],
+    CONF_STORAGE: ["storage/pve/ext", "storage/pve/local"],
+}
+# ... and what the path-aware fake's cluster lists.
+FAKE_EVERYTHING = {
+    CONF_NODES: ["pve"],
+    CONF_QEMU: ["101"],
+    CONF_LXC: ["100"],
     CONF_STORAGE: ["storage/pve/ext", "storage/pve/local"],
 }
 
@@ -239,126 +242,122 @@ async def test_coordinator_stays_quiet_without_a_change(hass: HomeAssistant) -> 
     remove.assert_not_awaited()
 
 
-async def test_setup_with_discovery_tracks_everything(hass: HomeAssistant) -> None:
+async def test_setup_with_discovery_tracks_everything(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
     """Test switching the option on makes setup track what the cluster lists."""
-    # The current entry version: the migrations of older ones reset the
-    # options, which would switch discovery off again before setup.
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="Test",
-        data={**USER_INPUT_OK, CONF_TOKEN_NAME: "", CONF_STORAGE: []},
-        # The shared mock answers every path with the guest list, which the
-        # disk lookup cannot make sense of; disks are not what is under test.
-        options={CONF_AUTO_DISCOVERY: True, CONF_DISKS_ENABLE: False},
-        version=7,
+    hass.config_entries.async_update_entry(
+        current_entry, options={CONF_AUTO_DISCOVERY: True}
     )
 
-    with (
-        patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
-        NO_AUTH_CALL,
-    ):
-        await async_init_integration(hass, entry)
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
 
-    assert entry.state is ConfigEntryState.LOADED
-    assert tracked_resources(entry) == EVERYTHING
+    assert current_entry.state is ConfigEntryState.LOADED
+    assert tracked_resources(current_entry) == FAKE_EVERYTHING
     # ... while the picked selection in the entry stays exactly as it was.
-    assert entry.data[CONF_QEMU] == ["101"]
-    assert entry.data[CONF_LXC] == ["100"]
-    assert f"{ProxmoxType.Proxmox}_discovery" in entry.runtime_data["coordinators"]
+    assert current_entry.data[CONF_STORAGE] == ["storage/pve/local"]
+    assert (
+        f"{ProxmoxType.Proxmox}_discovery" in current_entry.runtime_data[COORDINATORS]
+    )
 
 
 async def test_setup_without_discovery_leaves_the_selection(
-    hass: HomeAssistant,
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
 ) -> None:
     """Test the default keeps tracking exactly what was picked."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="Test",
-        data={**USER_INPUT_OK, CONF_TOKEN_NAME: "", CONF_STORAGE: []},
-        options={CONF_DISKS_ENABLE: False},
-        version=7,
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert current_entry.state is ConfigEntryState.LOADED
+    assert tracked_resources(current_entry)[CONF_STORAGE] == ["storage/pve/local"]
+    assert (
+        f"{ProxmoxType.Proxmox}_discovery"
+        not in (current_entry.runtime_data[COORDINATORS])
     )
 
-    with (
-        patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
-        NO_AUTH_CALL,
-    ):
-        await async_init_integration(hass, entry)
 
-    assert entry.state is ConfigEntryState.LOADED
-    assert tracked_resources(entry)[CONF_QEMU] == ["101"]
-    assert f"{ProxmoxType.Proxmox}_discovery" not in entry.runtime_data["coordinators"]
-
-
-async def test_a_discovered_guest_is_wired_up_without_a_reload(
-    hass: HomeAssistant,
+async def test_a_new_guest_gets_its_entities_without_a_reload(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
 ) -> None:
     """
-    Test the add path builds coordinators and hands the guest to every platform.
+    Test the whole way: a VM appears in the cluster, its entities appear here.
 
-    The shared mock cannot answer a guest's status, so no entity comes out
-    of it here; what this pins down is the wiring - a coordinator appears,
-    each platform's callback is asked, and nothing is reloaded.
+    Nothing is reloaded; the discovery coordinator builds the coordinators
+    and asks every platform for the entities of that one guest.
     """
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="Test",
-        data={**USER_INPUT_OK, CONF_TOKEN_NAME: "", CONF_STORAGE: []},
-        options={CONF_AUTO_DISCOVERY: True, CONF_DISKS_ENABLE: False},
-        version=7,
+    hass.config_entries.async_update_entry(
+        current_entry, options={CONF_AUTO_DISCOVERY: True}
+    )
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    entry_id = current_entry.entry_id
+    assert (
+        registry.async_get_entity_id("sensor", DOMAIN, f"{entry_id}_1001_status_raw")
+        is None
     )
 
+    add_guest(fake_api.routes, "qemu", 1001, "vm-new")
+    discovery = current_entry.runtime_data[COORDINATORS][
+        f"{ProxmoxType.Proxmox}_discovery"
+    ]
     with (
-        patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
-        NO_AUTH_CALL,
+        patch.object(hass.config_entries, "async_schedule_reload") as schedule_reload,
+        patch.object(hass.config_entries, "async_reload") as reload,
     ):
-        await async_init_integration(hass, entry)
-        coordinators = entry.runtime_data["coordinators"]
-        discovery = coordinators[f"{ProxmoxType.Proxmox}_discovery"]
-        callbacks = entry.runtime_data["resource_callbacks"]
-        # sensor, binary_sensor, button and update each registered one.
-        assert len(callbacks) == 4
+        await discovery.async_refresh()
+        await hass.async_block_till_done()
 
-        # Pretend guest 1001 had not been tracked, then let discovery add it.
-        await discovery._remove_resource(ProxmoxType.QEMU, "1001")  # noqa: SLF001
-        assert f"{ProxmoxType.QEMU}_1001" not in coordinators
-
-        with (
-            patch.object(hass.config_entries, "async_schedule_reload") as reload,
-            patch(
-                "custom_components.proxmoxve.update.async_setup_updates",
-                return_value=[],
-            ) as update_builder,
-        ):
-            await discovery._add_resource(ProxmoxType.QEMU, "1001")  # noqa: SLF001
-
-    assert f"{ProxmoxType.QEMU}_1001" in coordinators
+    schedule_reload.assert_not_called()
     reload.assert_not_called()
-    # The update platform only builds for nodes; it was asked and declined.
-    update_builder.assert_not_called()
-
-
-async def test_removing_a_node_drops_everything_it_owned(hass: HomeAssistant) -> None:
-    """Test a vanished node takes its update, backup and task coordinators along."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="Test",
-        data={**USER_INPUT_OK, CONF_TOKEN_NAME: "", CONF_STORAGE: []},
-        options={CONF_AUTO_DISCOVERY: True, CONF_DISKS_ENABLE: False},
-        version=7,
+    status_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry_id}_1001_status_raw"
     )
+    assert status_id is not None
+    assert hass.states.get(status_id).state == "running"
+    assert registry.async_get_entity_id("button", DOMAIN, f"{entry_id}_1001_start")
+    assert registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry_id}_1001_status"
+    )
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, f"{entry_id}_QEMU_1001"), entry_id
+    )
+    assert device is not None
+    assert tracked_resources(current_entry)[CONF_QEMU] == ["101", "1001"]
 
-    with (
-        patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
-        NO_AUTH_CALL,
-    ):
-        await async_init_integration(hass, entry)
-        coordinators = entry.runtime_data["coordinators"]
-        discovery = coordinators[f"{ProxmoxType.Proxmox}_discovery"]
-        owned_before = [key for key in coordinators if key.endswith("_pve")]
-        assert f"{ProxmoxType.Node}_pve" in owned_before
-        assert f"{ProxmoxType.Backup}_pve" in owned_before
 
-        await discovery._remove_resource(ProxmoxType.Node, "pve")  # noqa: SLF001
+async def test_a_vanished_guest_loses_its_entities(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test a VM deleted in the cluster disappears here, device and all."""
+    hass.config_entries.async_update_entry(
+        current_entry, options={CONF_AUTO_DISCOVERY: True}
+    )
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    dev_reg = dr.async_get(hass)
+    entry_id = current_entry.entry_id
+    device = dev_reg.async_get_device_by_identifier(
+        (DOMAIN, f"{entry_id}_QEMU_101"), entry_id
+    )
+    assert device is not None
+    assert registry.async_get_entity_id("sensor", DOMAIN, f"{entry_id}_101_status_raw")
 
-    assert not [key for key in coordinators if key.endswith("_pve")]
+    remove_guest(fake_api.routes, "qemu", 101)
+    discovery = current_entry.runtime_data[COORDINATORS][
+        f"{ProxmoxType.Proxmox}_discovery"
+    ]
+    await discovery.async_refresh()
+    await hass.async_block_till_done()
+
+    assert dev_reg.async_get(device.id) is None
+    assert (
+        registry.async_get_entity_id("sensor", DOMAIN, f"{entry_id}_101_status_raw")
+        is None
+    )
+    assert f"{ProxmoxType.QEMU}_101" not in current_entry.runtime_data[COORDINATORS]
+    assert tracked_resources(current_entry)[CONF_QEMU] == []
+    # The selection in the entry is not what discovery writes to.
+    assert current_entry.data[CONF_QEMU] == ["101"]

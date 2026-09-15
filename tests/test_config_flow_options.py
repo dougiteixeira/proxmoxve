@@ -31,8 +31,9 @@ from custom_components.proxmoxve.const import (
 
 from . import async_init_integration, patch_async_setup_entry
 from .const import (
+    CURRENT_ENTRY_DATA,
+    CURRENT_ENTRY_VERSION,
     MOCK_GET_RESPONSE,
-    USER_INPUT_OK,
     USER_INPUT_OPTION_AUTH,
     USER_INPUT_SELECTION,
     mock_config_entry,
@@ -41,10 +42,13 @@ from .const import (
 
 async def test_options_flow_host_auth(hass: HomeAssistant) -> None:
     """Test options config flow."""
+    # A current entry: an older one would be migrated first, and the disk
+    # identifier migrations reach for the API, which this test does not mock.
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="Test",
-        data=USER_INPUT_OK,
+        data=CURRENT_ENTRY_DATA,
+        version=CURRENT_ENTRY_VERSION,
     )
     entry.add_to_hass(hass)
 

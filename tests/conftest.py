@@ -19,11 +19,17 @@
 # See here for more info: https://docs.pytest.org/en/latest/fixture.html (note that
 # pytest includes fixtures OOB which you can use as defined on this page)
 
+from collections.abc import Iterator
+
 import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.proxmoxve import DOMAIN
+
 from . import async_init_integration
+from .const import CURRENT_ENTRY_DATA, CURRENT_ENTRY_VERSION
+from .fake_api import FakeProxmox
 
 pytest_plugins = "pytest_homeassistant_custom_component"  # pylint: disable=invalid-name
 
@@ -44,3 +50,37 @@ async def init_integration(
     await async_init_integration(hass, mock_config_entry)
 
     return mock_config_entry
+
+
+@pytest.fixture
+def fake_api() -> Iterator[FakeProxmox]:
+    """
+    Route every Proxmox request to a fake that answers per path.
+
+    Tests may edit `fake_api.routes` before setting up, or between refreshes,
+    to describe a different cluster.
+    """
+    fake = FakeProxmox()
+    with fake.patched():
+        yield fake
+
+
+@pytest.fixture
+def current_entry(hass: HomeAssistant) -> MockConfigEntry:
+    """
+    Return a config entry in the current format, added to Home Assistant.
+
+    `MockConfigEntry` defaults to version 1, which sends setup through every
+    migration first - and the first of those loses the node name, because
+    version-1 data kept it under a different key. That is why tests without
+    an explicit version never exercised a real node.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Test",
+        data=CURRENT_ENTRY_DATA,
+        options={},
+        version=CURRENT_ENTRY_VERSION,
+    )
+    entry.add_to_hass(hass)
+    return entry
