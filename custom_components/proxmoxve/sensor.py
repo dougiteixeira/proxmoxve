@@ -1033,6 +1033,46 @@ PROXMOX_SENSOR_CEPH: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
         extra_attrs=["checks"],
         translation_key="ceph_health",
     ),
+    ProxmoxSensorEntityDescription(
+        key="bytes_used",
+        name="Ceph used",
+        icon="mdi:database",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.TERABYTES,
+        entity_registry_enabled_default=False,
+        translation_key="ceph_used",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="bytes_total",
+        name="Ceph total",
+        icon="mdi:database",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.TERABYTES,
+        entity_registry_enabled_default=False,
+        translation_key="ceph_total",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="ceph_used_perc",
+        name="Ceph used percentage",
+        icon="mdi:database",
+        native_unit_of_measurement=PERCENTAGE,
+        conversion_fn=percentage_or_unknown,
+        value_fn=lambda x: (
+            x.bytes_used / x.bytes_total
+            if UNDEFINED not in (x.bytes_used, x.bytes_total) and x.bytes_total > 0
+            else None
+        ),
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        entity_registry_enabled_default=False,
+        translation_key="ceph_used_perc",
+    ),
 )
 
 

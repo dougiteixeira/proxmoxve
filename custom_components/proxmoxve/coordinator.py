@@ -382,9 +382,11 @@ def parse_ceph(api_status: dict[str, Any]) -> ProxmoxCephData:
     """
     Build Ceph health from `cluster/ceph/status`.
 
-    Only the health block is read. The response also carries the OSD, monitor
-    and placement group maps, which are a different question and a great deal
-    of data to put behind a sensor.
+    The health block is read in full. Of the placement group map only the
+    two totals are taken - bytes used and bytes available across the OSDs -
+    which is what `ceph -s` prints as the cluster's usage. The rest of that
+    map, and the OSD and monitor maps, are a different question and a great
+    deal of data to put behind a sensor.
     """
     health_block = api_status.get("health")
     health_block = health_block if isinstance(health_block, dict) else {}
@@ -410,10 +412,15 @@ def parse_ceph(api_status: dict[str, Any]) -> ProxmoxCephData:
                 entry["message"] = message
             checks.append(entry)
 
+    pgmap = api_status.get("pgmap")
+    pgmap = pgmap if isinstance(pgmap, dict) else {}
+
     return ProxmoxCephData(
         type=ProxmoxType.Ceph,
         health=health,
         checks=checks,
+        bytes_used=_positive_or_undefined(pgmap.get("bytes_used")),
+        bytes_total=_positive_or_undefined(pgmap.get("bytes_total")),
     )
 
 

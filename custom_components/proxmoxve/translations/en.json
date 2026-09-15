@@ -371,6 +371,15 @@
             }
           }
         },
+        "ceph_used": {
+          "name": "Ceph used"
+        },
+        "ceph_total": {
+          "name": "Ceph total"
+        },
+        "ceph_used_perc": {
+          "name": "Ceph used percentage"
+        },
         "certificate_expires": {
           "name": "Certificate expires",
           "state_attributes": {

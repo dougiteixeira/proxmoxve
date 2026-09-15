@@ -141,7 +141,7 @@ For QEMU virtual machines with the [QEMU Guest Agent](https://pve.proxmox.com/wi
 
 Clusters running Ceph get a `Ceph health` sensor on the `Proxmox Cluster` device — `ok`, `warning` or `error` — with the failing checks (name, severity, message) as an attribute. **Disabled by default.**
 
-Only the health block is read. The response also carries the monitor, OSD and placement group maps, which are a different question and a great deal of data to put behind a sensor.
+Alongside it, `Ceph used`, `Ceph total` and `Ceph used percentage` report the cluster's usage from the placement group map — the same two totals `ceph -s` prints. **Disabled by default.** The rest of that map, and the monitor and OSD maps, are a different question and a great deal of data to put behind a sensor.
 
 The integration probes `cluster/ceph/status` once during setup and simply does not create the coordinator when Ceph is absent, so clusters without it are not left with something that fails on every update. It needs `Sys.Audit` or `Datastore.Audit` on `/` — the optional cluster credentials already carry that.
 
