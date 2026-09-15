@@ -1317,7 +1317,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop_polling)
     )
 
-    if proxmox_ha_admin_client is not None:
+    # The cluster device carries the HA features and every shared storage;
+    # it has to exist before those hang their entities under it.
+    if proxmox_ha_admin_client is not None or any(
+        is_shared_storage_id(storage_id) for storage_id in tracked[CONF_STORAGE]
+    ):
         device_info(
             hass=hass,
             config_entry=config_entry,
