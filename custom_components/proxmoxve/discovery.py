@@ -53,10 +53,11 @@ def selected(config_entry: ConfigEntry, key: str, only: list[str] | None) -> lis
     """
     Return the resources a platform should build entities for.
 
-    At setup that is everything the config entry tracks under `key`; when
-    discovery adds a resource at runtime, only that one.
+    At setup that is everything this setup tracks under `key` - the picked
+    selection, or the cluster's list with discovery on; when discovery adds
+    a resource at runtime, only that one.
     """
-    return only if only is not None else list(config_entry.data.get(key, []))
+    return only if only is not None else tracked_resources(config_entry)[key]
 
 
 def discovered_resources(resources: list[dict[str, Any]]) -> dict[str, list[str]]:

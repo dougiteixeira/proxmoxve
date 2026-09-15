@@ -361,3 +361,45 @@ async def test_a_vanished_guest_loses_its_entities(
     assert tracked_resources(current_entry)[CONF_QEMU] == []
     # The selection in the entry is not what discovery writes to.
     assert current_entry.data[CONF_QEMU] == ["101"]
+
+
+async def test_a_guest_only_the_cluster_knows_gets_its_entities_at_setup(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test a container nobody picked, but the cluster lists, is set up in full.
+
+    With discovery on, setup tracked it and built its coordinator - but the
+    platforms read the picked selection, so the container never got its
+    entities. What was left was a bare device the coordinator had created
+    to link it to its node: named after the config entry, no model, empty.
+    """
+    add_guest(fake_api.routes, "lxc", 9999, "test")
+    hass.config_entries.async_update_entry(
+        current_entry, options={CONF_AUTO_DISCOVERY: True}
+    )
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    entry_id = current_entry.entry_id
+    registry = er.async_get(hass)
+    status_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry_id}_9999_status_raw"
+    )
+    assert status_id is not None
+    assert hass.states.get(status_id).state == "running"
+    assert registry.async_get_entity_id("button", DOMAIN, f"{entry_id}_9999_stop")
+    assert registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry_id}_9999_status"
+    )
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, f"{entry_id}_LXC_9999"), entry_id
+    )
+    assert device is not None
+    assert device.name == "LXC test (9999)"
+    assert device.model == "LXC"
+    assert device.name != current_entry.title
+    # The storage the fake lists but the entry never picked, likewise.
+    assert registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry_id}_storage/pve/ext_node"
+    )
