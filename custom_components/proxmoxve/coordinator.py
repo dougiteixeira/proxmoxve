@@ -382,9 +382,11 @@ def parse_ceph(api_status: dict[str, Any]) -> ProxmoxCephData:
     """
     Build Ceph health from `cluster/ceph/status`.
 
-    Only the health block is read. The response also carries the OSD, monitor
-    and placement group maps, which are a different question and a great deal
-    of data to put behind a sensor.
+    The health block is read in full. Of the placement group map only the
+    two totals are taken - bytes used and bytes available across the OSDs -
+    which is what `ceph -s` prints as the cluster's usage. The rest of that
+    map, and the OSD and monitor maps, are a different question and a great
+    deal of data to put behind a sensor.
     """
     health_block = api_status.get("health")
     health_block = health_block if isinstance(health_block, dict) else {}
@@ -410,10 +412,15 @@ def parse_ceph(api_status: dict[str, Any]) -> ProxmoxCephData:
                 entry["message"] = message
             checks.append(entry)
 
+    pgmap = api_status.get("pgmap")
+    pgmap = pgmap if isinstance(pgmap, dict) else {}
+
     return ProxmoxCephData(
         type=ProxmoxType.Ceph,
         health=health,
         checks=checks,
+        bytes_used=_positive_or_undefined(pgmap.get("bytes_used")),
+        bytes_total=_positive_or_undefined(pgmap.get("bytes_total")),
     )
 
 
@@ -639,7 +646,34 @@ def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateD
     )
 
 
+class CurrentApiMixin:
+    """
+    Hand a coordinator the API object its client is using *now*.
+
+    A coordinator is built with the ProxmoxAPI object of the moment. When the
+    client later moves to another node of the cluster, that object points at
+    a host that is gone. Resolving through the client on every access means
+    the move reaches every coordinator without any of them being told.
+    Before setup has stored the client, or for an object no client built,
+    the one handed in is used as it is.
+    """
+
+    _proxmox: ProxmoxAPI
+    config_entry: ConfigEntry
+
+    @property
+    def proxmox(self) -> ProxmoxAPI:
+        """Return the API object to use for the next request."""
+        client = _client_for(self.config_entry, self._proxmox)
+        return client.get_api_client() if client is not None else self._proxmox
+
+    @proxmox.setter
+    def proxmox(self, proxmox: ProxmoxAPI) -> None:
+        self._proxmox = proxmox
+
+
 class ProxmoxCoordinator(
+    CurrentApiMixin,
     DataUpdateCoordinator[
         ProxmoxBackupData
         | ProxmoxBackupInfoData
@@ -656,12 +690,14 @@ class ProxmoxCoordinator(
         | ProxmoxUpdateData
         | ProxmoxVMData
         | ProxmoxZFSData
-    ]
+    ],
 ):
     """Proxmox VE data update coordinator."""
 
 
-class ProxmoxDiscoveryCoordinator(DataUpdateCoordinator[dict[str, list[str]]]):
+class ProxmoxDiscoveryCoordinator(
+    CurrentApiMixin, DataUpdateCoordinator[dict[str, list[str]]]
+):
     """
     Watch the cluster for nodes, guests and storages appearing or leaving.
 
@@ -2445,9 +2481,29 @@ def _client_for(config_entry: ConfigEntry, proxmox: ProxmoxAPI) -> ProxmoxClient
         return None
     for key in (PROXMOX_CLIENT, PROXMOX_HA_ADMIN_CLIENT):
         client = runtime.get(key)
-        if client is not None and client.get_api_client() is proxmox:
+        if client is not None and client.issued(proxmox):
             return client
     return None
+
+
+def _retry_on_another_node(
+    client: ProxmoxClient | None,
+    generation: int,
+    api_path: str,
+    error: Exception,
+) -> dict[str, Any] | None:
+    """
+    Move the client to another node of the cluster and repeat the request.
+
+    Everything goes through the one configured host, and its pveproxy
+    forwards to the others - so that host being down took the whole cluster
+    out of Home Assistant while three nodes were running. The client knows
+    the other nodes from `cluster/status`; if one of them answers, the read
+    is repeated there. If none does, the original failure stands.
+    """
+    if client is None or not client.failover(generation):
+        raise error
+    return get_api(client.get_api_client(), api_path)
 
 
 def _retry_after_relogin(
@@ -2523,11 +2579,15 @@ def poll_api(  # noqa: PLR0917
             case _:
                 return "Unmapped"
 
+    client = _client_for(config_entry, proxmox)
+    generation = client.generation if client is not None else 0
     try:
         try:
             api_data = get_api(proxmox, api_path)
         except AuthenticationError as error:
             api_data = _retry_after_relogin(config_entry, proxmox, api_path, error)
+        except (ConnectTimeout, ConnectionError, connError, RetryError) as error:
+            api_data = _retry_on_another_node(client, generation, api_path, error)
     except (
         SSLError,
         ConnectTimeout,

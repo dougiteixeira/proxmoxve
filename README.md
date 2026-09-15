@@ -141,7 +141,7 @@ For QEMU virtual machines with the [QEMU Guest Agent](https://pve.proxmox.com/wi
 
 Clusters running Ceph get a `Ceph health` sensor on the `Proxmox Cluster` device — `ok`, `warning` or `error` — with the failing checks (name, severity, message) as an attribute. **Disabled by default.**
 
-Only the health block is read. The response also carries the monitor, OSD and placement group maps, which are a different question and a great deal of data to put behind a sensor.
+Alongside it, `Ceph used`, `Ceph total` and `Ceph used percentage` report the cluster's usage from the placement group map — the same two totals `ceph -s` prints. **Disabled by default.** The rest of that map, and the monitor and OSD maps, are a different question and a great deal of data to put behind a sensor.
 
 The integration probes `cluster/ceph/status` once during setup and simply does not create the coordinator when Ceph is absent, so clusters without it are not left with something that fails on every update. It needs `Sys.Audit` or `Datastore.Audit` on `/` — the optional cluster credentials already carry that.
 
@@ -208,6 +208,14 @@ By default the integration tracks exactly the nodes, guests and storages you pic
 The selection lists are ignored while this is on, but they are not changed: what you picked stays stored exactly as it was, and switching the option off again brings that selection back at the next reload. Under the hood the integration brings its configuration in line with `GET /cluster/resources` at setup and keeps comparing once a minute. Like the Home Assistant core integration it then acts on the difference in place: a new node, guest or storage gets its coordinators, device and entities right away, a vanished one loses them — nothing is reloaded and nothing else goes unavailable.
 
 Because `cluster/resources` only lists what the credentials may audit, "everything" means everything this user can see. A guest the user has no `VM.Audit` on is simply not there.
+
+### When the configured host is down
+
+Every request goes through the one host you configured; its `pveproxy` forwards to the other nodes. Until now that host being down took the whole cluster out of Home Assistant, however many nodes were still running.
+
+The integration now asks `cluster/status` at setup what address every node answers on, and when the configured host stops answering it moves to the next node that does — logged as a warning — and keeps polling there. Nothing needs to be configured, and nothing is written to the entry: the configured host stays the one shown, and the next reload starts there again.
+
+Two limits. The addresses in `cluster/status` are the ones the nodes joined the cluster on; if your cluster runs corosync on a separate network, Home Assistant cannot reach them and the fallback finds nothing — which leaves things exactly as they were before. And with **Verify SSL certificate** on, a fallback node has to present a certificate valid for that address, which per-node certificates usually are not.
 
 ## Features I cannot test myself
 

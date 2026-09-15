@@ -317,3 +317,6 @@ class ProxmoxCephData:
     type: str
     health: str | UndefinedType
     checks: list[dict[str, str]]
+    # From `pgmap`: bytes used and total across the cluster's OSDs.
+    bytes_used: int | UndefinedType = UNDEFINED
+    bytes_total: int | UndefinedType = UNDEFINED
