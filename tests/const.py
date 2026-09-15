@@ -1,3 +1,5 @@
+# Copyright (c) 2019-2026
+# SPDX-License-Identifier: MIT
 """Constants for Proxmox VE tests."""
 
 from homeassistant.const import (

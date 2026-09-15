@@ -111,11 +111,11 @@
             "title": "L'utilisateur `{user}` n'a pas les permissions requises"
         },
         "resource_exception_forbiden": {
-            "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour accéder à la ressource `{resource}`.\n\nAstuce sur les autorisations requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",
+            "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour accéder à la ressource `{resource}`.\n\nInformation sur les permissions requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",
             "title": "Erreur d'autorisation pour `{resource}`"
         },
         "resource_command_forbiden": {
-            "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour accéder à la ressource `{resource}`.\n\nAstuce sur les autorisations requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",
+            "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour exécuter la commande `{command}` sur la ressource `{resource}`.\n\nInformation sur les permissions requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",
             "title": "Erreur de permission pour la commande sur `{resource}`"
         }
     },

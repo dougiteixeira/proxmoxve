@@ -1,6 +1,5 @@
-colorlog==6.10.1
-homeassistant==2026.2.3
-pip>=21.3.1
-proxmoxer==2.2.0
-ruff==0.15.5
-pre-commit
+colorlog==6.12.0
+homeassistant==2026.9.1
+pip>=26.1.2
+proxmoxer==2.3.0
+ruff==0.16.6

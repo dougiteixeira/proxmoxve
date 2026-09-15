@@ -1,3 +1,5 @@
+# Copyright (c) 2019-2026
+# SPDX-License-Identifier: MIT
 """Tests for Proxmox VE Custom Integration."""
 
 from unittest.mock import patch

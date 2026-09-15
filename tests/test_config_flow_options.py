@@ -1,3 +1,5 @@
+# Copyright (c) 2019-2026
+# SPDX-License-Identifier: MIT
 """Test the Proxmox VE config flow."""
 
 from unittest.mock import patch

@@ -1,3 +1,5 @@
+# Copyright (c) 2019-2026
+# SPDX-License-Identifier: MIT
 # pylint: disable=protected-access,redefined-outer-name
 """Global fixtures for integration."""
 

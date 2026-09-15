@@ -124,7 +124,8 @@
         "menu": {
           "menu_options": {
             "host_auth": "Change host authentication information",
-            "change_expose": "Add or remove Nodes, VMs, Containers or Storages"
+            "change_expose": "Add or remove Nodes, VMs, Containers or Storages",
+            "cluster_ha_auth": "Optional: cluster HA administration (advanced)"
           }
         },
         "host_auth": {
@@ -137,6 +138,19 @@
           },
           "description": "Proxmox host information"
         },
+        "cluster_ha_auth": {
+          "description": "Optional and separate from the main credentials above. Enables the Arm HA / Disarm HA buttons and a per-VM/CT \"HA managed\" sensor. These require Sys.Console and Sys.Audit permissions on the Proxmox root path ('/') — significantly broader than anything else this integration needs, and enough to affect the whole cluster's HA fencing behavior. Only fill this in if you understand and accept that risk; leave every field empty to leave these features disabled.",
+          "data": {
+            "ha_admin_username": "Username",
+            "ha_admin_token_name": "Token name",
+            "ha_admin_password": "Password or token value",
+            "ha_admin_realm": "Realm"
+          },
+          "data_description": {
+            "ha_admin_username": "Leave empty (along with the fields below) to disable the Arm/Disarm HA buttons and the HA managed sensor.",
+            "ha_admin_password": "Needs Sys.Console (arm/disarm) and Sys.Audit (HA resource list) on '/' — not the scoped permissions recommended for the main integration user."
+          }
+        },
         "change_expose": {
           "description": "Select the Proxmox instance nodes and Virtual Machines (QEMU) and Containers (LXC) you want to expose",
           "data": {
@@ -145,11 +159,13 @@
             "qemu": "Virtual Machines (QEMU)",
             "storage": "Storages",
             "disks_enable": "Enable physical disk information",
-            "tasks_enable": "Monitor failed tasks"
+            "tasks_enable": "Monitor failed tasks",
+            "guest_file_path": "Guest file path to monitor (QEMU, requires guest agent)"
           },
           "data_description": {
             "disks_enable": "If you work with disk hibernation, you must disable this integration option so that it does not cause the disks to be reactivated unduly.",
-            "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes."
+            "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes.",
+            "guest_file_path": "Absolute path of a file inside each tracked QEMU guest to read via the guest agent and expose as a sensor. Leave empty to disable. Requires the QEMU guest agent to be running in the guest."
           }
         }
       },
@@ -181,8 +197,23 @@
         "health": {
           "name": "Health"
         },
+        "locked": {
+          "name": "Locked"
+        },
         "update_avail": {
           "name": "Updates packages"
+        },
+        "ha_managed": {
+          "name": "HA managed"
+        },
+        "replication_failing": {
+          "name": "Replication failing"
+        },
+        "cluster_quorate": {
+          "name": "Quorate"
+        },
+        "ha_crm_master_stale": {
+          "name": "CRM master stale"
         }
       },
       "button": {
@@ -204,6 +235,9 @@
         "stop": {
           "name": "Stop"
         },
+        "unlock": {
+          "name": "Unlock"
+        },
         "resume": {
           "name": "Resume"
         },
@@ -215,6 +249,12 @@
         },
         "wakeonlan": {
           "name": "Wake-on-LAN"
+        },
+        "arm_ha": {
+          "name": "Arm HA"
+        },
+        "disarm_ha": {
+          "name": "Disarm HA"
         }
       },
       "sensor": {
@@ -255,6 +295,113 @@
               "name": "Last failure time"
             }
           }
+        },
+        "guest_file_content": {
+          "name": "Guest file content",
+          "state_attributes": {
+            "guest_file_path": {
+              "name": "Guest file path"
+            },
+            "guest_file_content": {
+              "name": "Guest file content"
+            }
+          }
+        },
+        "ceph_health": {
+          "name": "Ceph health",
+          "state": {
+            "ok": "OK",
+            "warning": "Warning",
+            "error": "Error"
+          },
+          "state_attributes": {
+            "checks": {
+              "name": "Checks"
+            }
+          }
+        },
+        "certificate_expires": {
+          "name": "Certificate expires",
+          "state_attributes": {
+            "filename": {
+              "name": "File"
+            },
+            "subject": {
+              "name": "Subject"
+            },
+            "issuer": {
+              "name": "Issuer"
+            }
+          }
+        },
+        "guests_without_backup": {
+          "name": "Guests without backup",
+          "state_attributes": {
+            "guests": {
+              "name": "Guests"
+            }
+          }
+        },
+        "replication_last_sync": {
+          "name": "Replication last sync",
+          "state_attributes": {
+            "jobs": {
+              "name": "Jobs"
+            }
+          }
+        },
+        "subscription_status": {
+          "name": "Subscription",
+          "state": {
+            "new": "New",
+            "notfound": "None",
+            "active": "Active",
+            "invalid": "Invalid",
+            "expired": "Expired",
+            "suspended": "Suspended"
+          },
+          "state_attributes": {
+            "level": {
+              "name": "Level"
+            },
+            "product": {
+              "name": "Product"
+            },
+            "next_due": {
+              "name": "Next due"
+            }
+          }
+        },
+        "ha_armed_state": {
+          "name": "HA armed state",
+          "state": {
+            "armed": "Armed",
+            "standby": "Standby",
+            "disarming": "Disarming",
+            "disarmed": "Disarmed"
+          },
+          "state_attributes": {
+            "resource_mode": {
+              "name": "Resource mode"
+            }
+          }
+        },
+        "ha_crm_master": {
+          "name": "CRM master"
+        },
+        "ha_crm_master_last_seen": {
+          "name": "CRM master last seen"
+        },
+        "ha_resources_error": {
+          "name": "HA resources in error",
+          "state_attributes": {
+            "ha_resources_error_list": {
+              "name": "Resources in error"
+            }
+          }
+        },
+        "ha_resources_total": {
+          "name": "HA resources"
         },
         "life_left": {
           "name": "Life left"

@@ -1,3 +1,5 @@
+# Copyright (c) 2019-2026
+# SPDX-License-Identifier: MIT
 """Support for Proxmox VE."""
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from homeassistant.const import (
     CONF_PORT,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
+    EVENT_HOMEASSISTANT_STOP,
     Platform,
 )
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
@@ -43,6 +46,10 @@ from .api import ProxmoxClient, get_api
 from .const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
+    CONF_HA_ADMIN_PASSWORD,
+    CONF_HA_ADMIN_REALM,
+    CONF_HA_ADMIN_TOKEN_NAME,
+    CONF_HA_ADMIN_USERNAME,
     CONF_LXC,
     CONF_NODE,
     CONF_NODES,
@@ -60,23 +67,33 @@ from .const import (
     INTEGRATION_TITLE,
     LOGGER,
     PROXMOX_CLIENT,
+    PROXMOX_HA_ADMIN_CLIENT,
     VERSION_REMOVE_YAML,
     ProxmoxType,
 )
 from .coordinator import (
+    ProxmoxBackupInfoCoordinator,
+    ProxmoxCephCoordinator,
+    ProxmoxCertificateCoordinator,
     ProxmoxDiskCoordinator,
+    ProxmoxHAResourcesCoordinator,
+    ProxmoxHAStatusCoordinator,
     ProxmoxLXCCoordinator,
     ProxmoxNodeCoordinator,
     ProxmoxQEMUCoordinator,
+    ProxmoxReplicationCoordinator,
     ProxmoxStorageCoordinator,
+    ProxmoxSubscriptionCoordinator,
     ProxmoxTaskCoordinator,
     ProxmoxUpdateCoordinator,
     ProxmoxZFSCoordinator,
 )
+from .disk import colliding_disk_wwns, resolve_disk_id
 
 if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
+    from homeassistant.core import Event, HomeAssistant
     from homeassistant.helpers.typing import ConfigType
+    from proxmoxer import ProxmoxAPI
 
     from .models import ProxmoxDiskData, ProxmoxStorageData
 
@@ -358,8 +375,10 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             except ResourceException:
                 continue
 
+            disks = disks if disks is not None else []
+            colliding_wwns = colliding_disk_wwns(disks)
             dev_reg = dr.async_get(hass)
-            for disk in disks if disks is not None else []:
+            for disk in disks:
                 device = dev_reg.async_get_or_create(
                     config_entry_id=config_entry.entry_id,
                     identifiers={
@@ -371,13 +390,14 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                         )
                     },
                 )
+                disk_id = resolve_disk_id(disk, colliding_wwns=colliding_wwns)
                 dev_reg.async_update_device(
                     device_id=device.id,
                     new_identifiers={
                         (
                             DOMAIN,
                             (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['wwn'] if 'wwn' in disk else disk['by_id_link'] if 'by_id_link' in disk else disk['serial']}"
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk_id}"
                             ),
                         )
                     },
@@ -420,8 +440,10 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             except ResourceException:
                 continue
 
+            disks = disks if disks is not None else []
+            colliding_wwns = colliding_disk_wwns(disks)
             dev_reg = dr.async_get(hass)
-            for disk in disks if disks is not None else []:
+            for disk in disks:
                 device = dev_reg.async_get_or_create(
                     config_entry_id=config_entry.entry_id,
                     identifiers={
@@ -433,13 +455,14 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                         )
                     },
                 )
+                disk_id = resolve_disk_id(disk, colliding_wwns=colliding_wwns)
                 dev_reg.async_update_device(
                     device_id=device.id,
                     new_identifiers={
                         (
                             DOMAIN,
                             (
-                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk['wwn'] if 'wwn' in disk else disk['by_id_link'] if 'by_id_link' in disk else disk['serial']}"
+                                f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_{disk_id}"
                             ),
                         )
                     },
@@ -469,6 +492,38 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True
+
+
+async def _get_api_or_retry_setup(
+    hass: HomeAssistant,
+    proxmox: ProxmoxAPI,
+    api_path: str,
+    host: str,
+) -> dict | list | None:
+    """
+    Read an API path during setup, asking to be retried if the host is down.
+
+    An exception escaping async_setup_entry leaves the entry in SETUP_ERROR,
+    which Home Assistant does not retry - the integration then stays dead until
+    it is reloaded by hand, even once Proxmox is back. ConfigEntryNotReady is
+    what asks for the retry. build_client already translates these exceptions,
+    but it only reaches the network when authenticating with a password; with
+    an API token it constructs the client offline, so the first call to fail is
+    this one.
+    """
+    try:
+        return await hass.async_add_executor_job(get_api, proxmox, api_path)
+    except AuthenticationError as error:
+        raise ConfigEntryAuthFailed from error
+    except (
+        SSLError,
+        ConnectTimeout,
+        RetryError,
+        connError,
+        ResourceException,
+    ) as error:
+        msg = f"Connection is unreachable to host {host}"
+        raise ConfigEntryNotReady(msg) from error
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
@@ -531,9 +586,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     ] = {}
     nodes_add_device = []
 
-    resources = await hass.async_add_executor_job(get_api, proxmox, "cluster/resources")
+    resources = await _get_api_or_retry_setup(hass, proxmox, "cluster/resources", host)
 
-    nodes_api = await hass.async_add_executor_job(get_api, proxmox, "nodes")
+    nodes_api = await _get_api_or_retry_setup(hass, proxmox, "nodes", host)
     for node in config_entry.data[CONF_NODES]:
         if node in [
             node_proxmox["node"]
@@ -564,6 +619,32 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             await coordinator_updates.async_refresh()
             coordinators[f"{ProxmoxType.Update}_{node}"] = coordinator_updates
 
+            coordinator_certificate = ProxmoxCertificateCoordinator(
+                hass=hass,
+                proxmox=proxmox,
+                node_name=node,
+            )
+            await coordinator_certificate.async_refresh()
+            coordinators[f"{ProxmoxType.Certificate}_{node}"] = coordinator_certificate
+
+            coordinator_subscription = ProxmoxSubscriptionCoordinator(
+                hass=hass,
+                proxmox=proxmox,
+                node_name=node,
+            )
+            await coordinator_subscription.async_refresh()
+            coordinators[f"{ProxmoxType.Subscription}_{node}"] = (
+                coordinator_subscription
+            )
+
+            coordinator_replication = ProxmoxReplicationCoordinator(
+                hass=hass,
+                proxmox=proxmox,
+                node_name=node,
+            )
+            await coordinator_replication.async_refresh()
+            coordinators[f"{ProxmoxType.Replication}_{node}"] = coordinator_replication
+
             if config_entry.options.get(CONF_TASKS_ENABLE, True):
                 coordinator_tasks = ProxmoxTaskCoordinator(
                     hass=hass,
@@ -582,24 +663,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 except ResourceException:
                     continue
 
+                disks = disks if disks is not None else []
+                colliding_wwns = colliding_disk_wwns(disks)
                 coordinators_disk = []
-                for disk in disks if disks is not None else []:
+                for disk in disks:
                     coordinator_disk = ProxmoxDiskCoordinator(
                         hass=hass,
                         proxmox=proxmox,
                         api_category=ProxmoxType.Disk,
                         node_name=node,
-                        disk_id=(
-                            disk["wwn"]
-                            if "wwn" in disk
-                            and disk["wwn"]
-                            and disk["wwn"] != "unknown"
-                            else (
-                                disk["by_id_link"]
-                                if "by_id_link" in disk
-                                else disk["serial"]
-                            )
-                        ),
+                        disk_id=resolve_disk_id(disk, colliding_wwns=colliding_wwns),
                     )
                     await coordinator_disk.async_refresh()
                     coordinators_disk.append(coordinator_disk)
@@ -756,10 +829,132 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 },
             )
 
+    # Optional, separate higher-privilege credentials for cluster-wide HA
+    # arm/disarm (needs Sys.Console on '/') and HA-resource membership
+    # (needs Sys.Audit on '/') — both broader than the least-privilege scopes
+    # the rest of the integration needs, so this stays opt-in and its failure
+    # must not break the primary integration setup.
+    proxmox_ha_admin_client = None
+    ha_admin_user = config_entry.data.get(CONF_HA_ADMIN_USERNAME)
+    ha_admin_password = config_entry.data.get(CONF_HA_ADMIN_PASSWORD)
+    if ha_admin_user and ha_admin_password:
+        candidate_client = ProxmoxClient(
+            host=host,
+            port=port,
+            user=ha_admin_user,
+            token_name=config_entry.data.get(CONF_HA_ADMIN_TOKEN_NAME, ""),
+            realm=config_entry.data.get(CONF_HA_ADMIN_REALM, DEFAULT_REALM),
+            password=ha_admin_password,
+            verify_ssl=verify_ssl,
+        )
+        try:
+            await hass.async_add_executor_job(candidate_client.build_client)
+        except (
+            AuthenticationError,
+            SSLError,
+            ConnectTimeout,
+            RetryError,
+            connError,
+            ResourceException,
+        ):
+            LOGGER.exception(
+                "Unable to authenticate with the optional cluster HA admin "
+                "credentials; the Arm/Disarm HA buttons, the HA managed "
+                "sensors and the cluster HA status sensors will not be created"
+            )
+        else:
+            proxmox_ha_admin_client = candidate_client
+
+    ha_resources_coordinator = None
+    if proxmox_ha_admin_client is not None:
+        proxmox_ha_admin = await hass.async_add_executor_job(
+            proxmox_ha_admin_client.get_api_client
+        )
+        ha_resources_coordinator = ProxmoxHAResourcesCoordinator(
+            hass=hass,
+            proxmox=proxmox_ha_admin,
+        )
+        await ha_resources_coordinator.async_refresh()
+        coordinators[f"{ProxmoxType.Proxmox}_ha_resources"] = ha_resources_coordinator
+
+        ha_status_coordinator = ProxmoxHAStatusCoordinator(
+            hass=hass,
+            proxmox=proxmox_ha_admin,
+        )
+        await ha_status_coordinator.async_refresh()
+        coordinators[f"{ProxmoxType.Proxmox}_ha_status"] = ha_status_coordinator
+
+        backup_info_coordinator = ProxmoxBackupInfoCoordinator(
+            hass=hass,
+            proxmox=proxmox_ha_admin,
+        )
+        await backup_info_coordinator.async_refresh()
+        coordinators[f"{ProxmoxType.Proxmox}_backup_info"] = backup_info_coordinator
+
+        # Most clusters run no Ceph, where this endpoint simply fails. Probing
+        # once keeps a permanently failing coordinator - and its error every
+        # update - off the majority of installations.
+        try:
+            ceph_available = (
+                await hass.async_add_executor_job(
+                    get_api, proxmox_ha_admin, "cluster/ceph/status"
+                )
+                is not None
+            )
+        except (
+            AuthenticationError,
+            SSLError,
+            ConnectTimeout,
+            RetryError,
+            connError,
+            ResourceException,
+        ):
+            ceph_available = False
+            LOGGER.debug("No Ceph cluster found, skipping its sensor")
+
+        if ceph_available:
+            ceph_coordinator = ProxmoxCephCoordinator(
+                hass=hass,
+                proxmox=proxmox_ha_admin,
+            )
+            await ceph_coordinator.async_refresh()
+            coordinators[f"{ProxmoxType.Proxmox}_ceph"] = ceph_coordinator
+
     config_entry.runtime_data = {
         PROXMOX_CLIENT: proxmox_client,
+        PROXMOX_HA_ADMIN_CLIENT: proxmox_ha_admin_client,
         COORDINATORS: coordinators,
     }
+
+    async def _stop_polling(_event: Event) -> None:
+        """
+        Stop scheduling refreshes once Home Assistant is shutting down.
+
+        Every poll runs in an executor thread and blocks there until the
+        Proxmox API answers or the request times out. A thread cannot be
+        cancelled, so a refresh that starts late holds up shutdown - which is
+        what Home Assistant means by "Integrations should cancel non-critical
+        tasks when receiving the stop event". Shutting the coordinators down
+        stops new polls from being scheduled; one already in flight still
+        finishes, bounded by the client's timeout.
+        """
+        for coordinator in coordinators.values():
+            for single in (
+                coordinator if isinstance(coordinator, list) else [coordinator]
+            ):
+                await single.async_shutdown()
+
+    config_entry.async_on_unload(
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop_polling)
+    )
+
+    if proxmox_ha_admin_client is not None:
+        device_info(
+            hass=hass,
+            config_entry=config_entry,
+            api_category=ProxmoxType.Proxmox,
+            create=True,
+        )
 
     for node in nodes_add_device:
         device_info(
@@ -818,7 +1013,14 @@ def device_info(
     proxmox_version = None
     manufacturer = None
     serial_number = None
-    if api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
+    if api_category is ProxmoxType.Proxmox:
+        name = "Proxmox Cluster"
+        identifier = f"{config_entry.entry_id}_cluster"
+        url = f"https://{host}:{port}/#v1:0:=cluster/ha"
+        via_device = None
+        model = "Cluster"
+
+    elif api_category in (ProxmoxType.QEMU, ProxmoxType.LXC):
         coordinator = coordinators[f"{api_category}_{resource_id}"]
         if (coordinator_data := coordinator.data) is not None:
             vm_name = coordinator_data.name
@@ -896,6 +1098,25 @@ def device_info(
         manufacturer = None
         serial_number = None
 
+    # `via_device` is deprecated and stops working in Home Assistant 2027.8.0:
+    # identifiers are only unique within a config entry, so an identifier pair
+    # no longer points at one device unambiguously. The registry wants the
+    # parent's id instead, which means resolving it here - scoped to this entry,
+    # so the lookup cannot be ambiguous either.
+    #
+    # Resolving also settles a separate complaint: naming a parent that does not
+    # exist made Home Assistant log a report while dropping the link anyway.
+    # That happens for a guest, storage, disk or pool on a node the user did not
+    # select, so no node device was created for it. Leaving the link out loses
+    # nothing, and update_device_via() attaches a guest to its node as soon as
+    # that node has a device.
+    via_device_id: str | None = None
+    if via_device is not None:
+        parent = dr.async_get(hass).async_get_device_by_identifier(
+            via_device, config_entry.entry_id
+        )
+        via_device_id = parent.id if parent else None
+
     if create:
         device_registry = dr.async_get(hass)
         return device_registry.async_get_or_create(
@@ -908,7 +1129,7 @@ def device_info(
             model=model,
             sw_version=proxmox_version,
             hw_version=None,
-            via_device=via_device,
+            via_device_id=via_device_id,
             serial_number=serial_number or None,
         )
     return DeviceInfo(
@@ -920,7 +1141,7 @@ def device_info(
         model=model,
         sw_version=proxmox_version,
         hw_version=None,
-        via_device=via_device,
+        via_device_id=via_device_id,
         serial_number=serial_number or None,
     )
 

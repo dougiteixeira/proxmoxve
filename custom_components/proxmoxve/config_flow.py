@@ -1,3 +1,5 @@
+# Copyright (c) 2019-2026
+# SPDX-License-Identifier: MIT
 """Config Flow for ProxmoxVE."""
 
 from __future__ import annotations
@@ -26,6 +28,11 @@ from .api import ProxmoxClient, get_api
 from .const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
+    CONF_GUEST_FILE_PATH,
+    CONF_HA_ADMIN_PASSWORD,
+    CONF_HA_ADMIN_REALM,
+    CONF_HA_ADMIN_TOKEN_NAME,
+    CONF_HA_ADMIN_USERNAME,
     CONF_LXC,
     CONF_NODE,
     CONF_NODES,
@@ -73,6 +80,14 @@ SCHEMA_HOST_AUTH: vol.Schema = vol.Schema(
 SCHEMA_HOST_FULL: vol.Schema = SCHEMA_HOST_BASE.extend(SCHEMA_HOST_SSL.schema).extend(
     SCHEMA_HOST_AUTH.schema
 )
+SCHEMA_CLUSTER_HA_AUTH: vol.Schema = vol.Schema(
+    {
+        vol.Optional(CONF_HA_ADMIN_USERNAME, default=""): str,
+        vol.Optional(CONF_HA_ADMIN_TOKEN_NAME, default=""): str,
+        vol.Optional(CONF_HA_ADMIN_PASSWORD, default=""): str,
+        vol.Optional(CONF_HA_ADMIN_REALM, default=DEFAULT_REALM): str,
+    }
+)
 
 
 class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
@@ -97,6 +112,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             menu_options=[
                 "host_auth",
                 "change_expose",
+                "cluster_ha_auth",
             ],
         )
 
@@ -162,6 +178,82 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             step_id="host_auth",
             data_schema=self.add_suggested_values_to_schema(
                 (SCHEMA_HOST_AUTH.extend(SCHEMA_HOST_SSL.schema)),
+                self.config_entry.data or user_input,
+            ),
+            errors=errors,
+        )
+
+    async def async_step_cluster_ha_auth(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """
+        Manage optional, separate credentials for cluster-wide HA features.
+
+        These unlock the Arm/Disarm HA buttons and the per-guest "HA
+        managed" sensor, which need `Sys.Console`/`Sys.Audit` on the
+        Proxmox root path ('/') — broader than anything else this
+        integration needs. Kept as a fully optional, separate user/token so
+        the main credentials can stay least-privilege. Leaving every field
+        empty disables these features.
+        """
+        errors = {}
+
+        if user_input is not None:
+            host: str = str(self.config_entry.data[CONF_HOST])
+            port: int = int(str(self.config_entry.data[CONF_PORT]))
+            user = str(user_input.get(CONF_HA_ADMIN_USERNAME, "")).strip()
+            token_name = str(user_input.get(CONF_HA_ADMIN_TOKEN_NAME, "")).strip()
+            realm = str(user_input.get(CONF_HA_ADMIN_REALM, DEFAULT_REALM))
+            password = str(user_input.get(CONF_HA_ADMIN_PASSWORD, "")).strip()
+            verify_ssl = self.config_entry.data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
+
+            if user and password:
+                try:
+                    cluster_client = ProxmoxClient(
+                        host=host,
+                        port=port,
+                        user=user,
+                        token_name=token_name,
+                        realm=realm,
+                        password=password,
+                        verify_ssl=verify_ssl,
+                    )
+
+                    await self.hass.async_add_executor_job(cluster_client.build_client)
+
+                except proxmoxer.AuthenticationError:
+                    errors[CONF_HA_ADMIN_USERNAME] = "auth_error"
+                except SSLError:
+                    errors[CONF_BASE] = "ssl_rejection"
+                except ConnectTimeout:
+                    errors[CONF_BASE] = "cant_connect"
+                except Exception:  # pylint: disable=broad-except
+                    errors[CONF_BASE] = "general_error"
+
+            if not errors:
+                config_data: dict[str, Any] = (
+                    self.config_entry.data.copy()
+                    if self.config_entry.data is not None
+                    else {}
+                )
+                config_data[CONF_HA_ADMIN_USERNAME] = user
+                config_data[CONF_HA_ADMIN_TOKEN_NAME] = token_name
+                config_data[CONF_HA_ADMIN_PASSWORD] = password
+                config_data[CONF_HA_ADMIN_REALM] = realm
+
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data=config_data,
+                )
+
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+                return self.async_abort(reason="changes_successful")
+
+        return self.async_show_form(
+            step_id="cluster_ha_auth",
+            data_schema=self.add_suggested_values_to_schema(
+                SCHEMA_CLUSTER_HA_AUTH,
                 self.config_entry.data or user_input,
             ),
             errors=errors,
@@ -297,6 +389,14 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                                 CONF_TASKS_ENABLE, True
                             ),
                         ): selector.BooleanSelector(),
+                        vol.Optional(
+                            CONF_GUEST_FILE_PATH,
+                            description={
+                                "suggested_value": self.config_entry.options.get(
+                                    CONF_GUEST_FILE_PATH, ""
+                                )
+                            },
+                        ): selector.TextSelector(),
                     }
                 ),
             )
@@ -319,6 +419,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         options_data = {
             CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
             CONF_TASKS_ENABLE: user_input.get(CONF_TASKS_ENABLE),
+            CONF_GUEST_FILE_PATH: user_input.get(CONF_GUEST_FILE_PATH, "").strip(),
         }
 
         self.hass.config_entries.async_update_entry(
@@ -698,7 +799,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             try:
                 self._proxmox_client = ProxmoxClient(
-                    host,
+                    host=host,
                     port=port,
                     user=user,
                     token_name=token_name,
@@ -862,7 +963,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not errors:
                 try:
                     self._proxmox_client = ProxmoxClient(
-                        host,
+                        host=host,
                         port=port,
                         user=username,
                         token_name=token_name,

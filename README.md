@@ -14,7 +14,7 @@ After configuring this integration, the following information is available:
  - Binary sensor entities with the status of node and selected virtual machines/containers.
  - Sensor entities of the selected node and virtual machines/containers. Some sensors are created disabled by default, you can enable them by accessing the entity's configuration.
  - **Failed task monitoring sensors** that track failed tasks from the last 24 hours on selected nodes, showing the count of failures and details about recent failed tasks.
- - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled, [see how to enable them here](https://github.com/dougiteixeira/proxmoxve/#disabled-entities).
+ - Entities button to control selected virtual machines/containers (see about Proxmox user permissions below). By default, the entities buttons to control virtual machines/containers are created disabled, [see how to enable them here](#disabled-entities).
 
 ### Failed Task Monitoring
 
@@ -30,8 +30,160 @@ The integration provides sensors that monitor failed tasks on your Proxmox nodes
 
 The failed task sensors help you monitor the health of your Proxmox operations and quickly identify when automated tasks encounter issues.
 
+### Hardware Sensors
+
+The integration automatically discovers and exposes hardware temperature, voltage, power, current, and fan speed sensors from Proxmox VE hosts via `lm-sensors`.
+
+#### Prerequisites
+
+On each Proxmox VE host, install `lm-sensors` and [PVE-mods](https://github.com/Meliox/PVE-mods), either variant:
+
+- **v2 (`node_info`, current)** — installed via its Debian package/configure wizard. Exposes sensor data under a `PveMod_JsonSensorInfo` field (temperature only; its separate GPU/UPS/system-info fields aren't read by this integration). See the PVE-mods README for install instructions.
+- **Legacy script (`pve-mod-gui-sensors.sh`)** — still supported, exposes a `sensorsOutput` field:
+  ```bash
+  apt-get install lm-sensors
+  wget https://raw.githubusercontent.com/Meliox/PVE-mods/main/legacy-scripts/pve-mod-gui-sensors.sh
+  bash pve-mod-gui-sensors.sh install
+  ```
+
+Both are auto-detected — whichever one is installed and enabled for temperature sensors is used, no configuration needed on the integration side. Compatible with Proxmox VE 9.0-9.2 per the PVE-mods README; check there for current install instructions if paths change again.
+
+This modifies the Proxmox VE API to inject `sensors -j` output into the `GET /nodes/{node}/status` response. No additional API calls are made by the integration.
+
+#### When readings come and go
+
+PVE-mods v2 collects on demand rather than continuously. A worker started by `pveproxy` runs `sensors`, enriches the output with drive and CPU names, and writes it to `/run/pveproxy/pve-mod/sensors.json`; the API handler reads that file back when you ask for a node's status. After ten seconds without a request the worker stops its collectors and removes the whole directory again.
+
+So a poll that arrives while nothing is warm gets the field **present but empty**, and every hardware sensor on that node would drop to *unknown*. The data is there a second or two later, once that same request has woken the worker. This is how PVE-mods is meant to work — a missing directory is not a fault, and there is nothing to repair on the host.
+
+The ten seconds are hard-wired: `collector_timeout` lives in the package's `PVE/PVEMod/Config.pm` and is not among the sections `pve-mod.conf` can override, so setting it there is accepted and silently ignored.
+
+The integration therefore keeps the previous readings for up to ten minutes when a poll brings none, which covers the gap without polling the API more often. Past ten minutes it reports nothing, because by then the data really is gone rather than late — PVE-mods removed, the module unloaded, `lm-sensors` broken.
+
+If your hardware sensors stay unknown for longer than that, check the source rather than the integration — ask twice, a few seconds apart, so the first request wakes the collector:
+
+```bash
+pvesh get /nodes/$(hostname)/status --output-format json | grep -c PveMod_JsonSensorInfo
+sleep 3
+ls -l /run/pveproxy/pve-mod/sensors.json
+journalctl -u pveproxy --since today | grep -i pve-mod
+```
+
+#### Supported Hardware
+
+| Chip / Driver | Device Type | Examples |
+|---------------|-------------|----------|
+| `k10temp`, `k8temp`, `coretemp`, `peci-cputemp` | CPU | Tctl, Tdie, Package temperature |
+| `amdgpu`, `i915`, `nvidia_gpu` | GPU | Core voltage, hotspot temperature, power, clock |
+| `nvme`, `drivetemp` | Storage | NVMe/Drive temperature |
+| `jc42`, `spd5118`, `sodimm` | Memory | DIMM temperature |
+| `nct6775`, `it87`, `w83627` | Motherboard | System/CPU/Aux temperature |
+| `mlx5`, `igb`, `ixgbe` | NIC | NIC temperature, power |
+| `pmbus`, `corsair`, `lm25066` | PSU | Power supply temperature, power |
+| `emc2305`, `pwm-fan`, `max31785` | Cooling | Fan speed (RPM) |
+
+#### Auto-classification
+
+Each sensor is automatically classified:
+
+- **Names** mapped from known labels (e.g. `Tctl` → `CPU control temperature`, `edge` → `GPU hotspot`)
+- **Units** inferred from sensor name patterns (temperature in °C, voltage in V, power in W, frequency in MHz, current in A, fan speed in RPM)
+- **Device classes** set accordingly (`temperature`, `voltage`, `power`, `frequency`, `current`)
+- **Icons** assigned per device type
+
+Sensors are created under the corresponding Node device in Home Assistant and are marked as `diagnostic`.
+
+### Guest File Content Sensor
+
+For QEMU virtual machines with the [QEMU Guest Agent](https://pve.proxmox.com/wiki/Qemu-guest-agent) installed and running, you can configure an absolute file path (in the integration options) that will be read from inside each tracked VM and exposed as a sensor.
+
+- Configured once for all tracked QEMU VMs, via the integration options (`Guest file path to monitor`). Leave empty to disable (default).
+- Only VMs where the file can actually be read (guest agent running, file exists and is accessible) get the sensor; it is silently skipped otherwise.
+- Content is capped at 4 KiB per read; the sensor state is further truncated to 255 characters (Home Assistant's state length limit), with the full (capped) content available as the `guest_file_content` attribute.
+- QEMU only — LXC containers have no equivalent guest-agent file-read API.
+
+### Ceph health
+
+Clusters running Ceph get a `Ceph health` sensor on the `Proxmox Cluster` device — `ok`, `warning` or `error` — with the failing checks (name, severity, message) as an attribute. **Disabled by default.**
+
+Only the health block is read. The response also carries the monitor, OSD and placement group maps, which are a different question and a great deal of data to put behind a sensor.
+
+The integration probes `cluster/ceph/status` once during setup and simply does not create the coordinator when Ceph is absent, so clusters without it are not left with something that fails on every update. It needs `Sys.Audit` or `Datastore.Audit` on `/` — the optional cluster credentials already carry that.
+
+### Replication
+
+For nodes running ZFS replication, two entities per node, both **disabled by default** and only created when that node actually has replication jobs:
+
+- `Replication failing` — a problem binary sensor, on when any active job has failures, with the affected jobs (id, guest, target, failure count, error) as an attribute.
+- `Replication last sync` — the **oldest** successful sync across the node's active jobs. The oldest rather than the newest on purpose: the newest would hide a job that stopped replicating days ago, which is exactly the case worth seeing.
+
+Jobs somebody disabled are counted but never raise the alarm or hold back the timestamp.
+
+Proxmox filters this to guests the credentials may audit (`VM.Audit`), so no extra permissions are needed beyond what tracking those guests already requires.
+
+### Subscription
+
+Each node gets a `Subscription` sensor — `active`, `expired`, `invalid`, `suspended`, `new` or `none` — with the level, product name and next due date as attributes. **Disabled by default**: most installations run without a subscription, where it reads "none" forever and is worth having only once there is one.
+
+The subscription key, the server ID and the response signature are deliberately not exposed. They identify the machine and the subscription, and would otherwise end up in a state attribute and in every diagnostics dump.
+
+Like the certificate sensor, this needs no permissions beyond being able to log in, and is polled hourly.
+
+### Certificate expiry
+
+Each node gets a `Certificate expires` sensor, **disabled by default** — enable it like other [disabled entities](#disabled-entities). It reports the expiry of the certificate that actually serves the API and web interface: `pveproxy-ssl.pem` if you replaced it with your own or an ACME one, otherwise the `pve-ssl.pem` the cluster's own CA issued. The file, subject and issuer are attributes.
+
+It is off by default because most installations run on the cluster CA's self-signed certificate, where an expiry two years out is not something to watch. It earns its place once you put a real certificate on the node — that is what tends to expire unnoticed.
+
+The cluster CA itself (`pve-root-ca.pem`) is deliberately not reported: it is valid for ten years and its expiry is not something you act on.
+
+This needs no permissions beyond being able to log in, and it is polled once an hour rather than once a minute, since certificates only change when someone replaces them.
+
+### Cluster HA Administration (Advanced, Optional)
+
+These features let you interact with the Proxmox HA (High Availability) stack, gated behind a **separate, optional** set of credentials:
+
+- **Arm HA / Disarm HA buttons**: cluster-wide equivalents of `ha-manager crm-command arm-ha` / `disarm-ha`, letting you pause HA fencing for planned maintenance (e.g. before/after a node reboot script) and resume it afterwards. Disabled by default even once configured — enable them explicitly like other advanced entities. Disarm always uses `resource-mode=freeze` (HA services stay locked in their current state, no automatic action) rather than `ignore` (which fully suspends HA tracking and allows manual guest management) — the safer of the two, but it means guests aren't freely manageable outside of HA while disarmed. Arm HA resumes normal monitoring from whatever the actual state is at that point; it does not roll anything back.
+- **"HA managed" sensor**: a per-VM/CT binary sensor showing whether that guest is currently a Proxmox HA resource.
+- **`Guests without backup` sensor**: how many VMs and containers no backup job covers, with the affected guests as an attribute. Zero is the good case. Proxmox filters this to guests the credentials may see, so it reads "not backed up, as far as this user can tell" rather than a cluster-wide truth. Polled hourly — which guests a job covers changes when someone edits a job, not minute to minute.
+- **Cluster HA status sensors**: read-only sensors on the `Proxmox Cluster` device, from `GET /cluster/ha/status/current`:
+  - `HA armed state` — `armed`, `standby`, `disarming` or `disarmed`, with the active `resource mode` (`freeze`/`ignore`) as an attribute. Arm/Disarm only *queue* a CRM command, so this is the only way to see whether the cluster actually reached the requested state; a disarm run passes through `disarming` until every LRM has released its watchdog. Requires `pve-ha-manager` 5.1.3 or newer — the release that added arm/disarm and the `fencing` status entry it reads; on older clusters the API omits the entry and the sensor is not created.
+  - `Quorate` — binary sensor, off when the cluster has lost quorum.
+  - `CRM master` — which node currently runs the CRM.
+  - `CRM master stale` — binary sensor, on when the CRM master has not refreshed its status for more than 30 s, the same threshold Proxmox itself uses to call a master dead. Proxmox only puts that verdict in a localized display string, so it is recomputed here from the structured timestamp — against the Home Assistant clock, which assumes your HA host and the cluster agree on the time.
+  - `CRM master last seen` — the raw timestamp behind the above. **Disabled by default**: the CRM rewrites it every few seconds, so it would record a new state on every poll; enable it if you need the exact value for debugging.
+  - `HA resources` and `HA resources in error` — how many resources the HA stack tracks, and how many are currently in `error`, `fence` or `recovery`, with the affected service IDs as an attribute.
+
+  These entities are created during setup from the first successful poll: if HA is configured on the cluster afterwards, reload the integration to pick up the new entities.
+
+> [!CAUTION]
+> These need **`Sys.Console`** (arm/disarm) and **`Sys.Audit`** (HA resource list and HA status) on the Proxmox **root path (`/`)** — cluster-wide permissions, well beyond the scoped, per-node/per-VM permissions the rest of this integration recommends. `Sys.Console` in particular is normally associated with shell/console access. Only configure this if you understand and accept that risk.
+
+Because of that, this uses a **separate user or API token** from the main integration credentials, configured via the integration options (`Optional: cluster HA administration (advanced)`). Leave every field empty (the default) to keep these features disabled — the rest of the integration is unaffected either way. A failure to authenticate with these optional credentials only disables these features; it does not break the rest of the integration.
+
+Only relevant if you run a Proxmox **cluster with HA-manager configured** — on a standalone node there are no HA resources to arm/disarm or report on.
+
 > [!IMPORTANT]  
-> See the section on Proxmox user permissions [here](https://github.com/dougiteixeira/proxmoxve#proxmox-permissions).
+> See the section on Proxmox user permissions [here](#proxmox-permissions).
+
+## Features I cannot test myself
+
+My own cluster does not use every feature this integration reads, so some
+code paths have only ever run against the Proxmox API definitions and
+invented test fixtures — never against a live setup. They are listed here
+honestly rather than presented as equally proven:
+
+| Feature | What is untested |
+|---|---|
+| **Ceph** | Everything. I run no Ceph, so the endpoint is absent here. The health values come from Ceph itself rather than a Proxmox schema, since `cluster/ceph/status` hands `ceph -s` through unchanged. |
+| **Replication** | Only the failure path. A healthy job has been confirmed against a live cluster; what a job reports once it starts failing — `fail_count`, `error` — has not. |
+| **Subscription** | Only the `none` state is confirmed. I hold no subscription, so `active`, `expired`, `invalid` and `suspended` — and the level, product and due date attributes — have never been seen from a real response. |
+
+**If you run any of these, I would genuinely like to hear whether they work.**
+An issue saying "replication sensor shows the wrong thing" — ideally with the
+output of `pvesh get /nodes/<node>/replication --output-format json`, with
+anything sensitive removed — is more useful than it might feel, because I
+cannot produce that response myself.
 
 ## Install
 
@@ -105,6 +257,10 @@ logger:
 ```
 </details>
 
+### Diagnostics
+
+The integration supports Home Assistant's standard diagnostics download (Settings > Devices & services > Proxmox VE > ⋮ > Download diagnostics), useful for attaching to bug reports. It includes the config entry's settings (credentials redacted) and a snapshot of the last data polled by every active coordinator (nodes, VMs/CTs, storage, disks, ZFS, tasks, updates, and — if configured — the HA-managed resource list and cluster HA status). Node, VM/CT, and storage names are not redacted since they're the point of a diagnostics dump; review the file before sharing it publicly if that's a concern for your setup.
+
 ## Example screenshot:
 Here are some screenshots of the integration
 
@@ -158,6 +314,7 @@ Below is a summary of the permissions for each integration feature. I suggest yo
 |Perform commands on the node (shutdown, restart, start all, shutdown all)|Management permission|HomeAssistant.NodePowerMgmt|Sys.PowerMgmt|
 |Get information about available package updates to display on sensors (integration does not trigger the update)|Management permission|HomeAssistant.Update|Sys.Modify|
 |Perform commands on VM/CT (start, shutdown, restart, suspend, resume and hibernate)|Management permission|HomeAssistant.VMPowerMgmt|VM.PowerMgmt|
+|**(Optional, separate user/token — see [Cluster HA Administration](#cluster-ha-administration-advanced-optional))** Arm/Disarm HA and read the HA-managed resource list and cluster HA status, root-scoped (`/`)|Cluster-wide management permission|HomeAssistant.ClusterHA|Sys.Console, Sys.Audit|
 
 ### Create Home Assistant Group
 

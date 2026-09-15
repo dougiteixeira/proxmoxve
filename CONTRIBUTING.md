@@ -44,7 +44,22 @@ People *love* thorough bug reports. I'm not even kidding.
 
 ## Use a Consistent Coding Style
 
-Use [black](https://github.com/ambv/black) to make sure the code follows the style.
+Use [ruff](https://github.com/astral-sh/ruff) to make sure the code follows the style (`scripts/lint` runs `ruff format` and `ruff check --fix` for you).
+
+## Home Assistant versions
+
+Two versions are declared, and they differ on purpose:
+
+- `hacs.json`'s `homeassistant` key is the **lowest** release the code runs on, and
+  the one HACS enforces. It is currently `2026.8.0`, the release that introduced
+  `via_device_id` and `DeviceRegistry.async_get_device_by_identifier`.
+- `requirements.txt` pins the version the tests run **against**, kept at the current
+  stable so CI sees new deprecations early.
+
+Raise the floor in `hacs.json` only when the code actually needs a newer API, and
+check that the release notes say the same thing. Note that HACS reads `hacs.json`
+from the tag being installed, so a change here only reaches users with the next
+release.
 
 ## Test your code modification
 

@@ -96,7 +96,7 @@
         },
         "import_node_not_exist": {
             "title": "节点 {node} 在 {host}:{port} 中不存在",
-            "description": "YAML 配置中指定的节点 {node} 在 {host}:{port} 实例中不存在，导入时已忽略。\n\n请从 `configuration.yaml` 中删除此配置并重启 Home Assistant。"
+            "description": "YAML 配置中指定的 {host}:{port} 实例（{integration}，`{platform}`）的节点 {node} 在该实例中不存在，导入时已忽略。\n\n请从 `configuration.yaml` 中删除此配置并重启 Home Assistant。"
         },
         "yaml_deprecated": {
             "title": "{integration} 的 YAML 配置方式已弃用",
@@ -116,7 +116,7 @@
         },
         "resource_command_forbiden": {
             "description": "用户 `{user}` 没有足够权限对资源 `{resource}` 执行命令 `{command}`。\n\n所需权限提示：\n* `{permission}`\n\n请检查文档中的权限要求并调整用户权限。",
-            "title": "执行 `{command}` 命令的权限错误"
+            "title": "对资源 `{resource}` 执行命令的权限错误"
         }
     },
     "options": {
