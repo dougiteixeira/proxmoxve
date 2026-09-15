@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import re
+from functools import partial
 import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
@@ -1295,14 +1296,16 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             if self._mac_addresses is None:
                 api_path = f"nodes/{self.resource_id}/network"
                 interfaces = await self.hass.async_add_executor_job(
-                    poll_api,
-                    self.hass,
-                    self.config_entry,
-                    self.proxmox,
-                    api_path,
-                    ProxmoxType.Node,
-                    self.resource_id,
-                    issue_crete_permissions=False,
+                    partial(
+                        poll_api,
+                        self.hass,
+                        self.config_entry,
+                        self.proxmox,
+                        api_path,
+                        ProxmoxType.Node,
+                        self.resource_id,
+                        issue_crete_permissions=False,
+                    )
                 )
                 # Empty stays "not read yet" only when the call failed; an
                 # answered listing without a port is final.
