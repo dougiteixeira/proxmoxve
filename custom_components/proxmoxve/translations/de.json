@@ -181,9 +181,6 @@
             "health": {
                 "name": "Gesundheit"
             },
-            "locked": {
-                "name": "Gesperrt"
-            },
             "update_avail": {
                 "name": "Pakete aktualisieren"
             }
@@ -206,9 +203,6 @@
             },
             "stop": {
                 "name": "Stoppen"
-            },
-            "unlock": {
-                "name": "Entsperren"
             },
             "resume": {
                 "name": "Fortsetzen"

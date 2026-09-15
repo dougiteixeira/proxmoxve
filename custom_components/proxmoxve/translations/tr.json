@@ -181,9 +181,6 @@
             "health": {
                 "name": "Health"
             },
-            "locked": {
-                "name": "Locked"
-            },
             "update_avail": {
                 "name": "Updates packages"
             }
@@ -206,9 +203,6 @@
             },
             "stop": {
                 "name": "Stop"
-            },
-            "unlock": {
-                "name": "Unlock"
             },
             "resume": {
                 "name": "Resume"
