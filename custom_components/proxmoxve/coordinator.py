@@ -39,11 +39,13 @@ from .const import (
     GUEST_FILE_READ_MAX_BYTES,
     LOGGER,
     SLOW_UPDATE_INTERVAL,
+    TASKS_UPDATE_INTERVAL,
     UPDATE_INTERVAL,
     ProxmoxType,
 )
 from .disk import disk_matches_id
 from .models import (
+    ProxmoxBackupData,
     ProxmoxBackupInfoData,
     ProxmoxCephData,
     ProxmoxCertificateData,
@@ -254,6 +256,66 @@ def parse_certificates(
         filename=chosen.get("filename"),
         subject=chosen.get("subject"),
         issuer=chosen.get("issuer"),
+    )
+
+
+def _task_timestamp(value: Any) -> datetime | UndefinedType:
+    """Turn a task log's epoch seconds into a UTC datetime, or nothing."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return UNDEFINED
+    return dt_util.utc_from_timestamp(value)
+
+
+def parse_backup(entries: list[dict[str, Any]], node_name: str) -> ProxmoxBackupData:
+    """
+    Describe a node's most recent backup run from its task log.
+
+    The caller asks the task log for finished `vzdump` tasks, newest first,
+    so the first entry is the run that matters. A run still in progress is
+    not in that list, which is deliberate: it has no end time and no
+    verdict yet, and reporting it would make every backup look like a
+    failure while it runs.
+    """
+    tasks = [
+        entry
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("type") == "vzdump"
+    ]
+    if not tasks:
+        return ProxmoxBackupData(
+            type=ProxmoxType.Backup,
+            node=node_name,
+            runs=0,
+            finished=UNDEFINED,
+            started=UNDEFINED,
+            duration=UNDEFINED,
+            status=None,
+            guests=None,
+            user=None,
+        )
+
+    task = tasks[0]
+    started = _task_timestamp(task.get("starttime"))
+    finished = _task_timestamp(task.get("endtime"))
+    duration: int | UndefinedType = UNDEFINED
+    if UNDEFINED not in (started, finished) and finished >= started:
+        duration = int((finished - started).total_seconds())
+
+    status = task.get("status")
+    # The task's `id` is the guests the run covered - "100" or "100,101" -
+    # and is empty for a job that backs up everything on the node.
+    guests = str(task["id"]) if task.get("id") else None
+
+    return ProxmoxBackupData(
+        type=ProxmoxType.Backup,
+        node=node_name,
+        runs=len(tasks),
+        finished=finished,
+        started=started,
+        duration=duration,
+        status=str(status) if status is not None else None,
+        guests=guests,
+        user=str(task["user"]) if task.get("user") else None,
     )
 
 
@@ -572,7 +634,8 @@ def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateD
 
 class ProxmoxCoordinator(
     DataUpdateCoordinator[
-        ProxmoxBackupInfoData
+        ProxmoxBackupData
+        | ProxmoxBackupInfoData
         | ProxmoxCephData
         | ProxmoxCertificateData
         | ProxmoxDiskData
@@ -736,6 +799,50 @@ class ProxmoxBackupInfoCoordinator(ProxmoxCoordinator):
             raise UpdateFailed(msg)
 
         return parse_backup_info(api_status)
+
+
+class ProxmoxBackupCoordinator(ProxmoxCoordinator):
+    """Proxmox VE node backup run data update coordinator."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        node_name: str,
+    ) -> None:
+        """Initialize the Proxmox backup coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            name=f"proxmox_coordinator_backup_{node_name}",
+            update_interval=timedelta(seconds=TASKS_UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = f"{ProxmoxType.Backup.capitalize()} {node_name}"
+
+    async def _async_update_data(self) -> ProxmoxBackupData:
+        """Update the node's most recent backup run."""
+        # Finished tasks only (`source=archive`, the default, spelled out),
+        # newest first, and just the one: the log can hold thousands.
+        api_status = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            f"nodes/{self.node_name}/tasks?typefilter=vzdump&source=archive&limit=1",
+            ProxmoxType.Tasks,
+            self.node_name,
+        )
+
+        if api_status is None:
+            msg = f"Backup history for {self.node_name} is not available"
+            raise UpdateFailed(msg)
+
+        return parse_backup(api_status, self.node_name)
 
 
 class ProxmoxReplicationCoordinator(ProxmoxCoordinator):
@@ -1946,7 +2053,7 @@ class ProxmoxTaskCoordinator(ProxmoxCoordinator):
             hass,
             LOGGER,
             name=f"proxmox_coordinator_{api_category}_{node_name}",
-            update_interval=timedelta(seconds=300),  # 5 minutes
+            update_interval=timedelta(seconds=TASKS_UPDATE_INTERVAL),
         )
 
         self.hass = hass

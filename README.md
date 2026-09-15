@@ -24,6 +24,18 @@ It reads `GET /nodes/{node}/apt/update`, which needs `Sys.Modify` on the node. W
 
 The older `Total updates` sensor and `Updates packages` binary sensor stay as they are.
 
+### Last backup per node
+
+Each node reports its most recent finished backup run, read from the node's task log (`GET /nodes/{node}/tasks?typefilter=vzdump`):
+
+- `Last backup` — when the run finished, with the run's verdict, the guests it covered and the user that started it as attributes.
+- `Backup failed` — a problem binary sensor, on when the run's verdict was anything but `OK`. That includes `job errors`, where some guests were backed up and some were not.
+- `Backup duration` — how long the run took. Diagnostic and **disabled by default**; worth a graph once you are tuning a backup window, and noise until then.
+
+Only finished runs count. A backup still in progress has no end time and no verdict yet, and reporting it would make every backup look like a failure while it runs. Nodes that have never run a backup get no entities. Polled every five minutes; needs `Sys.Audit` on the node to see runs other users started.
+
+For the other direction - which guests no backup job covers at all - see the `Guests without backup` sensor under [Cluster HA Administration](#cluster-ha-administration-advanced-optional).
+
 ### Failed Task Monitoring
 
 The integration provides sensors that monitor failed tasks on your Proxmox nodes over the last 24 hours. These sensors offer:

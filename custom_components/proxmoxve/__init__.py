@@ -72,6 +72,7 @@ from .const import (
     ProxmoxType,
 )
 from .coordinator import (
+    ProxmoxBackupCoordinator,
     ProxmoxBackupInfoCoordinator,
     ProxmoxCephCoordinator,
     ProxmoxCertificateCoordinator,
@@ -645,6 +646,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             )
             await coordinator_replication.async_refresh()
             coordinators[f"{ProxmoxType.Replication}_{node}"] = coordinator_replication
+
+            coordinator_backup = ProxmoxBackupCoordinator(
+                hass=hass,
+                proxmox=proxmox,
+                node_name=node,
+            )
+            await coordinator_backup.async_refresh()
+            coordinators[f"{ProxmoxType.Backup}_{node}"] = coordinator_backup
 
             if config_entry.options.get(CONF_TASKS_ENABLE, True):
                 coordinator_tasks = ProxmoxTaskCoordinator(

@@ -179,6 +179,22 @@ PROXMOX_BINARYSENSOR_HA_STATUS: Final[
 )
 
 
+PROXMOX_BINARYSENSOR_BACKUP: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]] = (
+    # On when the most recent run did not end with "OK" - the task log's
+    # verdict, which also covers "job errors", where some guests were
+    # backed up and some were not.
+    ProxmoxBinarySensorEntityDescription(
+        key="status",
+        name="Backup failed",
+        icon="mdi:backup-restore",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        on_value=["OK"],
+        inverted=True,
+        extra_attrs=["status", "guests", "user"],
+        translation_key="backup_failed",
+    ),
+)
+
 PROXMOX_BINARYSENSOR_REPLICATION: Final[
     tuple[ProxmoxBinarySensorEntityDescription, ...]
 ] = (
@@ -207,6 +223,7 @@ async def async_setup_entry(
     async_add_entities(await async_setup_binary_sensors_storages(hass, config_entry))
     async_add_entities(await async_setup_binary_sensors_ha_status(hass, config_entry))
     async_add_entities(await async_setup_binary_sensors_replication(hass, config_entry))
+    async_add_entities(await async_setup_binary_sensors_backup(hass, config_entry))
 
 
 async def async_setup_binary_sensors_storages(
@@ -304,6 +321,40 @@ async def async_setup_binary_sensors_replication(
                 config_entry=config_entry,
             )
             for description in PROXMOX_BINARYSENSOR_REPLICATION
+        )
+
+    return sensors
+
+
+async def async_setup_binary_sensors_backup(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up the per-node backup run binary sensors."""
+    coordinators = config_entry.runtime_data[COORDINATORS]
+    sensors = []
+
+    for node in config_entry.data[CONF_NODES]:
+        coordinator = coordinators.get(f"{ProxmoxType.Backup}_{node}")
+        # A node that has never run a backup gets no entity at all.
+        if coordinator is None or coordinator.data is None or not coordinator.data.runs:
+            continue
+
+        sensors.extend(
+            create_binary_sensor(
+                coordinator=coordinator,
+                info_device=device_info(
+                    hass=hass,
+                    config_entry=config_entry,
+                    api_category=ProxmoxType.Node,
+                    node=node,
+                ),
+                description=description,
+                resource_id=f"{ProxmoxType.Backup}_{node}",
+                config_entry=config_entry,
+            )
+            for description in PROXMOX_BINARYSENSOR_BACKUP
+            if getattr(coordinator.data, description.key, None) is not None
         )
 
     return sensors

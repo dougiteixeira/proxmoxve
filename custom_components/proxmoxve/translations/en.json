@@ -235,6 +235,20 @@
             "on": "Shared",
             "off": "Not shared"
           }
+        },
+        "backup_failed": {
+          "name": "Backup failed",
+          "state_attributes": {
+            "status": {
+              "name": "Status"
+            },
+            "guests": {
+              "name": "Guests"
+            },
+            "user": {
+              "name": "User"
+            }
+          }
         }
       },
       "button": {
@@ -530,6 +544,23 @@
         },
         "uptime": {
           "name": "Last boot"
+        },
+        "backup_last": {
+          "name": "Last backup",
+          "state_attributes": {
+            "status": {
+              "name": "Status"
+            },
+            "guests": {
+              "name": "Guests"
+            },
+            "user": {
+              "name": "User"
+            }
+          }
+        },
+        "backup_duration": {
+          "name": "Backup duration"
         }
       },
       "update": {

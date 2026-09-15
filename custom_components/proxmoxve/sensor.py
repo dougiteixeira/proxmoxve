@@ -906,6 +906,33 @@ PROXMOX_SENSOR_BACKUP_INFO: Final[tuple[ProxmoxSensorEntityDescription, ...]] = 
 )
 
 
+PROXMOX_SENSOR_BACKUP: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
+    ProxmoxSensorEntityDescription(
+        key="finished",
+        name="Last backup",
+        icon="mdi:backup-restore",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        extra_attrs=["status", "guests", "user"],
+        translation_key="backup_last",
+    ),
+    ProxmoxSensorEntityDescription(
+        key="duration",
+        name="Backup duration",
+        icon="mdi:timer-outline",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        suggested_unit_of_measurement=UnitOfTime.MINUTES,
+        suggested_display_precision=0,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        # How long a backup takes is worth a graph once you are tuning it,
+        # and noise until then.
+        entity_registry_enabled_default=False,
+        translation_key="backup_duration",
+    ),
+)
+
+
 PROXMOX_SENSOR_CEPH: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
     ProxmoxSensorEntityDescription(
         key="health",
@@ -1033,6 +1060,7 @@ async def async_setup_entry(
     async_add_entities(await async_setup_sensors_backup_info(hass, config_entry))
     async_add_entities(await async_setup_sensors_subscription(hass, config_entry))
     async_add_entities(await async_setup_sensors_replication(hass, config_entry))
+    async_add_entities(await async_setup_sensors_backup(hass, config_entry))
     async_add_entities(await async_setup_sensors_ceph(hass, config_entry))
 
 
@@ -1160,6 +1188,41 @@ async def async_setup_sensors_replication(
                 config_entry=config_entry,
             )
             for description in PROXMOX_SENSOR_REPLICATION
+            if getattr(coordinator.data, description.key, UNDEFINED) is not UNDEFINED
+        )
+
+    return sensors
+
+
+async def async_setup_sensors_backup(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> list:
+    """Set up the per-node backup run sensors."""
+    coordinators = config_entry.runtime_data[COORDINATORS]
+    sensors = []
+
+    for node in config_entry.data[CONF_NODES]:
+        coordinator = coordinators.get(f"{ProxmoxType.Backup}_{node}")
+        # A node that has never run a backup gets no entity at all, rather
+        # than one that can only ever say "never".
+        if coordinator is None or coordinator.data is None or not coordinator.data.runs:
+            continue
+
+        sensors.extend(
+            create_sensor(
+                coordinator=coordinator,
+                info_device=device_info(
+                    hass=hass,
+                    config_entry=config_entry,
+                    api_category=ProxmoxType.Node,
+                    node=node,
+                ),
+                description=description,
+                resource_id=f"{ProxmoxType.Backup}_{node}",
+                config_entry=config_entry,
+            )
+            for description in PROXMOX_SENSOR_BACKUP
             if getattr(coordinator.data, description.key, UNDEFINED) is not UNDEFINED
         )
 

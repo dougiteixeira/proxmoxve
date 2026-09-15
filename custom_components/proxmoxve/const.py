@@ -34,6 +34,9 @@ UPDATE_INTERVAL = 60
 # entered. Polling those at the usual interval would spend a request a minute
 # to learn nothing, and this integration already makes plenty.
 SLOW_UPDATE_INTERVAL = 3600
+# For what the task log says: a backup finishing or a task failing is
+# worth knowing within minutes, not within the minute.
+TASKS_UPDATE_INTERVAL = 300
 
 LOGGER = logging.getLogger(__package__)
 
@@ -66,6 +69,7 @@ class ProxmoxType(StrEnum):
     Resources = "resources"
     ZFS = "zfs"
     Tasks = "tasks"
+    Backup = "backup"
     Certificate = "certificate"
     BackupInfo = "backup_info"
     Subscription = "subscription"

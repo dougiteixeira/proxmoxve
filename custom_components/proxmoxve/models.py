@@ -180,6 +180,30 @@ class ProxmoxTaskData:
 
 
 @dataclasses.dataclass
+class ProxmoxBackupData:
+    """
+    Data parsed from the Proxmox API about a node's most recent backup run.
+
+    Built from the newest finished `vzdump` task in the node's task log. A
+    node that has never run one has `runs` at 0 and the rest UNDEFINED, so
+    the platforms can skip creating entities for it.
+
+    `status`, `guests` and `user` are exposed as state attributes, so they
+    hold plain values - the UNDEFINED sentinel is not JSON serializable.
+    """
+
+    type: str
+    node: str
+    runs: int
+    finished: datetime | UndefinedType
+    started: datetime | UndefinedType
+    duration: int | UndefinedType
+    status: str | None
+    guests: str | None
+    user: str | None
+
+
+@dataclasses.dataclass
 class ProxmoxHAStatusData:
     """
     Data parsed from the Proxmox API for the cluster HA stack.

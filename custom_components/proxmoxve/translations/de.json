@@ -207,6 +207,20 @@
               "on": "Gemeinsam genutzt",
               "off": "Nicht gemeinsam genutzt"
             }
+          },
+          "backup_failed": {
+            "name": "Backup fehlgeschlagen",
+            "state_attributes": {
+              "status": {
+                "name": "Status"
+              },
+              "guests": {
+                "name": "Gäste"
+              },
+              "user": {
+                "name": "Benutzer"
+              }
+            }
           }
         },
         "button": {
@@ -389,7 +403,24 @@
             },
             "uptime": {
                 "name": "Letzter start"
+            },
+          "backup_last": {
+            "name": "Letztes Backup",
+            "state_attributes": {
+              "status": {
+                "name": "Status"
+              },
+              "guests": {
+                "name": "Gäste"
+              },
+              "user": {
+                "name": "Benutzer"
+              }
             }
+          },
+          "backup_duration": {
+            "name": "Backup-Dauer"
+          }
         },
       "update": {
         "node_update": {
