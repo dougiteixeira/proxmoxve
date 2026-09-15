@@ -38,7 +38,7 @@ A fourth entity, **`Backup running`**, is on while a `vzdump` run is in progress
 
 ### Starting a backup
 
-The action **`proxmoxve.backup`** starts a backup run on a node, the way *Backup now* in the Proxmox interface does: name the guests (`vmid`), or turn on `all` for everything the node hosts; pick the `storage`, the `mode` (`snapshot`, `suspend`, `stop`) and the `compress`ion, or leave them to the node's defaults. It returns the task id (`upid`), and the node's `Backup running` sensor turns on with the next poll.
+The action **`proxmoxve.backup`** starts a backup run on a node, the way *Backup now* in the Proxmox interface does: name the guests (`vmid`), or turn on `all` for everything the node hosts; pick the `storage`, the `mode` (`snapshot`, `suspend`, `stop`) and the `compress`ion, or leave them to the node's defaults; `notes` sets the backup's notes template (`{{guestname}}`, `{{vmid}}`, `{{node}}`, `{{cluster}}`) and needs a `storage` alongside it, as vzdump does. It returns the task id (`upid`), and the node's `Backup running` sensor turns on with the next poll.
 
 ```yaml
 action: proxmoxve.backup

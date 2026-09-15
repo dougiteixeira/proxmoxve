@@ -49,6 +49,22 @@ def test_parameters_for_everything_on_the_node() -> None:
     assert params == {"all": 1, "mode": "stop"}
 
 
+def test_notes_need_a_storage() -> None:
+    """
+    Test a notes template without a storage is refused before the call.
+
+    `pvesh usage /nodes/<node>/vzdump` says `--notes-template` requires
+    `storage`; sending it alone gets a parameter error from Proxmox.
+    """
+    with pytest.raises(ServiceValidationError):
+        vzdump_parameters({"vmid": [100], "notes": "{{guestname}}"})
+
+    params = vzdump_parameters(
+        {"vmid": [100], "storage": "backups", "notes": "{{guestname}}"}
+    )
+    assert params["notes-template"] == "{{guestname}}"
+
+
 def test_naming_nothing_is_a_mistake() -> None:
     """Test neither guests nor 'all' is refused rather than backing up nothing."""
     with pytest.raises(ServiceValidationError):

@@ -751,6 +751,9 @@
       "backup_nothing_selected": {
         "message": "Name at least one guest, or turn on 'All' to back up everything on the node."
       },
+      "backup_notes_need_storage": {
+        "message": "Notes can only be set together with a storage; Proxmox refuses the template without one."
+      },
       "backup_unknown_node": {
         "message": "No configured Proxmox VE integration tracks node {node}."
       },
