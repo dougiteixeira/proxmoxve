@@ -866,6 +866,33 @@ async def _async_drop_coordinators(
             await single.async_shutdown()
 
 
+async def _learn_cluster_hosts(
+    hass: HomeAssistant, client: ProxmoxClient, proxmox: ProxmoxAPI
+) -> None:
+    """
+    Tell the client what the other nodes of the cluster answer on.
+
+    `cluster/status` lists every node with the address it joined the cluster
+    on. Should the configured host stop answering, the client tries those in
+    turn instead of taking the whole cluster out of Home Assistant. Not
+    being able to read the list - a single node, or credentials without
+    Sys.Audit on `/` - changes nothing about setup.
+    """
+    try:
+        status = await hass.async_add_executor_job(get_api, proxmox, "cluster/status")
+    except (AuthenticationError, RequestException, ResourceException) as error:
+        LOGGER.debug("Cluster members not read, no fallback hosts: %s", error)
+        return
+    hosts = [
+        entry["ip"]
+        for entry in (status if isinstance(status, list) else [])
+        if isinstance(entry, dict) and entry.get("type") == "node" and entry.get("ip")
+    ]
+    client.learn_hosts(hosts)
+    if len(client.hosts) > 1:
+        LOGGER.debug("Fallback hosts for %s: %s", client.host, client.hosts[1:])
+
+
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up the platform."""
     hass.data.setdefault(DOMAIN, {})
@@ -917,6 +944,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         raise ConfigEntryNotReady from error
 
     proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
+    await _learn_cluster_hosts(hass, proxmox_client, proxmox)
 
     coordinators: dict[
         str,

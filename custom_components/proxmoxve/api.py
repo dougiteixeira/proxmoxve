@@ -3,17 +3,19 @@
 """Handle API for Proxmox VE."""
 
 import re
+import threading
+from collections.abc import Iterable
 from typing import Any
 
 import homeassistant.util.dt as dt_util
 from homeassistant.const import CONF_USERNAME
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
-from proxmoxer import ProxmoxAPI
+from proxmoxer import AuthenticationError, ProxmoxAPI
 from proxmoxer.backends.https import ProxmoxHTTPAuth
 from proxmoxer.core import ResourceException
 from requests.adapters import HTTPAdapter
-from requests.exceptions import ConnectTimeout
+from requests.exceptions import ConnectTimeout, RequestException
 
 from .const import (
     CONF_HA_ADMIN_USERNAME,
@@ -81,18 +83,43 @@ class ProxmoxClient:
         self._realm = realm
         self._password = password
         self._verify_ssl = verify_ssl
+        # The configured host first, then whatever the cluster says its other
+        # nodes answer on. Only the first is ever written anywhere.
+        self._hosts: list[str] = [host]
+        self._host_index = 0
+        # Every API object this client ever built. A coordinator that was
+        # handed one of them asks for the current one by showing what it has.
+        self._issued: list[ProxmoxAPI] = []
+        # Bumped on every host change, so a poll that failed against the old
+        # host can tell whether another poll already moved on.
+        self.generation = 0
+        self._switch_lock = threading.Lock()
+
+    @property
+    def host(self) -> str:
+        """Return the host currently in use."""
+        return self._hosts[self._host_index]
+
+    @property
+    def hosts(self) -> tuple[str, ...]:
+        """Return every host this client may use, the configured one first."""
+        return tuple(self._hosts)
 
     def build_client(self) -> None:
+        """Construct the ProxmoxAPI client against the current host."""
+        self._proxmox = self._build(self.host)
+
+    def _build(self, host: str) -> ProxmoxAPI:
         """
-        Construct the ProxmoxAPI client.
+        Construct a ProxmoxAPI client for one host.
 
         Allows inserting the realm within the `user` value.
         """
         user_id = self._user_id()
 
         if token_name := token_name_only(self._token_name):
-            self._proxmox = ProxmoxAPI(
-                self._host,
+            proxmox = ProxmoxAPI(
+                host,
                 port=self._port,
                 user=user_id,
                 token_name=token_name,
@@ -101,8 +128,8 @@ class ProxmoxClient:
                 timeout=API_TIMEOUT,
             )
         else:
-            self._proxmox = ProxmoxAPI(
-                self._host,
+            proxmox = ProxmoxAPI(
+                host,
                 port=self._port,
                 user=user_id,
                 password=self._password,
@@ -124,12 +151,69 @@ class ProxmoxClient:
         )
 
         # proxmoxer exposes no public accessor for the underlying requests session.
-        session = self._proxmox._store["session"]  # noqa: SLF001
+        session = proxmox._store["session"]  # noqa: SLF001
         session.mount("https://", adapter)
+        self._issued.append(proxmox)
+        return proxmox
 
     def get_api_client(self) -> ProxmoxAPI:
         """Return the ProxmoxAPI client."""
         return self._proxmox
+
+    def issued(self, proxmox: ProxmoxAPI) -> bool:
+        """Return whether `proxmox` is one of the API objects this client built."""
+        return any(candidate is proxmox for candidate in self._issued)
+
+    def learn_hosts(self, hosts: Iterable[str]) -> None:
+        """
+        Remember the other nodes of the cluster as places to fall back to.
+
+        `cluster/status` says what address every node answers on. That is the
+        corosync address, which on a cluster with a separate cluster network
+        is not reachable from Home Assistant at all - so these are tried, not
+        relied on. The configured host stays first.
+        """
+        for host in hosts:
+            if isinstance(host, str) and host and host not in self._hosts:
+                self._hosts.append(host)
+
+    def failover(self, generation: int) -> bool:
+        """
+        Move to the next node that answers, once the current one stopped.
+
+        Every coordinator polls on its own, so several may hit the dead host
+        at once; the first one through switches and the rest see the changed
+        generation and simply retry. A candidate has to answer `version` -
+        the one call every credential may make - before it counts, since a
+        token client is built without touching the network.
+
+        Returns True when a working host is in place (this call's or an
+        earlier one's), False when none of them answered.
+        """
+        with self._switch_lock:
+            if generation != self.generation:
+                return True
+            if len(self._hosts) < 2:
+                return False
+            for offset in range(1, len(self._hosts)):
+                index = (self._host_index + offset) % len(self._hosts)
+                host = self._hosts[index]
+                try:
+                    proxmox = self._build(host)
+                    proxmox.version.get()
+                except (AuthenticationError, RequestException) as error:
+                    LOGGER.debug("Fallback host %s did not answer: %s", host, error)
+                    continue
+                LOGGER.warning(
+                    "Proxmox at %s stopped answering; using %s until it is back",
+                    self.host,
+                    host,
+                )
+                self._host_index = index
+                self._proxmox = proxmox
+                self.generation += 1
+                return True
+            return False
 
     def relogin(self) -> bool:
         """

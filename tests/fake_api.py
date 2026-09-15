@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 from proxmoxer.core import ResourceException
+from requests.exceptions import ConnectionError as RequestsConnectionError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -200,6 +201,32 @@ def default_routes() -> dict[str, Any]:
             "kversion": "Linux 6.14.11-2-pve",
             "pveversion": "pve-manager/9.0.6/1234abcd",
         },
+        "cluster/status": [
+            {
+                "id": "cluster",
+                "name": "pve-cluster",
+                "nodes": 2,
+                "quorate": 1,
+                "type": "cluster",
+            },
+            {
+                "id": f"node/{NODE}",
+                "name": NODE,
+                "ip": "192.0.2.10",
+                "local": 1,
+                "online": 1,
+                "type": "node",
+            },
+            {
+                "id": "node/pve2",
+                "name": "pve2",
+                "ip": "192.0.2.11",
+                "local": 0,
+                "online": 1,
+                "type": "node",
+            },
+        ],
+        "version": {"release": "9.0", "repoid": "1234abcd", "version": "9.0.6"},
         f"nodes/{NODE}/network": [
             {
                 "iface": "vmbr0",
@@ -415,6 +442,11 @@ class FakeProxmox:
         """Start with the default routes unless given others."""
         self.routes = default_routes() if routes is None else routes
         self.calls: list[tuple[str, str, dict | None, dict | None]] = []
+        # Hosts that refuse every connection, for the failover tests. The
+        # host is read off the request URL, so the same table serves every
+        # node of the pretend cluster.
+        self.dead_hosts: set[str] = set()
+        self.hosts_seen: list[str] = []
 
     def request(
         self,
@@ -426,6 +458,11 @@ class FakeProxmox:
         """Answer one request the way the real API would, or refuse it."""
         url = resource._store["base_url"]  # noqa: SLF001
         path = url.split(API_ROOT, 1)[1] if API_ROOT in url else url
+        host = url.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]
+        self.hosts_seen.append(host)
+        if host in self.dead_hosts:
+            msg = f"{host} refused the connection"
+            raise RequestsConnectionError(msg)
         self.calls.append((method, path, data, params))
         if method != "GET":
             return f"UPID:{NODE}:0000FFFF:0000FFFF:69554D00:{path.rsplit('/', 1)[-1]}::root@pam:"
