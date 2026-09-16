@@ -4,7 +4,7 @@
 
 [Proxmox VE](https://www.proxmox.com/en/) is an open-source server virtualization environment. This integration reads its state into Home Assistant and lets you act on it — for a single node as much as for a cluster.
 
-It began as [@dougiteixeira](https://github.com/dougiteixeira)'s custom integration, built on the [Home Assistant core integration](https://www.home-assistant.io/integrations/proxmoxve/) and grown well beyond it; it replaces the core one when installed. Everything goes through the Proxmox API with the credentials you give it — nothing is installed on the nodes, except [PVE-mods](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/hardware-sensors.md) if you want hardware temperatures.
+It began as [@dougiteixeira](https://github.com/dougiteixeira)'s custom integration, built on the [Home Assistant core integration](https://www.home-assistant.io/integrations/proxmoxve/) and grown well beyond it; it replaces the core one when installed ([what differs](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/compared-to-core.md)). Everything goes through the Proxmox API with the credentials you give it — nothing is installed on the nodes, except [PVE-mods](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/hardware-sensors.md) if you want hardware temperatures.
 
 ## What you get
 
@@ -25,6 +25,7 @@ Many entities are created **disabled by default** — the buttons that change th
 - [Proxmox permissions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/permissions.md) — roles, group, user and token, step by step
 - [How it behaves](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md) — discovery, failover, nodes that are off, disabled entities, what I cannot test
 - [Troubleshooting](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/troubleshooting.md) — debug logging, diagnostics, screenshots
+- [Compared with the core integration](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/compared-to-core.md) — what the extra install gets you, feature by feature
 - [Blueprints](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md) — a scheduled backup as a ready-made automation
 - [Contributing](https://github.com/dougiteixeira/proxmoxve/blob/main/CONTRIBUTING.md)
 

@@ -1,10 +1,10 @@
-[← README](https://github.com/dougiteixeira/proxmoxve#readme) · [Entities](entities.md) · [Actions](actions.md) · [Hardware sensors](hardware-sensors.md) · [Permissions](permissions.md) · [Behaviour](behaviour.md) · [Troubleshooting](troubleshooting.md)
+[← README](https://github.com/dougiteixeira/proxmoxve#readme) · [Entities](entities.md) · [Actions](actions.md) · [Hardware sensors](hardware-sensors.md) · [Permissions](permissions.md) · [Behaviour](behaviour.md) · [Troubleshooting](troubleshooting.md) · [Compared with core](compared-to-core.md)
 
 # Actions
 
 ## Buttons
 
-Every VM and container gets `Start`, `Stop`, `Shutdown`, `Reboot`, `Suspend`, `Resume`, `Hibernate`, `Reset`, `Unlock`, `Create snapshot` and, with a [backup storage picked](#backup-buttons), `Back up now`. Every node gets `Start all`, `Stop all`, `Suspend all`, `Shutdown`, `Reboot`, `Wake on LAN` and `Back up all`. The cluster device gets `Arm HA` and `Disarm HA` with the [optional cluster credentials](entities.md#cluster-ha-administration-advanced-optional).
+Every VM and container gets `Start`, `Stop`, `Shutdown`, `Reboot`, `Unlock`, `Create snapshot` and, with a [backup storage picked](#backup-buttons), `Back up now`; virtual machines additionally `Suspend`, `Resume`, `Hibernate` and `Reset`. Every node gets `Start all`, `Stop all`, `Suspend all`, `Shutdown`, `Reboot`, `Wake on LAN` and `Back up all`. The cluster device gets `Arm HA` and `Disarm HA` with the [optional cluster credentials](entities.md#cluster-ha-administration-advanced-optional).
 
 All of them are **disabled by default** — a dashboard should not offer a stop button nobody asked for — and are enabled per entity, see [Disabled entities](behaviour.md#disabled-entities). And every one of them exists only where the credentials hold the privilege it needs, see [Permissions](permissions.md).
 
