@@ -148,6 +148,8 @@ This needs no permissions beyond being able to log in, and it is polled once an 
 
 A guest's `CPU used` is relative to its own cores: a two-core guest at 100 % and a twelve-core one at 100 % read the same while costing the host very different amounts. The sensor carries the guest's core count as an attribute, and a second sensor, **`CPU used of host`** (disabled by default), scales the guest's usage by its cores over the node's — the figure the Proxmox summary shows next to each guest.
 
+A VM's disk usage comes from inside the guest, through the QEMU guest agent's file system list, because the host only knows the size of the virtual disks. That read needs `VM.GuestAgent.Audit` on the guest since Proxmox VE 9 (`VM.Monitor` before) — a privilege `VM.Audit` does not include, though the built-in `PVEAuditor` role carries it. Without it a warning repair names the privilege, and the sensor falls back to what the host sees, which for most VMs is nothing.
+
 A container that is not running reports its disk usage as *unknown* rather than 0 % used and 100 % free: Proxmox cannot look inside a stopped container and reports `disk: 0`, but the data is still on the volume. Memory and swap stay at 0 % for a stopped guest, because those really are zero.
 
 ### Guest file content sensor
@@ -158,6 +160,7 @@ For QEMU virtual machines with the [QEMU Guest Agent](https://pve.proxmox.com/wi
 - Only VMs where the file can actually be read (guest agent running, file exists and is accessible) get the sensor; it is silently skipped otherwise.
 - Content is capped at 4 KiB per read; the sensor state is further truncated to 255 characters (Home Assistant's state length limit), with the full (capped) content available as the `guest_file_content` attribute.
 - QEMU only — LXC containers have no equivalent guest-agent file-read API.
+- Needs `VM.GuestAgent.FileRead` on the guest since Proxmox VE 9 (`VM.Monitor` before); without it a warning repair says so.
 
 ## Storage
 

@@ -81,7 +81,7 @@ Everything beyond the credentials lives in the integration options (Settings →
 
 ## Permissions
 
-The credentials need `VM.Audit`, `Sys.Audit` and `Datastore.Audit` on what you track to read, and more to act — `VM.PowerMgmt` for a guest's power buttons, `Sys.PowerMgmt` for a node's, `VM.Snapshot`, `VM.Backup`, `Sys.Modify` for package updates. Buttons exist only where the privilege is held, and a repair names what is missing. The step-by-step guide for roles, group, user and token — including the one token setting most setups get wrong — is in [Proxmox permissions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/permissions.md).
+The credentials need `VM.Audit`, `Sys.Audit` and `Datastore.Audit` on what you track to read — plus `VM.GuestAgent.Audit` for a VM's disk usage from inside the guest — and more to act — `VM.PowerMgmt` for a guest's power buttons, `Sys.PowerMgmt` for a node's, `VM.Snapshot`, `VM.Backup`, `Sys.Modify` for package updates. Buttons exist only where the privilege is held, and a repair names what is missing. The step-by-step guide for roles, group, user and token — including the one token setting most setups get wrong — is in [Proxmox permissions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/permissions.md).
 
 ## Translations
 [![Crowdin](https://badges.crowdin.net/proxmoxve-homeassistant/localized.svg)](https://crowdin.com/project/proxmoxve-homeassistant)

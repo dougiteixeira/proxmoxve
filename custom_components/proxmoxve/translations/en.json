@@ -116,6 +116,14 @@
         "description": "User `{user}` does not have sufficient permissions to access resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
         "title": "Permissions error for `{resource}`"
       },
+      "guest_agent_fsinfo_forbidden": {
+        "description": "User `{user}` may not query the QEMU guest agent of `{resource}`, so the VM's disk usage falls back to what the host sees - for most VMs that is nothing.\n\nReading it needs:\n* `{permission}`\n\nOn Proxmox VE 8 the privilege is `VM.Monitor` instead. The built-in `PVEAuditor` role carries it. Grant it and reload the integration.",
+        "title": "Guest agent of `{resource}` not readable"
+      },
+      "guest_agent_file_forbidden": {
+        "description": "User `{user}` may not read files through the QEMU guest agent of `{resource}`, so the guest file sensor cannot be created.\n\nReading it needs:\n* `{permission}`\n\nOn Proxmox VE 8 the privilege is `VM.Monitor` instead. Grant it and reload the integration, or clear the file path in the integration options.",
+        "title": "Guest file of `{resource}` not readable"
+      },
       "resource_command_forbiden": {
         "description": "User `{user}` does not have sufficient permissions to execute command `{command}` on resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
         "title": "Permission error for `{resource}` command"

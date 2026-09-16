@@ -117,6 +117,15 @@ def _parse_sensors_dict(data: dict) -> dict[str, float]:
     return result
 
 
+# What the QEMU guest agent endpoints ask for since Proxmox VE 9; before
+# that every agent command took `VM.Monitor`. Reading these is optional -
+# the guest's disk figure and the file sensor - so a refusal is a warning
+# of its own, not the guest's "VM.Audit missing" repair.
+GUEST_AGENT_PRIVILEGES: Final = {
+    "fsinfo": "VM.GuestAgent.Audit",
+    "file": "VM.GuestAgent.FileRead",
+}
+
 # Values the Proxmox HA API documents for the "fencing" status entry
 # (PVE::API2::HA::Status). Anything else is treated as unknown rather than
 # passed on, so the enum sensor never reports a state outside its options.
@@ -1706,6 +1715,59 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         self.node_name: str
         self.resource_id = qemu_id
 
+    async def _poll_guest_agent(self, api_path: str, feature: str) -> Any:
+        """
+        Read from the QEMU guest agent, with a repair of its own for a 403.
+
+        The generic poll would blame `VM.Audit`, which the credentials hold
+        - the status read just succeeded - and would share the guest's
+        repair id, so the two reads would raise and clear it in turns.
+        """
+        issue_id = (
+            f"{self.config_entry.entry_id}_{self.resource_id}_guest_agent_{feature}"
+        )
+        try:
+            result = await self.hass.async_add_executor_job(
+                partial(
+                    poll_api,
+                    self.hass,
+                    self.config_entry,
+                    self.proxmox,
+                    api_path,
+                    ProxmoxType.QEMU,
+                    self.resource_id,
+                    issue_crete_permissions=False,
+                )
+            )
+        except UpdateFailed as error:
+            cause = error.__cause__
+            if not (isinstance(cause, ResourceException) and cause.status_code == 403):
+                raise
+            privilege = GUEST_AGENT_PRIVILEGES[feature]
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                issue_id,
+                is_fixable=False,
+                is_persistent=True,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key=f"guest_agent_{feature}_forbidden",
+                translation_placeholders={
+                    "resource": f"{ProxmoxType.QEMU.upper()} {self.resource_id}",
+                    "user": self.config_entry.data[CONF_USERNAME],
+                    "permission": f"['perm','/vms/{self.resource_id}',['{privilege}']]",
+                },
+            )
+            LOGGER.debug(
+                "Guest agent of QEMU %s not readable (%s): %s missing, see the repair",
+                self.resource_id,
+                feature,
+                privilege,
+            )
+            return None
+        ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+        return result
+
     async def _async_update_data(self) -> ProxmoxVMData:
         """Update data  for Proxmox QEMU."""
         node_name = None
@@ -1754,15 +1816,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             fsinfo_path = (
                 f"nodes/{node_name!s}/qemu/{self.resource_id}/agent/get-fsinfo"
             )
-            fsinfo = await self.hass.async_add_executor_job(
-                poll_api,
-                self.hass,
-                self.config_entry,
-                self.proxmox,
-                fsinfo_path,
-                ProxmoxType.QEMU,
-                self.resource_id,
-            )
+            fsinfo = await self._poll_guest_agent(fsinfo_path, "fsinfo")
 
             entries = fsinfo.get("result", []) if isinstance(fsinfo, dict) else fsinfo
 
@@ -1821,15 +1875,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
                     f"?file={quote(guest_file_path, safe='')}"
                     f"&count={GUEST_FILE_READ_MAX_BYTES}&decode=1"
                 )
-                file_result = await self.hass.async_add_executor_job(
-                    poll_api,
-                    self.hass,
-                    self.config_entry,
-                    self.proxmox,
-                    file_read_path,
-                    ProxmoxType.QEMU,
-                    self.resource_id,
-                )
+                file_result = await self._poll_guest_agent(file_read_path, "file")
                 if isinstance(file_result, dict) and isinstance(
                     file_result.get("content"), str
                 ):
