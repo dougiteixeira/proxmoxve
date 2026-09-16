@@ -25,6 +25,7 @@ Many entities are created **disabled by default** — the buttons that change th
 - [Proxmox permissions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/permissions.md) — roles, group, user and token, step by step
 - [How it behaves](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md) — discovery, failover, nodes that are off, disabled entities, what I cannot test
 - [Troubleshooting](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/troubleshooting.md) — debug logging, diagnostics, screenshots
+- [Blueprints](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md) — a scheduled backup as a ready-made automation
 - [Contributing](https://github.com/dougiteixeira/proxmoxve/blob/main/CONTRIBUTING.md)
 
 ## Install

@@ -32,3 +32,5 @@ data:
 ```
 
 The credentials need `VM.Backup` on each guest and `Datastore.AllocateSpace` on the storage; Proxmox's refusal names what is missing, and the action passes that message on.
+
+For a backup on a schedule without writing the automation yourself there is a [blueprint](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md#scheduled-backup): time, days, node, storage, the guests or everything, skipped while another run is in progress, with a notification when it starts.

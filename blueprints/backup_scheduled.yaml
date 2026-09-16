@@ -1,0 +1,158 @@
+blueprint:
+  name: Proxmox - Scheduled backup
+  description: >-
+    Starts a backup run on a Proxmox node at a set time on the chosen days,
+    through the `proxmoxve.backup` action - the way *Backup now* in the
+    Proxmox interface does, but on a schedule you keep in Home Assistant.
+    Back up named guests or everything the node hosts, skip the run while
+    another backup is still in progress, and get told when it started.
+  domain: automation
+  source_url: https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/backup_scheduled.yaml
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    node:
+      name: Node
+      description: The name of the node that runs the backup, as Proxmox shows it (e.g. `pve`).
+      selector:
+        text:
+    storage:
+      name: Storage
+      description: The storage the backup is written to. It has to accept backups (`Datastore.AllocateSpace` for the credentials).
+      selector:
+        text:
+    at:
+      name: Time
+      description: When the run starts.
+      default: "03:00:00"
+      selector:
+        time:
+    weekdays:
+      name: Days
+      description: The days the run starts on.
+      default: [mon, tue, wed, thu, fri, sat, sun]
+      selector:
+        select:
+          multiple: true
+          mode: list
+          options:
+            - label: Monday
+              value: mon
+            - label: Tuesday
+              value: tue
+            - label: Wednesday
+              value: wed
+            - label: Thursday
+              value: thu
+            - label: Friday
+              value: fri
+            - label: Saturday
+              value: sat
+            - label: Sunday
+              value: sun
+    vmid:
+      name: Guests
+      description: >-
+        The VM and container ids to back up, as a list - `[100, 101]`.
+        Leave empty to back up everything the node hosts.
+      default: []
+      selector:
+        object:
+    mode:
+      name: Mode
+      description: How a running guest is backed up - `snapshot` keeps it running, `suspend` pauses it, `stop` shuts it down for the duration.
+      default: snapshot
+      selector:
+        select:
+          options:
+            - snapshot
+            - suspend
+            - stop
+    compress:
+      name: Compression
+      description: Leave empty for the node's default.
+      default: ""
+      selector:
+        select:
+          options:
+            - label: Node default
+              value: ""
+            - label: zstd
+              value: zstd
+            - label: gzip
+              value: gzip
+            - label: lzo
+              value: lzo
+            - label: None
+              value: "0"
+    notes:
+      name: Notes
+      description: The notes written to every backup; `{{guestname}}`, `{{vmid}}`, `{{node}}` and `{{cluster}}` are filled in by Proxmox. Leave empty for none.
+      default: ""
+      selector:
+        text:
+    backup_running:
+      name: Backup running sensor
+      description: >-
+        The node's `Backup running` sensor. While it is on, another run is in
+        progress and this one is skipped rather than queued behind it. Leave
+        empty to always start.
+      default: ""
+      selector:
+        entity:
+          multiple: false
+          filter:
+            integration: proxmoxve
+            domain: binary_sensor
+            device_class: running
+    notify:
+      name: Notification
+      description: >-
+        Where to say that the run started, e.g. `notify.mobile_app_phone`.
+        Leave empty for no message.
+      default: ""
+      selector:
+        text:
+
+mode: single
+max_exceeded: silent
+
+triggers:
+  - trigger: time
+    at: !input at
+
+variables:
+  node: !input node
+  storage: !input storage
+  vmid: !input vmid
+  backup_mode: !input mode
+  compress: !input compress
+  notes: !input notes
+  backup_running: !input backup_running
+  notify: !input notify
+
+conditions:
+  - condition: time
+    weekday: !input weekdays
+  - condition: template
+    value_template: "{{ not backup_running or not is_state(backup_running, 'on') }}"
+
+actions:
+  - action: proxmoxve.backup
+    data: >-
+      {% set data = {"node": node, "storage": storage, "mode": backup_mode} %}
+      {% if vmid %}{% set data = dict(data, vmid=vmid) %}{% else %}{% set data = dict(data, all=true) %}{% endif %}
+      {% if compress %}{% set data = dict(data, compress=compress) %}{% endif %}
+      {% if notes %}{% set data = dict(data, notes=notes) %}{% endif %}
+      {{ data }}
+    response_variable: run
+  - if:
+      - condition: template
+        value_template: "{{ notify != '' }}"
+    then:
+      - action: "{{ notify }}"
+        data:
+          title: Proxmox backup started
+          message: >-
+            {% if vmid %}Backing up {{ vmid | join(', ') }} on {{ node }} to {{ storage }}.{% else %}Backing up everything on {{ node }} to {{ storage }}.{% endif %}
+            Task {{ run.upid }}.

@@ -1,48 +1,32 @@
 # Blueprints
 
-Here you will find some blueprints that help you to solve small integration bugs:
+Ready-made automations for the integration. Import one, fill in the fields, done.
 
-## When the integration does not recover after the host goes offline for an extended period of time and then comes back online:
+## Scheduled backup
 
-How it works is to verify that the Proxmox node status sensor is running when the Proxmox host connectivity sensor is changed from Disconnected (`off`) to Connected (`on`). If the status sensor is `unavailable` the integration reload will be triggered.
-To avoid unnecessary reloads, a time of 1 minute is waited after the host goes online to execute the automation.
+Starts a backup run on a node at a set time on the days you pick, through the [`proxmoxve.backup` action](../docs/actions.md#the-proxmoxvebackup-action) - the way *Backup now* in the Proxmox interface does, but on a schedule kept in Home Assistant. Name the guests to back up or leave the list empty for everything the node hosts; pick storage, mode and compression; optionally have the run skipped while the node's `Backup running` sensor is on, and get a notification with the task id when it starts.
 
-### Previous steps:
+The credentials need `VM.Backup` on the guests and `Datastore.AllocateSpace` on the storage, see [Proxmox permissions](../docs/permissions.md).
 
-To use this blueprint you need to create a binary sensor in your Home Assistant using the Ping integration ([see documentation here](https://www.home-assistant.io/integrations/ping/#binary-sensor)), follow the steps below:
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/backup_scheduled.yaml)
 
-* Include the code below in your configuration file (`configuration.yaml`):
-  ```
-  binary_sensor:
-    - platform: ping
-      host: 10.10.10.10 # Change to the IP address of your Proxmox host
-      name: Proxmox host connectivity
-      count: 2
-      scan_interval: 30
-  ```
-* Change to the IP address of your Proxmox host in the file.
-* Save the file.
-* Restart Home Assistant.
+Or import `https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/backup_scheduled.yaml` by hand under [Settings > Automations & Scenes > Blueprints](https://my.home-assistant.io/redirect/blueprints/) > Import Blueprint. Then create an automation from it: the node's name as Proxmox shows it, the storage, the time, the days, and - optionally - the guests, the node's `Backup running` sensor and a `notify.*` action.
 
-### Importing via My Home Assistant:
-* Click this button to import:
-  
-  [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/reload_config_entry_auto.yaml)
+### Filling in the fields
 
-#### Or do the import manually:
+| Field | What goes in |
+|---|---|
+| **Node** | The node's name as Proxmox shows it, e.g. `pve`. Required. |
+| **Storage** | The storage the backup is written to; it has to accept backups. Required. |
+| **Time**, **Days** | When the run starts. Every day at 03:00 unless you change it. |
+| **Guests** | The VM and container ids as a list, `[100, 101]`. Empty means everything the node hosts. |
+| **Mode** | `snapshot` keeps a running guest running, `suspend` pauses it, `stop` shuts it down for the duration. |
+| **Compression**, **Notes** | Passed to vzdump as they are; leave them empty for the node's defaults and no notes. |
+| **Backup running sensor** | The node's `Backup running` sensor. While it is on the run is skipped, not queued. |
+| **Notification** | A `notify.*` action to say that the run started, with the task id. |
 
-* Go to [Settings > Automations & Scenes > Blueprints](https://my.home-assistant.io/redirect/blueprints/).
-* Select the blue Import Blueprint button in the bottom right.
-* A new dialog will pop-up asking you for the URL.
-* Enter the URL `https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/reload_config_entry_auto.yaml` and select Preview.
-* This will load the blueprint and show a preview in the import dialog.
-* You can change the name and finish the import.
-* The blueprint can now be used for creating automations.
+The run is started and the automation is done; how it went is on the node's `Last backup` and `Backup status` sensors afterwards, see [Last backup per node](../docs/entities.md#last-backup-per-node).
 
-### Adding automation via blueprint:
+### The old reload blueprint
 
-* Go to [Settings > Automations & Scenes > Blueprints](https://my.home-assistant.io/redirect/blueprints/).
-* Click on the imported blueprint (Proxmox - Reload Config Entry)
-* Select Proxmox host connectivity entity (binary sensor created with Ping integration)
-* Select Proxmox node status entity (Binary sensor Status node)
-
+Earlier versions shipped a blueprint that reloaded the integration when a Ping sensor saw the host come back, for the case where the integration stayed unavailable - or asked for new credentials - after the host had been offline for a while. The integration recovers from that by itself now: it retries setup until the host answers, logs in again when its ticket has expired, and moves to another node of the cluster when the configured one is down, see [How it behaves](../docs/behaviour.md). The blueprint is gone; an automation created from it can be deleted.
