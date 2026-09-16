@@ -20,17 +20,30 @@ For a dashboard there are buttons as well: **`Back up now`** on every VM and con
 
 ## The `proxmoxve.backup` action
 
-The action **`proxmoxve.backup`** starts a backup run on a node, the way *Backup now* in the Proxmox interface does: name the guests (`vmid`), or turn on `all` for everything the node hosts; pick the `storage`, the `mode` (`snapshot`, `suspend`, `stop`) and the `compress`ion, or leave them to the node's defaults; `notes` sets the backup's notes template (`{{guestname}}`, `{{vmid}}`, `{{node}}`, `{{cluster}}`) and needs a `storage` alongside it, as vzdump does. It returns the task id (`upid`), and the node's `Backup running` sensor turns on with the next poll.
+The action **`proxmoxve.backup`** starts backup runs the way *Backup now* in the Proxmox interface does. Say what to back up the Home Assistant way, as the action's **target**: a VM or container device backs up that guest, a node device everything the node hosts, the `Proxmox Cluster` device everything on every node — any mix, across nodes. The node each guest lives on is looked up, and one `vzdump` run is started per node. Guests can also be named by id (`vmid`), again from anywhere in the cluster; `node` names a node outright, and `all` on its own means every tracked node.
+
+The `storage` falls back to the one picked as **Backup storage for the backup buttons** in the integration options, so a call need not repeat it; without either, the node's own default applies. `mode` (`snapshot`, `suspend`, `stop`) and `compress`ion are the node's defaults unless set; `notes` sets the backup's notes template (`{{guestname}}`, `{{vmid}}`, `{{node}}`, `{{cluster}}`) and needs a storage alongside it, as vzdump does. `skip_if_running` leaves a node out while a backup is already running on it — vzdump runs one at a time per node, and a second run would otherwise queue behind the first for as long as it takes.
+
+```yaml
+action: proxmoxve.backup
+target:
+  device_id:
+    - 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d  # a VM
+    - 9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f  # a node
+data:
+  mode: snapshot
+  skip_if_running: true
+```
 
 ```yaml
 action: proxmoxve.backup
 data:
-  node: pve
   vmid: [100, 101]
   storage: backups
-  mode: snapshot
 ```
 
-The credentials need `VM.Backup` on each guest and `Datastore.AllocateSpace` on the storage; Proxmox's refusal names what is missing, and the action passes that message on.
+The response lists the runs started — `node`, `upid` and the parameters sent — under `runs`, and the nodes left out under `skipped`. Each node's `Backup running` sensor turns on with the next poll.
 
-For a backup on a schedule without writing the automation yourself there is a [blueprint](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md#scheduled-backup): time, days, node, storage, the guests or everything, skipped while another run is in progress, with a notification when it starts.
+The credentials need `VM.Backup` on each guest and `Datastore.AllocateSpace` on the storage; Proxmox's refusal names what is missing, and the action passes that message on. Storage and disk devices cannot be a target and say so.
+
+For a backup on a schedule without writing the automation yourself there is a [blueprint](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md#scheduled-backup): pick the devices, the time and the days, and it does the rest.

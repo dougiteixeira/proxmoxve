@@ -5,12 +5,19 @@
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve import DOMAIN
+from custom_components.proxmoxve.const import CONF_BACKUP_STORAGE
 from custom_components.proxmoxve.coordinator import parse_backup, parse_running_backup
-from custom_components.proxmoxve.services import SERVICE_BACKUP, vzdump_parameters
+from custom_components.proxmoxve.services import (
+    SERVICE_BACKUP,
+    BackupPlan,
+    vzdump_parameters,
+)
 
 from .fake_api import NODE, FakeProxmox
 from .test_setup_full import _setup, _state
@@ -28,10 +35,16 @@ RUNNING = [
 ]
 
 
+def _plan(**kwargs) -> BackupPlan:  # noqa: ANN003
+    entry = MockConfigEntry(domain=DOMAIN, options=kwargs.pop("options", {}))
+    return BackupPlan(entry, kwargs.pop("node", NODE), **kwargs)
+
+
 def test_parameters_for_named_guests() -> None:
-    """Test the guest ids become the comma list vzdump wants."""
+    """Test the guest ids become the comma list vzdump wants, in order."""
     params = vzdump_parameters(
-        {"vmid": [100, 101], "mode": "snapshot", "storage": "local", "compress": "zstd"}
+        {"mode": "snapshot", "storage": "local", "compress": "zstd"},
+        _plan(vmids={101, 100}),
     )
 
     assert params == {
@@ -43,10 +56,19 @@ def test_parameters_for_named_guests() -> None:
 
 
 def test_parameters_for_everything_on_the_node() -> None:
-    """Test 'all' wins over any ids named alongside it."""
-    params = vzdump_parameters({"vmid": [100], "all": True, "mode": "stop"})
+    """Test everything on the node wins over any ids planned alongside it."""
+    params = vzdump_parameters({"mode": "stop"}, _plan(vmids={100}, everything=True))
 
     assert params == {"all": 1, "mode": "stop"}
+
+
+def test_the_storage_falls_back_to_the_buttons_option() -> None:
+    """Test a call without a storage writes where the backup buttons write."""
+    plan = _plan(vmids={100}, options={CONF_BACKUP_STORAGE: "nas"})
+
+    assert vzdump_parameters({}, plan)["storage"] == "nas"
+    assert vzdump_parameters({"storage": "elsewhere"}, plan)["storage"] == "elsewhere"
+    assert "storage" not in vzdump_parameters({}, _plan(vmids={100}))
 
 
 def test_notes_need_a_storage() -> None:
@@ -54,21 +76,21 @@ def test_notes_need_a_storage() -> None:
     Test a notes template without a storage is refused before the call.
 
     `pvesh usage /nodes/<node>/vzdump` says `--notes-template` requires
-    `storage`; sending it alone gets a parameter error from Proxmox.
+    `storage`; sending it alone gets a parameter error from Proxmox. The
+    storage from the options counts.
     """
     with pytest.raises(ServiceValidationError):
-        vzdump_parameters({"vmid": [100], "notes": "{{guestname}}"})
+        vzdump_parameters({"notes": "{{guestname}}"}, _plan(vmids={100}))
 
     params = vzdump_parameters(
-        {"vmid": [100], "storage": "backups", "notes": "{{guestname}}"}
+        {"storage": "backups", "notes": "{{guestname}}"}, _plan(vmids={100})
     )
     assert params["notes-template"] == "{{guestname}}"
-
-
-def test_naming_nothing_is_a_mistake() -> None:
-    """Test neither guests nor 'all' is refused rather than backing up nothing."""
-    with pytest.raises(ServiceValidationError):
-        vzdump_parameters({"mode": "snapshot"})
+    params = vzdump_parameters(
+        {"notes": "{{guestname}}"},
+        _plan(vmids={100}, options={CONF_BACKUP_STORAGE: "nas"}),
+    )
+    assert params["notes-template"] == "{{guestname}}"
 
 
 def test_a_run_in_progress_is_described() -> None:
@@ -115,8 +137,10 @@ async def test_the_service_starts_a_backup_and_returns_the_task(
     assert path == f"nodes/{NODE}/vzdump"
     sent = {**(data or {}), **(params or {})}
     assert sent == {"vmid": "101", "mode": "snapshot", "storage": "local"}
-    assert response["upid"].startswith("UPID:")
-    assert response["node"] == NODE
+    assert response["skipped"] == []
+    (run,) = response["runs"]
+    assert run["upid"].startswith("UPID:")
+    assert run["node"] == NODE
 
 
 async def test_the_service_refuses_a_node_nobody_tracks(
@@ -175,3 +199,192 @@ async def test_the_node_shows_no_backup_running_when_the_list_is_empty(
         hass, current_entry, f"{entry_id}_backup_{NODE}_running", "binary_sensor"
     )
     assert state.state == "off"
+
+
+def _device(hass: HomeAssistant, entry: MockConfigEntry, identifier: str) -> str:
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, f"{entry.entry_id}_{identifier}"), entry.entry_id
+    )
+    assert device is not None, identifier
+    return device.id
+
+
+def _posts(fake_api: FakeProxmox) -> list[tuple[str, dict]]:
+    return [
+        (path, {**(data or {}), **(params or {})})
+        for method, path, data, params in fake_api.calls
+        if method == "POST"
+    ]
+
+
+async def test_naming_nothing_is_a_mistake(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test no target, no guest, no node and no 'all' is refused, not a no-op."""
+    await _setup(hass, current_entry)
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN, SERVICE_BACKUP, {"mode": "snapshot"}, blocking=True
+        )
+    assert _posts(fake_api) == []
+
+
+async def test_a_guest_device_as_target_finds_its_node(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test targeting guest devices is enough - node and storage are looked up.
+
+    The VM's and the container's devices are the target; the node comes
+    from their coordinators, the storage from the buttons' option.
+    """
+    hass.config_entries.async_update_entry(
+        current_entry, options={**current_entry.options, CONF_BACKUP_STORAGE: "ext"}
+    )
+    await _setup(hass, current_entry)
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_BACKUP,
+        {
+            "device_id": [
+                _device(hass, current_entry, "QEMU_101"),
+                _device(hass, current_entry, "LXC_100"),
+            ]
+        },
+        blocking=True,
+        return_response=True,
+    )
+
+    assert _posts(fake_api) == [
+        (
+            f"nodes/{NODE}/vzdump",
+            {"vmid": "100,101", "mode": "snapshot", "storage": "ext"},
+        )
+    ]
+    assert [run["node"] for run in response["runs"]] == [NODE]
+
+
+async def test_a_node_device_as_target_backs_up_everything_on_it(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test a node device means every guest it hosts, like the button."""
+    await _setup(hass, current_entry)
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_BACKUP,
+        {"device_id": _device(hass, current_entry, f"NODE_{NODE}"), "mode": "stop"},
+        blocking=True,
+    )
+
+    assert _posts(fake_api) == [(f"nodes/{NODE}/vzdump", {"all": 1, "mode": "stop"})]
+
+
+async def test_the_cluster_device_as_target_runs_on_every_node(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test the cluster device means one run per tracked node."""
+    await _setup(hass, current_entry)
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_BACKUP,
+        {"device_id": _device(hass, current_entry, "cluster")},
+        blocking=True,
+        return_response=True,
+    )
+
+    assert [path for path, _ in _posts(fake_api)] == [f"nodes/{NODE}/vzdump"]
+    assert response["runs"][0]["all"] == 1
+
+
+async def test_an_entity_as_target_counts_for_its_device(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test a guest's entity picks the guest, as targets do everywhere."""
+    await _setup(hass, current_entry)
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{current_entry.entry_id}_101_status"
+    )
+    assert entity_id is not None
+
+    await hass.services.async_call(
+        DOMAIN, SERVICE_BACKUP, {"entity_id": entity_id}, blocking=True
+    )
+
+    assert _posts(fake_api) == [
+        (f"nodes/{NODE}/vzdump", {"vmid": "101", "mode": "snapshot"})
+    ]
+
+
+async def test_guest_ids_alone_are_looked_up_to_their_node(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test `vmid` without a node works; an unknown id is refused."""
+    await _setup(hass, current_entry)
+
+    await hass.services.async_call(
+        DOMAIN, SERVICE_BACKUP, {"vmid": [100, 101]}, blocking=True
+    )
+    assert _posts(fake_api) == [
+        (f"nodes/{NODE}/vzdump", {"vmid": "100,101", "mode": "snapshot"})
+    ]
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN, SERVICE_BACKUP, {"vmid": [999]}, blocking=True
+        )
+
+
+async def test_a_storage_device_cannot_be_backed_up(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test a storage device as target is refused with a message, not posted."""
+    await _setup(hass, current_entry)
+
+    with pytest.raises(ServiceValidationError, match="cannot be backed up"):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_BACKUP,
+            {"device_id": _device(hass, current_entry, "STORAGE_pve/local")},
+            blocking=True,
+        )
+    assert _posts(fake_api) == []
+
+
+async def test_a_node_with_a_run_in_progress_is_skipped_on_request(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test `skip_if_running` leaves a busy node out and says so.
+
+    vzdump holds one lock per node, so a second run would queue behind the
+    first for as long as it takes. Without the flag the call goes through
+    and Proxmox queues it, as it always did.
+    """
+    fake_api.routes[f"nodes/{NODE}/tasks?typefilter=vzdump&source=active&limit=1"] = (
+        RUNNING
+    )
+    await _setup(hass, current_entry)
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_BACKUP,
+        {"node": NODE, "all": True, "skip_if_running": True},
+        blocking=True,
+        return_response=True,
+    )
+    assert response == {"runs": [], "skipped": [NODE]}
+    assert _posts(fake_api) == []
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_BACKUP,
+        {"node": NODE, "all": True},
+        blocking=True,
+        return_response=True,
+    )
+    assert response["skipped"] == []
+    assert len(_posts(fake_api)) == 1

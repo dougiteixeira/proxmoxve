@@ -1,26 +1,29 @@
 blueprint:
   name: Proxmox - Scheduled backup
   description: >-
-    Starts a backup run on a Proxmox node at a set time on the chosen days,
-    through the `proxmoxve.backup` action - the way *Backup now* in the
-    Proxmox interface does, but on a schedule you keep in Home Assistant.
-    Back up named guests or everything the node hosts, skip the run while
-    another backup is still in progress, and get told when it started.
+    Backs up the Proxmox guests, nodes or cluster you pick at a set time on
+    the chosen days, through the `proxmoxve.backup` action - the way *Backup
+    now* in the Proxmox interface does, but on a schedule you keep in Home
+    Assistant. A guest device backs up that guest, a node device everything
+    on the node, the cluster device everything on every node; the node each
+    guest lives on is looked up. Nodes with a backup already running can be
+    left out, and a notification says what started.
   domain: automation
   source_url: https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/backup_scheduled.yaml
   homeassistant:
     min_version: 2024.10.0
   input:
-    node:
-      name: Node
-      description: The name of the node that runs the backup, as Proxmox shows it (e.g. `pve`).
+    targets:
+      name: What to back up
+      description: >-
+        Proxmox devices: virtual machines and containers for those guests,
+        a node for everything it hosts, the cluster for everything on every
+        node. Any mix, across nodes.
       selector:
-        text:
-    storage:
-      name: Storage
-      description: The storage the backup is written to. It has to accept backups (`Datastore.AllocateSpace` for the credentials).
-      selector:
-        text:
+        device:
+          multiple: true
+          filter:
+            integration: proxmoxve
     at:
       name: Time
       description: When the run starts.
@@ -50,14 +53,15 @@ blueprint:
               value: sat
             - label: Sunday
               value: sun
-    vmid:
-      name: Guests
+    storage:
+      name: Storage
       description: >-
-        The VM and container ids to back up, as a list - `[100, 101]`.
-        Leave empty to back up everything the node hosts.
-      default: []
+        The storage the backups are written to. Leave empty for the one
+        picked as **Backup storage for the backup buttons** in the
+        integration options - or, if none is, the node's own default.
+      default: ""
       selector:
-        object:
+        text:
     mode:
       name: Mode
       description: How a running guest is backed up - `snapshot` keeps it running, `suspend` pauses it, `stop` shuts it down for the duration.
@@ -70,7 +74,7 @@ blueprint:
             - stop
     compress:
       name: Compression
-      description: Leave empty for the node's default.
+      description: Leave at the node default unless you know why not.
       default: ""
       selector:
         select:
@@ -91,25 +95,19 @@ blueprint:
       default: ""
       selector:
         text:
-    backup_running:
-      name: Backup running sensor
+    skip_if_running:
+      name: Skip nodes with a backup running
       description: >-
-        The node's `Backup running` sensor. While it is on, another run is in
-        progress and this one is skipped rather than queued behind it. Leave
-        empty to always start.
-      default: ""
+        Leave a node out while another backup is running on it, instead of
+        queuing behind it - vzdump runs one at a time per node.
+      default: true
       selector:
-        entity:
-          multiple: false
-          filter:
-            integration: proxmoxve
-            domain: binary_sensor
-            device_class: running
+        boolean:
     notify:
       name: Notification
       description: >-
-        Where to say that the run started, e.g. `notify.mobile_app_phone`.
-        Leave empty for no message.
+        Where to say what started, e.g. `notify.mobile_app_phone`. Leave
+        empty for no message.
       default: ""
       selector:
         text:
@@ -122,26 +120,24 @@ triggers:
     at: !input at
 
 variables:
-  node: !input node
   storage: !input storage
-  vmid: !input vmid
   backup_mode: !input mode
   compress: !input compress
   notes: !input notes
-  backup_running: !input backup_running
+  skip_if_running: !input skip_if_running
   notify: !input notify
 
 conditions:
   - condition: time
     weekday: !input weekdays
-  - condition: template
-    value_template: "{{ not backup_running or not is_state(backup_running, 'on') }}"
 
 actions:
   - action: proxmoxve.backup
+    target:
+      device_id: !input targets
     data: >-
-      {% set data = {"node": node, "storage": storage, "mode": backup_mode} %}
-      {% if vmid %}{% set data = dict(data, vmid=vmid) %}{% else %}{% set data = dict(data, all=true) %}{% endif %}
+      {% set data = {"mode": backup_mode, "skip_if_running": skip_if_running} %}
+      {% if storage %}{% set data = dict(data, storage=storage) %}{% endif %}
       {% if compress %}{% set data = dict(data, compress=compress) %}{% endif %}
       {% if notes %}{% set data = dict(data, notes=notes) %}{% endif %}
       {{ data }}
@@ -152,7 +148,8 @@ actions:
     then:
       - action: "{{ notify }}"
         data:
-          title: Proxmox backup started
+          title: Proxmox backup
           message: >-
-            {% if vmid %}Backing up {{ vmid | join(', ') }} on {{ node }} to {{ storage }}.{% else %}Backing up everything on {{ node }} to {{ storage }}.{% endif %}
-            Task {{ run.upid }}.
+            {% for r in run.runs %}{{ r.node }}: {{ 'everything' if r.all is defined else 'guests ' ~ r.vmid }}{{ ' to ' ~ r.storage if r.storage is defined else '' }} ({{ r.upid }}){{ '' if loop.last else '; ' }}{% endfor %}
+            {%- if run.skipped %}{{ '. ' if run.runs else '' }}Skipped, backup already running: {{ run.skipped | join(', ') }}{% endif %}
+            {%- if not run.runs and not run.skipped %}Nothing to back up.{% endif %}

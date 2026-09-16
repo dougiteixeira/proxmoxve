@@ -1,7 +1,9 @@
 backup:
+  target:
+    entity:
+      integration: proxmoxve
   fields:
     node:
-      required: true
       example: "pve"
       selector:
         text:
@@ -39,3 +41,7 @@ backup:
       example: "{{guestname}} from Home Assistant"
       selector:
         text:
+    skip_if_running:
+      default: false
+      selector:
+        boolean:

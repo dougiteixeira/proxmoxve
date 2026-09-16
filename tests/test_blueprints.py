@@ -6,7 +6,6 @@ import re
 from datetime import time
 from pathlib import Path
 
-import pytest
 from homeassistant.components.automation.config import async_validate_config_item
 from homeassistant.components.blueprint import models
 from homeassistant.components.blueprint.schemas import BLUEPRINT_SCHEMA
@@ -46,12 +45,12 @@ def test_every_blueprint_is_documented() -> None:
     assert linked == shipped
 
 
-async def test_the_scheduled_backup_fills_in_with_the_two_required_fields(
+async def test_the_scheduled_backup_fills_in_with_the_targets_alone(
     hass: HomeAssistant,
 ) -> None:
-    """Test node and storage are enough; the rest has defaults."""
+    """Test picking devices is enough; the rest has defaults."""
     config = await _automation(
-        hass, "backup_scheduled.yaml", {"node": "pve", "storage": "nas"}
+        hass, "backup_scheduled.yaml", {"targets": ["device-a", "device-b"]}
     )
 
     assert config["triggers"][0]["at"] == [time(3, 0)]
@@ -64,8 +63,10 @@ async def test_the_scheduled_backup_fills_in_with_the_two_required_fields(
         "sat",
         "sun",
     ]
-    assert config["actions"][0]["action"] == "proxmoxve.backup"
-    assert config["actions"][0]["response_variable"] == "run"
+    action = config["actions"][0]
+    assert action["action"] == "proxmoxve.backup"
+    assert action["target"] == {"device_id": ["device-a", "device-b"]}
+    assert action["response_variable"] == "run"
 
 
 async def test_the_scheduled_backup_posts_what_was_filled_in(
@@ -74,16 +75,16 @@ async def test_the_scheduled_backup_posts_what_was_filled_in(
     """
     Test the action's data is built from the inputs and nothing else.
 
-    A guest list turns into `vmid`, an empty one into `all`; compression and
-    notes are only sent when given, so the node's defaults stay the node's.
+    Storage, compression and notes are only sent when given, so the
+    integration's option and the node's defaults stay in charge otherwise;
+    the skip flag always goes along.
     """
     config = await _automation(
         hass,
         "backup_scheduled.yaml",
         {
-            "node": "pve",
+            "targets": ["device-a"],
             "storage": "nas",
-            "vmid": [100, 101],
             "mode": "suspend",
             "compress": "zstd",
             "notes": "{{guestname}} from Home Assistant",
@@ -92,52 +93,65 @@ async def test_the_scheduled_backup_posts_what_was_filled_in(
     template = config["actions"][0]["data"]
     template.hass = hass
     variables = {
-        "node": "pve",
         "storage": "nas",
-        "vmid": [100, 101],
         "backup_mode": "suspend",
         "compress": "zstd",
         "notes": "{{guestname}} from Home Assistant",
+        "skip_if_running": True,
     }
 
     assert template.async_render(variables) == {
-        "node": "pve",
-        "storage": "nas",
         "mode": "suspend",
-        "vmid": [100, 101],
+        "skip_if_running": True,
+        "storage": "nas",
         "compress": "zstd",
         "notes": "{{guestname}} from Home Assistant",
     }
 
     assert template.async_render(
-        {**variables, "vmid": [], "compress": "", "notes": ""}
-    ) == {
-        "node": "pve",
-        "storage": "nas",
-        "mode": "suspend",
-        "all": True,
-    }
+        {
+            **variables,
+            "storage": "",
+            "compress": "",
+            "notes": "",
+            "skip_if_running": False,
+        }
+    ) == {"mode": "suspend", "skip_if_running": False}
 
 
-@pytest.mark.parametrize(
-    ("state", "expected"),
-    [("off", True), ("on", False), ("unavailable", True)],
-)
-async def test_the_scheduled_backup_waits_its_turn(
-    hass: HomeAssistant, state: str, *, expected: bool
+async def test_the_notification_says_what_started_and_what_was_skipped(
+    hass: HomeAssistant,
 ) -> None:
-    """Test a run in progress on the node skips this one; no sensor never does."""
+    """Test the message reads from the action's response."""
     config = await _automation(
         hass,
         "backup_scheduled.yaml",
-        {"node": "pve", "storage": "nas", "backup_running": "binary_sensor.pve_backup"},
+        {"targets": ["device-a"], "notify": "notify.phone"},
     )
-    hass.states.async_set("binary_sensor.pve_backup", state)
-    template = config["conditions"][1]["value_template"]
+    template = config["actions"][1]["then"][0]["data"]["message"]
     template.hass = hass
 
-    assert (
-        template.async_render({"backup_running": "binary_sensor.pve_backup"})
-        is expected
+    message = template.async_render(
+        {
+            "run": {
+                "runs": [
+                    {
+                        "node": "pve",
+                        "vmid": "100,101",
+                        "storage": "nas",
+                        "upid": "UPID:1",
+                    },
+                    {"node": "pve2", "all": 1, "upid": "UPID:2"},
+                ],
+                "skipped": ["pve3"],
+            }
+        }
     )
-    assert template.async_render({"backup_running": ""}) is True
+    assert message == (
+        "pve: guests 100,101 to nas (UPID:1); pve2: everything (UPID:2). "
+        "Skipped, backup already running: pve3"
+    )
+    assert (
+        template.async_render({"run": {"runs": [], "skipped": []}})
+        == "Nothing to back up."
+    )
