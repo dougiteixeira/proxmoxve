@@ -36,6 +36,9 @@ RESOURCE_CALLBACKS = "resource_callbacks"
 # with automatic discovery on, whatever the cluster lists. Runtime only, so
 # the selection in the entry is never overwritten.
 TRACKED = "tracked"
+# In hass.data[DOMAIN], per entry and feature: the VMs whose guest agent
+# the credentials may not read.
+GUEST_AGENT_REFUSALS = "guest_agent_refusals"
 
 DEFAULT_PORT = 8006
 DEFAULT_REALM = "pam"

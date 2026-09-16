@@ -38,6 +38,7 @@ from .const import (
     CONF_HA_ADMIN_USERNAME,
     CONF_NODE,
     DOMAIN,
+    GUEST_AGENT_REFUSALS,
     GUEST_FILE_READ_MAX_BYTES,
     LOGGER,
     PROXMOX_CLIENT,
@@ -125,6 +126,62 @@ GUEST_AGENT_PRIVILEGES: Final = {
     "fsinfo": "VM.GuestAgent.Audit",
     "file": "VM.GuestAgent.FileRead",
 }
+
+
+def note_guest_agent_refusal(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    feature: str,
+    vmid: int,
+    *,
+    refused: bool,
+) -> None:
+    """
+    Keep the one repair per entry and feature in step with the VMs refused.
+
+    The VMs concerned are kept in `hass.data`, per entry - the runtime
+    data is not there yet while the coordinators take their first refresh
+    during setup. The repair is rewritten with the current list whenever
+    it changes, and removed once no VM is left on it.
+    """
+    refusals: dict[str, set[int]] = (
+        hass.data.setdefault(DOMAIN, {})
+        .setdefault(GUEST_AGENT_REFUSALS, {})
+        .setdefault(config_entry.entry_id, {})
+    )
+    affected = refusals.setdefault(feature, set())
+    if refused == (vmid in affected):
+        return
+    if refused:
+        affected.add(vmid)
+        LOGGER.debug(
+            "Guest agent of QEMU %s not readable (%s): %s missing, see the repair",
+            vmid,
+            feature,
+            GUEST_AGENT_PRIVILEGES[feature],
+        )
+    else:
+        affected.discard(vmid)
+
+    issue_id = f"{config_entry.entry_id}_guest_agent_{feature}"
+    if not affected:
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=False,
+        is_persistent=True,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=f"guest_agent_{feature}_forbidden",
+        translation_placeholders={
+            "vms": ", ".join(str(affected_vmid) for affected_vmid in sorted(affected)),
+            "user": config_entry.data[CONF_USERNAME],
+            "permission": f"['perm','/vms',['{GUEST_AGENT_PRIVILEGES[feature]}']]",
+        },
+    )
+
 
 # Values the Proxmox HA API documents for the "fencing" status entry
 # (PVE::API2::HA::Status). Anything else is treated as unknown rather than
@@ -1717,15 +1774,14 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
 
     async def _poll_guest_agent(self, api_path: str, feature: str) -> Any:
         """
-        Read from the QEMU guest agent, with a repair of its own for a 403.
+        Read from the QEMU guest agent, with one repair per entry for a 403.
 
         The generic poll would blame `VM.Audit`, which the credentials hold
         - the status read just succeeded - and would share the guest's
-        repair id, so the two reads would raise and clear it in turns.
+        repair id, so the two reads would raise and clear it in turns. And
+        the privilege is missing for every VM at once, not for one, so the
+        repair is one per feature and lists the VMs it concerns.
         """
-        issue_id = (
-            f"{self.config_entry.entry_id}_{self.resource_id}_guest_agent_{feature}"
-        )
         try:
             result = await self.hass.async_add_executor_job(
                 partial(
@@ -1743,29 +1799,17 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             cause = error.__cause__
             if not (isinstance(cause, ResourceException) and cause.status_code == 403):
                 raise
-            privilege = GUEST_AGENT_PRIVILEGES[feature]
-            ir.async_create_issue(
+            note_guest_agent_refusal(
                 self.hass,
-                DOMAIN,
-                issue_id,
-                is_fixable=False,
-                is_persistent=True,
-                severity=ir.IssueSeverity.WARNING,
-                translation_key=f"guest_agent_{feature}_forbidden",
-                translation_placeholders={
-                    "resource": f"{ProxmoxType.QEMU.upper()} {self.resource_id}",
-                    "user": self.config_entry.data[CONF_USERNAME],
-                    "permission": f"['perm','/vms/{self.resource_id}',['{privilege}']]",
-                },
-            )
-            LOGGER.debug(
-                "Guest agent of QEMU %s not readable (%s): %s missing, see the repair",
-                self.resource_id,
+                self.config_entry,
                 feature,
-                privilege,
+                int(self.resource_id),
+                refused=True,
             )
             return None
-        ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+        note_guest_agent_refusal(
+            self.hass, self.config_entry, feature, int(self.resource_id), refused=False
+        )
         return result
 
     async def _async_update_data(self) -> ProxmoxVMData:

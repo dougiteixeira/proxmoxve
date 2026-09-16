@@ -66,6 +66,7 @@ from .const import (
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
+    GUEST_AGENT_REFUSALS,
     INTEGRATION_TITLE,
     LOGGER,
     PROXMOX_CLIENT,
@@ -1340,7 +1341,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    return unload_ok  # noqa: RET504
+    hass.data.get(DOMAIN, {}).get(GUEST_AGENT_REFUSALS, {}).pop(entry.entry_id, None)
+    return unload_ok
 
 
 async def async_remove_config_entry_device(
