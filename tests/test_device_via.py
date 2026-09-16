@@ -2,42 +2,36 @@
 # SPDX-License-Identifier: MIT
 """Tests for how a device is linked to the node it lives on."""
 
-from unittest.mock import patch
-
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve import DOMAIN, device_info
-from custom_components.proxmoxve.const import ProxmoxType
+from custom_components.proxmoxve.const import COORDINATORS, ProxmoxType
 
-from . import async_init_integration
-from .const import MOCK_GET_RESPONSE, USER_INPUT_OK
+from .fake_api import FakeProxmox
 
 
-async def _setup(hass: HomeAssistant) -> MockConfigEntry:
-    """Set up the integration against a mocked API and return its entry."""
-    entry = MockConfigEntry(domain=DOMAIN, title="Test", data=USER_INPUT_OK)
-    with (
-        patch("proxmoxer.ProxmoxResource.get", return_value=MOCK_GET_RESPONSE),
-        patch(
-            "proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens",
-            return_value=None,
-        ),
-    ):
-        await async_init_integration(hass, entry)
+async def _setup(
+    hass: HomeAssistant, fake_api: FakeProxmox, entry: MockConfigEntry
+) -> MockConfigEntry:
+    """Set up the integration against the fake API and return its entry."""
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
     return entry
 
 
-async def test_links_to_a_node_that_has_a_device(hass: HomeAssistant) -> None:
+async def test_links_to_a_node_that_has_a_device(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
     """Test the parent id is filled in for a node that does have a device."""
-    entry = await _setup(hass)
+    entry = await _setup(hass, fake_api, current_entry)
     node_identifier = (DOMAIN, f"{entry.entry_id}_{ProxmoxType.Node.upper()}_pve")
-    node = dr.async_get(hass).async_get_or_create(
-        config_entry_id=entry.entry_id,
-        identifiers={node_identifier},
-        name="Node pve",
+    # Setup created the node device; this is the same one.
+    node = dr.async_get(hass).async_get_device_by_identifier(
+        node_identifier, entry.entry_id
     )
+    assert node is not None
 
     info = device_info(
         hass=hass,
@@ -52,7 +46,7 @@ async def test_links_to_a_node_that_has_a_device(hass: HomeAssistant) -> None:
 
 
 async def test_link_is_dropped_for_a_node_without_a_device(
-    hass: HomeAssistant,
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
 ) -> None:
     """
     Test no link is claimed to a node that has no device.
@@ -62,7 +56,7 @@ async def test_link_is_dropped_for_a_node_without_a_device(
     a node the user did not select. Leaving the link out loses nothing and
     keeps that report out of the log.
     """
-    entry = await _setup(hass)
+    entry = await _setup(hass, fake_api, current_entry)
 
     info = device_info(
         hass=hass,
@@ -73,3 +67,27 @@ async def test_link_is_dropped_for_a_node_without_a_device(
     )
 
     assert info["via_device_id"] is None
+
+
+async def test_a_refresh_does_not_invent_a_guest_device(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test linking a guest to its node creates no device that is not there.
+
+    The guest coordinator refreshes before the platforms create the device,
+    and used to create it itself - bare, and named after the config entry.
+    Whenever no platform came along to fill it in, that is what stayed.
+    """
+    entry = await _setup(hass, fake_api, current_entry)
+    dev_reg = dr.async_get(hass)
+    identifier = (DOMAIN, f"{entry.entry_id}_{ProxmoxType.LXC.upper()}_100")
+    device = dev_reg.async_get_device_by_identifier(identifier, entry.entry_id)
+    assert device is not None
+    dev_reg.async_remove_device(device.id)
+
+    coordinator = entry.runtime_data[COORDINATORS][f"{ProxmoxType.LXC}_100"]
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert dev_reg.async_get_device_by_identifier(identifier, entry.entry_id) is None

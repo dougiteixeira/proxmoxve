@@ -1,0 +1,47 @@
+backup:
+  target:
+    entity:
+      integration: proxmoxve
+  fields:
+    node:
+      example: "pve"
+      selector:
+        text:
+    vmid:
+      example: "[100, 101]"
+      selector:
+        object:
+    all:
+      default: false
+      selector:
+        boolean:
+    storage:
+      example: "local"
+      selector:
+        text:
+    mode:
+      default: snapshot
+      selector:
+        select:
+          options:
+            - snapshot
+            - suspend
+            - stop
+          translation_key: backup_mode
+    compress:
+      selector:
+        select:
+          options:
+            - zstd
+            - gzip
+            - lzo
+            - "0"
+          translation_key: backup_compress
+    notes:
+      example: "{{guestname}} from Home Assistant"
+      selector:
+        text:
+    skip_if_running:
+      default: false
+      selector:
+        boolean:

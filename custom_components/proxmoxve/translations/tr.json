@@ -102,17 +102,9 @@
             "title": "Configuration of the {integration} in YAML is deprecated",
             "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in {version}.\n\nResolve the import issues and remove the YAML configuration from your `configuration.yaml` file."
         },
-        "resource_nonexistent": {
-            "description": "{resource_type} {resource} does not exist on ({host}:{port}), remove it in integration options.\n\nThis can also be caused if the user doesn't have enough permission to access the resource.\n\nTip on required permissions:\n* `{permission}`",
-            "title": "{resource_type} {resource} does not exist"
-        },
         "no_permissions": {
             "description": "The user `{user}` does not have the required permissions for all features.\n\nThe following features are not accessible by the user:\n`{errors}`\n\nCheck the user permissions as described in the documentation.",
             "title": "User `{user}` does not have the required permissions"
-        },
-        "resource_exception_forbiden": {
-            "description": "User `{user}` does not have sufficient permissions to access resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-            "title": "Permissions error for `{resource}`"
         },
         "resource_command_forbiden": {
             "description": "User `{user}` does not have sufficient permissions to execute command `{command}` on resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",

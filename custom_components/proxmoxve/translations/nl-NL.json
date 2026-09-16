@@ -102,17 +102,9 @@
             "title": "Configuratie van de {integration} in YAML wordt niet meer ondersteund",
             "description": "Configuratie van de {integration} (`{platform}`) in YAML is verouderd en moet worden verwijderd in {version}.\n\nLos de importproblemen op en verwijder de YAML configuratie van je `configuration.yaml` bestand."
         },
-        "resource_nonexistent": {
-            "description": "{resource_type} {resource} bestaat niet op ({host}:{port}), verwijder het in de integratie opties.\n\nDit kan ook worden veroorzaakt als de gebruiker niet genoeg rechten heeft om de pagina te openen.\n\nTip voor vereiste machtigingen:\n* `{permission}`",
-            "title": "{resource_type} {resource} bestaat niet"
-        },
         "no_permissions": {
             "description": "De gebruiker `{user}` heeft niet de vereiste rechten voor alle functies.\n\nDe volgende functies zijn niet toegankelijk voor de gebruiker:\n`{errors}`\n\nControleer de gebruikersrechten zoals beschreven in de documentatie.",
             "title": "Gebruiker `{user}` heeft niet de vereiste rechten"
-        },
-        "resource_exception_forbiden": {
-            "description": "Gebruiker `{user}` heeft niet voldoende rechten om de bron te kunnen gebruiken `{resource}`.\n\nTip voor vereiste machtigingen:\n* `{permission}`\n\nControleer alstublieft de documentatie en gebruikersrechten.",
-            "title": "Machtiging fout voor `{resource}`"
         },
         "resource_command_forbiden": {
             "description": "Gebruiker `{user}` heeft niet voldoende rechten om commando `{command}` uit te voeren op bron `{resource}`.\n\nTip op de vereiste machtigingen:\n* `{permission}`\n\nControleer de documentatie en gebruikersrechten.",

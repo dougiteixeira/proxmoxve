@@ -15,6 +15,11 @@ CONF_VMS = "vms"
 CONF_CONTAINERS = "containers"
 CONF_DISKS_ENABLE = "disks_enable"
 CONF_TASKS_ENABLE = "tasks_enable"
+# The storage the backup buttons write to. Unset means no buttons: vzdump
+# without a storage dumps into the node's local directory, which is never
+# what a button on a dashboard should do without being asked.
+CONF_BACKUP_STORAGE = "backup_storage"
+CONF_AUTO_DISCOVERY = "auto_discovery"
 CONF_GUEST_FILE_PATH = "guest_file_path"
 CONF_HA_ADMIN_USERNAME = "ha_admin_username"
 CONF_HA_ADMIN_TOKEN_NAME = "ha_admin_token_name"
@@ -24,6 +29,16 @@ CONF_HA_ADMIN_REALM = "ha_admin_realm"
 GUEST_FILE_READ_MAX_BYTES = 4096
 
 COORDINATORS = "coordinators"
+# Callbacks the platforms register so discovery can hand them a resource
+# that appeared at runtime: `await callback(api_category, resource_id)`.
+RESOURCE_CALLBACKS = "resource_callbacks"
+# What this setup actually tracks: the selection from the config entry, or
+# with automatic discovery on, whatever the cluster lists. Runtime only, so
+# the selection in the entry is never overwritten.
+TRACKED = "tracked"
+# In hass.data[DOMAIN], per entry and feature: the VMs whose guest agent
+# the credentials may not read.
+GUEST_AGENT_REFUSALS = "guest_agent_refusals"
 
 DEFAULT_PORT = 8006
 DEFAULT_REALM = "pam"
@@ -34,6 +49,9 @@ UPDATE_INTERVAL = 60
 # entered. Polling those at the usual interval would spend a request a minute
 # to learn nothing, and this integration already makes plenty.
 SLOW_UPDATE_INTERVAL = 3600
+# For what the task log says: a backup finishing or a task failing is
+# worth knowing within minutes, not within the minute.
+TASKS_UPDATE_INTERVAL = 300
 
 LOGGER = logging.getLogger(__package__)
 
@@ -48,6 +66,8 @@ CONF_STORAGE = "storage"
 
 PROXMOX_CLIENT = "proxmox_client"
 PROXMOX_HA_ADMIN_CLIENT = "proxmox_ha_admin_client"
+PROXMOX_PERMISSIONS = "proxmox_permissions"
+PROXMOX_HA_ADMIN_PERMISSIONS = "proxmox_ha_admin_permissions"
 
 INTEGRATION_TITLE = "Proxmox VE"
 VERSION_REMOVE_YAML = "2025.1"
@@ -66,6 +86,7 @@ class ProxmoxType(StrEnum):
     Resources = "resources"
     ZFS = "zfs"
     Tasks = "tasks"
+    Backup = "backup"
     Certificate = "certificate"
     BackupInfo = "backup_info"
     Subscription = "subscription"
@@ -85,7 +106,11 @@ class ProxmoxCommand(StrEnum):
     RESET = "reset"
     START_ALL = "startall"
     STOP_ALL = "stopall"
+    SUSPEND_ALL = "suspendall"
     HIBERNATE = "hibernate"
+    SNAPSHOT = "snapshot"
+    BACKUP = "backup"
+    BACKUP_ALL = "backup-all"
     WAKEONLAN = "wakeonlan"
     UNLOCK = "unlock"
     ARM_HA = "arm-ha"

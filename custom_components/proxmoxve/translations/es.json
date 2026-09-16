@@ -102,17 +102,9 @@
             "title": "La configuración de la {integration} en YAML está obsoleta",
             "description": "La configuración de la {integration} (`{platform}`) en YAML está obsoleta y debe ser eliminada en {version}.\n\nResuelve los problemas de importación y elimina la configuración YAML de tu archivo `configuration.yaml`."
         },
-        "resource_nonexistent": {
-            "description": "{resource_type} {resource} no existe en ({host}:{port}), elimínelo en las opciones de integración.\n\nEsto también puede ocurrir si el usuario no tiene suficientes permisos para acceder al recurso.\n\nConsejo sobre permisos necesarios:\n* `{permission}`",
-            "title": "{resource_type} {resource} no existe"
-        },
         "no_permissions": {
             "description": "El usuario `{user}` no tiene los permisos necesarios para todas las características.\n\nLas siguientes características no son accesibles por el usuario:\n`{errors}`\n\nCompruebe los permisos de usuario tal y como se describe en la documentación.",
             "title": "El usuario `{user}` no tiene los permisos necesarios"
-        },
-        "resource_exception_forbiden": {
-            "description": "El usuario `{user}` no tiene permisos suficientes para acceder al recurso `{resource}`.\n\nConsejo sobre los permisos requeridos:\n* `{permission}`\n\nPor favor revise la documentación y los permisos de usuario.",
-            "title": "Error de permisos para `{resource}`"
         },
         "resource_command_forbiden": {
             "description": "El usuario `{user}` no tiene permisos suficientes para ejecutar el comando `{command}` en el recurso `{resource}`.\n\nConsejo sobre los permisos requeridos:\n* `{permission}`\n\nPor favor, comprueba la documentación y los permisos de usuario.",

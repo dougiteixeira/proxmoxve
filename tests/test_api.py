@@ -2,16 +2,25 @@
 # SPDX-License-Identifier: MIT
 """Tests for the Proxmox VE API helpers."""
 
+import re
 from functools import partial
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from proxmoxer import AuthenticationError
 from proxmoxer.core import ResourceException
 
-from custom_components.proxmoxve.api import post_api_command
+from custom_components.proxmoxve.api import (
+    SNAPSHOT_NAME_MAX_LENGTH,
+    ProxmoxClient,
+    auth_error_status,
+    post_api_command,
+    snapshot_name,
+    token_name_only,
+)
 from custom_components.proxmoxve.const import ProxmoxCommand, ProxmoxType
 
 from .const import mock_config_entry
@@ -83,6 +92,80 @@ async def test_post_api_command_start_uses_post(hass: HomeAssistant) -> None:
     proxmox.put.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        ProxmoxCommand.START_ALL,
+        ProxmoxCommand.STOP_ALL,
+        ProxmoxCommand.SUSPEND_ALL,
+        ProxmoxCommand.WAKEONLAN,
+    ],
+)
+async def test_post_api_command_node_bulk_actions(
+    hass: HomeAssistant, command: ProxmoxCommand
+) -> None:
+    """Test the bulk node actions post to their own endpoint, not status."""
+    proxmox = MagicMock()
+    proxmox_client = MagicMock()
+    proxmox_client.get_api_client.return_value = proxmox
+
+    entity = SimpleNamespace(hass=hass, config_entry=mock_config_entry)
+
+    await hass.async_add_executor_job(
+        partial(
+            post_api_command,
+            entity,
+            proxmox_client=proxmox_client,
+            api_category=ProxmoxType.Node,
+            command=command,
+            node="pve",
+        )
+    )
+
+    proxmox.post.assert_called_once_with(f"nodes/pve/{command}")
+
+
+def test_snapshot_name_is_one_the_api_accepts() -> None:
+    """Test the generated name fits Proxmox's `pve-configid` rules."""
+    name = snapshot_name()
+
+    assert re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_-]+", name)
+    assert len(name) <= SNAPSHOT_NAME_MAX_LENGTH
+    assert name.startswith("homeassistant_")
+
+
+@pytest.mark.parametrize("api_category", [ProxmoxType.QEMU, ProxmoxType.LXC])
+async def test_post_api_command_snapshot(
+    hass: HomeAssistant, api_category: ProxmoxType
+) -> None:
+    """Test a snapshot posts to the snapshot endpoint with a name."""
+    proxmox = MagicMock()
+    proxmox_client = MagicMock()
+    proxmox_client.get_api_client.return_value = proxmox
+
+    entity = SimpleNamespace(hass=hass, config_entry=mock_config_entry)
+
+    await hass.async_add_executor_job(
+        partial(
+            post_api_command,
+            entity,
+            proxmox_client=proxmox_client,
+            api_category=api_category,
+            command=ProxmoxCommand.SNAPSHOT,
+            node="pve",
+            vm_id=100,
+        )
+    )
+
+    proxmox.post.assert_called_once()
+    path, kwargs = proxmox.post.call_args.args[0], proxmox.post.call_args.kwargs
+    assert path == f"nodes/pve/{api_category}/100/snapshot"
+    assert kwargs["snapname"].startswith("homeassistant_")
+    assert kwargs["description"] == "Created by Home Assistant"
+    # Disks only: no RAM state, which would make the snapshot slow and big.
+    assert "vmstate" not in kwargs
+
+
 async def test_post_api_command_surfaces_non_403_error(hass: HomeAssistant) -> None:
     """Test a non-403 API error is raised instead of being swallowed."""
     proxmox = MagicMock()
@@ -106,3 +189,108 @@ async def test_post_api_command_surfaces_non_403_error(hass: HomeAssistant) -> N
                 vm_id=100,
             )
         )
+
+
+@pytest.mark.parametrize(
+    ("typed", "expected"),
+    [
+        # What the README asks for.
+        ("homeassistant", "homeassistant"),
+        # What the Proxmox web interface shows, and what people copy.
+        ("homeassistant@pve!homeassistant", "homeassistant"),
+        ("root@pam!ha-token", "ha-token"),
+        ("  homeassistant@pve!homeassistant  ", "homeassistant"),
+        ("", ""),
+        (None, ""),
+    ],
+)
+def test_token_name_only(typed: str | None, expected: str) -> None:
+    """
+    Test the token field accepts the token's full id as well as its name.
+
+    Proxmox displays a token as `user@realm!name`; entering that verbatim
+    made the login fail with "no such user ('user@realm!user@realm')".
+    """
+    assert token_name_only(typed) == expected
+
+
+def test_client_logs_in_with_the_bare_token_name() -> None:
+    """Test a full token id in the entry still builds a working client."""
+    client = ProxmoxClient(
+        host="node.example.invalid",
+        user="homeassistant",
+        password="secret",  # noqa: S106 - invented
+        token_name="homeassistant@pve!homeassistant",  # noqa: S106 - not a secret
+        realm="pve",
+        verify_ssl=False,
+    )
+
+    client.build_client()
+
+    backend = client.get_api_client()._backend  # noqa: SLF001
+    assert backend.auth.token_name == "homeassistant"
+    assert backend.auth.username == "homeassistant@pve"
+
+
+def _password_client() -> ProxmoxClient:
+    """Return a built password client whose login never touched the network."""
+    client = ProxmoxClient(
+        host="node.example.invalid",
+        user="homeassistant",
+        password="secret",  # noqa: S106 - invented
+        realm="pve",
+        verify_ssl=False,
+    )
+    with patch("proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens"):
+        client.build_client()
+    return client
+
+
+def test_relogin_swaps_in_a_fresh_ticket_everywhere_it_is_used() -> None:
+    """
+    Test logging in again replaces the auth on the backend and the session.
+
+    The coordinators keep the ProxmoxAPI object, so the new login has to
+    land inside it rather than in a new one.
+    """
+    client = _password_client()
+    api = client.get_api_client()
+    stale = api._backend.auth  # noqa: SLF001
+
+    with patch("proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens") as login:
+        assert client.relogin() is True
+
+    login.assert_called_once()
+    fresh = api._backend.auth  # noqa: SLF001
+    assert fresh is not stale
+    assert api._store["session"].auth is fresh  # noqa: SLF001
+    assert fresh.username == "homeassistant@pve"
+    assert client.get_api_client() is api
+
+
+def test_relogin_with_a_token_does_nothing() -> None:
+    """Test a token client reports there is nothing to renew."""
+    client = ProxmoxClient(
+        host="node.example.invalid",
+        user="homeassistant",
+        password="secret",  # noqa: S106 - invented
+        token_name="homeassistant",  # noqa: S106 - not a secret
+        realm="pve",
+        verify_ssl=False,
+    )
+    client.build_client()
+
+    assert client.relogin() is False
+
+
+@pytest.mark.parametrize(
+    ("message", "status"),
+    [
+        ("Couldn't authenticate user: x@pve to https://h/access/ticket code: 401", 401),
+        ("Couldn't authenticate user: x@pve to https://h/access/ticket code: 595", 595),
+        ("something else entirely", None),
+    ],
+)
+def test_auth_error_status(message: str, status: int | None) -> None:
+    """Test the HTTP status is read out of proxmoxer's message when present."""
+    assert auth_error_status(AuthenticationError(message)) == status

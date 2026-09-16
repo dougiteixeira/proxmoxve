@@ -14,6 +14,12 @@ HEALTHY = {
     "fsid": "00000000-0000-0000-0000-000000000000",
     "health": {"status": "HEALTH_OK", "checks": {}},
     "osdmap": {"num_osds": 6},
+    "pgmap": {
+        "bytes_used": 1_200_000_000_000,
+        "bytes_avail": 2_800_000_000_000,
+        "bytes_total": 4_000_000_000_000,
+        "num_pgs": 129,
+    },
 }
 DEGRADED = {
     "health": {
@@ -102,3 +108,29 @@ def test_the_attribute_stays_serializable() -> None:
         for key, value in check.items():
             assert isinstance(key, str)
             assert isinstance(value, str)
+
+
+def test_usage_is_read_from_the_placement_group_map() -> None:
+    """Test the two totals `ceph -s` prints as usage are carried."""
+    data = parse_ceph(HEALTHY)
+
+    assert data.bytes_used == 1_200_000_000_000
+    assert data.bytes_total == 4_000_000_000_000
+
+
+def test_usage_without_a_pgmap_stays_unknown() -> None:
+    """Test a response without the map, or with zeros, yields no usage."""
+    assert parse_ceph(DEGRADED).bytes_used is UNDEFINED
+    assert parse_ceph({"pgmap": "nonsense"}).bytes_total is UNDEFINED
+    assert (
+        parse_ceph({"pgmap": {"bytes_used": 0, "bytes_total": 0}}).bytes_total
+        is UNDEFINED
+    )
+
+
+def test_the_usage_percentage_sensor() -> None:
+    """Test the percentage is the ratio of the two totals, capped and unknown-safe."""
+    used_perc = next(d for d in PROXMOX_SENSOR_CEPH if d.key == "ceph_used_perc")
+
+    assert used_perc.conversion_fn(used_perc.value_fn(parse_ceph(HEALTHY))) == 30
+    assert used_perc.value_fn(parse_ceph(DEGRADED)) is None

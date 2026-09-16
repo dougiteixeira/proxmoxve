@@ -7,6 +7,8 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
+from homeassistant.helpers.typing import UNDEFINED
+
 if TYPE_CHECKING:
     from datetime import datetime
 
@@ -37,6 +39,17 @@ class ProxmoxNodeData:
     lxc_on_list: list
     sensors: dict[str, float] | None = None
     sensors_raw: str | None = None
+    # `wait` from the node status: the share of time the CPUs spent waiting
+    # for I/O, on the same 0..1 scale as `cpu`. Proxmox shows it as IO delay.
+    io_wait: float | UndefinedType = UNDEFINED
+    # Hardware addresses of the node's physical interfaces, read once.
+    # Home Assistant merges devices on them, so the node can be the same
+    # device as the one a network integration sees.
+    mac_addresses: tuple[str, ...] = ()
+    # `loadavg` from the node status: 1, 5 and 15 minute averages.
+    load_average: tuple[float, float, float] | UndefinedType = UNDEFINED
+    # Logical CPUs of the node, from `cpuinfo`.
+    cpus: int | UndefinedType = UNDEFINED
 
 
 @dataclasses.dataclass
@@ -60,6 +73,11 @@ class ProxmoxVMData:
     guest_file_content: str | UndefinedType
     guest_file_path: str | UndefinedType
     uptime: int | UndefinedType
+    # Cores the guest may use, and the share of the whole node it is
+    # taking right now: `cpu` is relative to the guest's own cores, so a
+    # two-core guest at 100% is one twelfth of a twelve-thread node.
+    cpus: int | UndefinedType = UNDEFINED
+    cpu_of_host: float | UndefinedType = UNDEFINED
 
 
 @dataclasses.dataclass
@@ -83,11 +101,22 @@ class ProxmoxLXCData:
     swap_free: float | UndefinedType
     swap_used: float | UndefinedType
     uptime: int | UndefinedType
+    # Cores the guest may use, and the share of the whole node it is
+    # taking right now: `cpu` is relative to the guest's own cores, so a
+    # two-core guest at 100% is one twelfth of a twelve-thread node.
+    cpus: int | UndefinedType = UNDEFINED
+    cpu_of_host: float | UndefinedType = UNDEFINED
 
 
 @dataclasses.dataclass
 class ProxmoxStorageData:
-    """Data parsed from the Proxmox API for Storage."""
+    """
+    Data parsed from the Proxmox API for Storage.
+
+    `active`, `enabled` and `shared` come from the node's own view of the
+    storage (`nodes/{node}/storage`), which the cluster resource list does
+    not carry in full. They stay UNDEFINED when that view could not be read.
+    """
 
     type: str
     node: str
@@ -95,6 +124,12 @@ class ProxmoxStorageData:
     content: str | UndefinedType
     disk_used: float | UndefinedType
     disk_total: float | UndefinedType
+    active: bool | UndefinedType
+    enabled: bool | UndefinedType
+    shared: bool | UndefinedType
+    # For a shared storage: the nodes that currently list it as available,
+    # so the one figure shown says where it can be reached.
+    nodes: tuple[str, ...] = ()
 
 
 @dataclasses.dataclass
@@ -112,13 +147,22 @@ class ProxmoxZFSData:
 
 @dataclasses.dataclass
 class ProxmoxUpdateData:
-    """Data parsed from the Proxmox API for Updates."""
+    """
+    Data parsed from the Proxmox API for Updates.
+
+    `packages` carries what the update entity needs to describe the pending
+    upgrade: each entry has a `package`, `title` and `version`, plus a
+    `proxmox` flag telling Proxmox's own packages from the Debian ones.
+    """
 
     type: str
     node: str
     updates_list: list | UndefinedType
     total: float | UndefinedType
     update: bool | UndefinedType
+    packages: list[dict[str, str | bool]] = dataclasses.field(default_factory=list)
+    proxmox_updates: int = 0
+    other_updates: int = 0
 
 
 @dataclasses.dataclass
@@ -155,6 +199,59 @@ class ProxmoxTaskData:
     failed_count: int
     recent_failures: list[dict[str, str | int]] | UndefinedType
     last_failure_time: int | UndefinedType
+
+
+@dataclasses.dataclass
+class ProxmoxBackupData:
+    """
+    Data parsed from the Proxmox API about a node's most recent backup run.
+
+    Built from the newest finished `vzdump` task in the node's task log. A
+    node that has never run one has `runs` at 0 and the rest UNDEFINED, so
+    the platforms can skip creating entities for it.
+
+    `status`, `guests` and `user` are exposed as state attributes, so they
+    hold plain values - the UNDEFINED sentinel is not JSON serializable.
+    """
+
+    type: str
+    node: str
+    runs: int
+    finished: datetime | UndefinedType
+    started: datetime | UndefinedType
+    duration: int | UndefinedType
+    status: str | None
+    guests: str | None
+    user: str | None
+    # A run in progress right now, from the active task list: whether there
+    # is one, since when, and for which guests. Plain values for attributes.
+    running: bool = False
+    running_since: datetime | None = None
+    running_guests: str | None = None
+
+
+@dataclasses.dataclass
+class ProxmoxClusterSummaryData:
+    """
+    The cluster at a glance, added up from `cluster/resources`.
+
+    CPU is weighted by each online node's core count, so a busy small node
+    does not count like a busy large one; memory is the plain sum. Nodes
+    that are offline contribute nothing to either. The lists are exposed as
+    attributes, so they hold plain values.
+    """
+
+    type: str
+    nodes_total: int
+    nodes_online: int
+    nodes_offline: list[str]
+    qemu_total: int
+    qemu_running: int
+    lxc_total: int
+    lxc_running: int
+    cpu: float | UndefinedType
+    memory_total: int | UndefinedType
+    memory_used: int | UndefinedType
 
 
 @dataclasses.dataclass
@@ -266,3 +363,6 @@ class ProxmoxCephData:
     type: str
     health: str | UndefinedType
     checks: list[dict[str, str]]
+    # From `pgmap`: bytes used and total across the cluster's OSDs.
+    bytes_used: int | UndefinedType = UNDEFINED
+    bytes_total: int | UndefinedType = UNDEFINED

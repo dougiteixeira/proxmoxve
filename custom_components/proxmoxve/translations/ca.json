@@ -96,23 +96,15 @@
         },
         "import_node_not_exist": {
             "title": "El node {node} no existeix a {host}:{port}",
-            "description": "La configuració YAML de la instància {host}:{port} de {integration} ({platform}) ja existeix a la interfície d’usuari i s’ha ignorat en la importació.\n\nHas d’eliminar aquesta configuració del fitxer configuration.yaml i reiniciar Home Assistant."
+            "description": "El node {node} de la instància {host}:{port} de {integration} (`{platform}`) present a la configuració YAML no existeix en aquesta instància i s’ha ignorat en la importació.\n\nHas d’eliminar aquesta configuració del fitxer `configuration.yaml` i reiniciar Home Assistant."
         },
         "yaml_deprecated": {
             "title": "La configuració de {integration} en YAML està obsoleta",
             "description": "La configuració de {integration} ({platform}) en YAML està obsoleta i s’hauria d’eliminar a la versió {version}.\n\nResol els problemes d’importació i elimina la configuració YAML del fitxer configuration.yaml."
         },
-        "resource_nonexistent": {
-            "description": "El {resource_type} {resource} no existeix a ({host}:{port}), elimina’l a les opcions de la integració.\n\nAixò també pot ser causat perquè l’usuari no té permisos suficients per accedir al recurs.\n\nConsell sobre els permisos requerits:\n\n{permission}",
-            "title": "El {resource_type} {resource} no existeix"
-        },
         "no_permissions": {
             "description": "L’usuari {user} no té els permisos requerits per a totes les funcionalitats.\n\nLes següents funcionalitats no són accessibles per a l’usuari:\n{errors}\n\nComprova els permisos de l’usuari tal com s’explica a la documentació.",
             "title": "L’usuari {user} no té els permisos requerits"
-        },
-        "resource_exception_forbiden": {
-            "description": "L’usuari {user} no té permisos suficients per accedir al recurs {resource}.\n\nConsell sobre els permisos requerits:\n\n{permission}\nSi us plau, comprova la documentació i els permisos de l’usuari.",
-            "title": "Error de permisos per a {resource}"
         },
         "resource_command_forbiden": {
             "description": "L’usuari {user} no té permisos suficients per executar la comanda {command} sobre el recurs {resource}.\n\nConsell sobre els permisos requerits:\n\n{permission}\nSi us plau, comprova la documentació i els permisos de l’usuari.",
