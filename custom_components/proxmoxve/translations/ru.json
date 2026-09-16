@@ -102,17 +102,9 @@
             "title": "Конфигурация {integration} в YAML устарела",
             "description": "Конфигурация {integration} (`{platform}`) в YAML устарела и будет удалена в версии {version}.\n\nИсправьте проблемы импорта и удалите YAML-конфигурацию из файла `configuration.yaml`."
         },
-        "resource_nonexistent": {
-            "description": "{resource_type} {resource} не существует на ({host}:{port}), удалите это в настройках интеграции.\n\nТакже может быть вызвано недостаточными правами доступа к ресурсу.\n\nТребуемые права:\n* `{permission}`",
-            "title": "{resource_type} {resource} не существует"
-        },
         "no_permissions": {
             "description": "Пользователь `{user}` не имеет необходимых прав для всех функций.\n\nСледующие функции недоступны:\n`{errors}`\n\nПроверьте права пользователя, как указано в документации.",
             "title": "Пользователь `{user}` не имеет необходимых прав"
-        },
-        "resource_exception_forbiden": {
-            "description": "Пользователь `{user}` не имеет достаточных прав для доступа к ресурсу `{resource}`.\n\nТребуемые права:\n* `{permission}`\n\nПроверьте документацию и права пользователя.",
-            "title": "Ошибка прав доступа для `{resource}`"
         },
         "resource_command_forbiden": {
             "description": "Пользователь `{user}` не имеет достаточных прав для выполнения команды `{command}` на ресурсе `{resource}`.\n\nТребуемые права:\n* `{permission}`\n\nПроверьте документацию и права пользователя.",

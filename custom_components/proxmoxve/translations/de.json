@@ -102,17 +102,9 @@
             "title": "Die YAML-Konfiguration von {integration} ist veraltet",
             "description": "Die YAML-Konfiguration von {integration} (`{platform}`) ist veraltet und sollte in {version} entfernt werden.\n\nBehebe die Importprobleme und entferne die YAML-Konfiguration aus deiner `configuration.yaml`-Datei."
         },
-        "resource_nonexistent": {
-            "description": "{resource_type} {resource} existiert nicht auf ({host}:{port}), entferne es aus den Integrationsoptionen.\n\nDies kann auch auftreten, wenn der Benutzer nicht genügend Berechtigungen zum Zugriff auf die Ressource hat.\n\nNotwendinge Berechtigung:\n* `{permission}`",
-            "title": "{resource_type} {resource} existiert nicht"
-        },
         "no_permissions": {
             "description": "Der Benutzer `{user}` verfügt nicht über die erforderlichen Berechtigungen für alle Funktionen.\n\nDie folgenden Funktionen sind für den Benutzer nicht zugänglich:\n`{errors}`\n\nÜberprüfe die Benutzerberechtigungen gemäß der Dokumentation.",
             "title": "Der Benutzer `{user}` verfügt nicht über die erforderlichen Berechtigungen"
-        },
-        "resource_exception_forbiden": {
-            "description": "Benutzer `{user}` hat nicht genügend Berechtigungen um auf Ressourcen zugreifen `{resource}`.\n\nTipp für benötigte Berechtigungen:\n* `{permission}`\n\nBitte überprüfen Sie die Dokumentation und die Benutzerberechtigungen.",
-            "title": "Berechtigungsfehler für `{resource}`"
         },
         "resource_command_forbiden": {
             "description": "Benutzer `{user}` hat nicht genügend Berechtigungen, um den Befehl `{command}` auf Ressource `{resource}` auszuführen.\n\nTipp für benötigte Berechtigungen:\n* `{permission}`\n\nBitte überprüfen Sie die Dokumentation und die Benutzerberechtigungen.",

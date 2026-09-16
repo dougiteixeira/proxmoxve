@@ -175,9 +175,7 @@ async def test_no_sys_modify_means_no_update_entity_and_no_repair(
     assert not registry.async_get_entity_id(
         "update", DOMAIN, f"{entry_id}_pve_node_update"
     )
-    assert not ir.async_get(hass).async_get_issue(
-        DOMAIN, f"{entry_id}_Update {NODE}_forbiden"
-    )
+    assert not ir.async_get(hass).async_get_issue(DOMAIN, f"{entry_id}_forbidden")
 
 
 async def test_unknown_permissions_still_create_the_update_entity(

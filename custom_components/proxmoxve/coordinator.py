@@ -35,7 +35,6 @@ from requests.exceptions import (
 from .api import ProxmoxClient, get_api
 from .const import (
     CONF_GUEST_FILE_PATH,
-    CONF_HA_ADMIN_USERNAME,
     CONF_NODE,
     DOMAIN,
     GUEST_AGENT_REFUSALS,
@@ -56,6 +55,7 @@ from .discovery import (
     resource_changes,
 )
 from .disk import disk_matches_id
+from .issues import FORBIDDEN, ResourceLine, note_resource_threadsafe
 from .models import (
     ProxmoxBackupData,
     ProxmoxBackupInfoData,
@@ -128,6 +128,20 @@ GUEST_AGENT_PRIVILEGES: Final = {
 }
 
 
+def forget_untracked_guest_agents(
+    hass: HomeAssistant, config_entry: ConfigEntry, still_tracked: set[str]
+) -> None:
+    """Take VMs this setup no longer tracks off the guest agent repairs."""
+    refusals: dict[str, set[int]] = (
+        hass.data.get(DOMAIN, {})
+        .get(GUEST_AGENT_REFUSALS, {})
+        .get(config_entry.entry_id, {})
+    )
+    for feature, affected in refusals.items():
+        for vmid in [vmid for vmid in affected if str(vmid) not in still_tracked]:
+            note_guest_agent_refusal(hass, config_entry, feature, vmid, refused=False)
+
+
 def note_guest_agent_refusal(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -172,7 +186,7 @@ def note_guest_agent_refusal(
         DOMAIN,
         issue_id,
         is_fixable=False,
-        is_persistent=True,
+        is_persistent=False,
         severity=ir.IssueSeverity.WARNING,
         translation_key=f"guest_agent_{feature}_forbidden",
         translation_placeholders={
@@ -2885,32 +2899,28 @@ def poll_api(  # noqa: PLR0917
                 if resource_id is not None
                 else ""
             )
-            ir.create_issue(
+            note_resource_threadsafe(
                 hass,
-                DOMAIN,
-                f"{config_entry.entry_id}_{resource_id}_forbiden",
-                is_fixable=False,
-                is_persistent=True,
-                severity=ir.IssueSeverity.ERROR,
-                translation_key="resource_exception_forbiden",
-                translation_placeholders={
-                    "resource": f"{api_category.capitalize()} {resource_label}".strip(),
-                    "user": (
-                        config_entry.data.get(CONF_HA_ADMIN_USERNAME)
+                config_entry,
+                FORBIDDEN,
+                f"{api_category}_{resource_id}",
+                ResourceLine(
+                    label=(
+                        f"Cluster (credentials `{config_entry.data.get(CONF_HA_ADMIN_USERNAME)}`)"
                         if api_category is ProxmoxType.Proxmox
-                        else config_entry.data[CONF_USERNAME]
+                        else f"{api_category.capitalize()} {resource_label}".strip()
                     ),
-                    "permission": permission_to_resource(api_category, resource_label),
-                },
+                    permission=permission_to_resource(api_category, resource_label),
+                    tracked_as=resource_label or None,
+                ),
+                listed=True,
             )
             LOGGER.debug(
                 f"Error get API path {api_path}: User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
             )
             return None
         raise UpdateFailed from error
-    ir.delete_issue(
-        hass,
-        DOMAIN,
-        f"{config_entry.entry_id}_{resource_id}_forbiden",
+    note_resource_threadsafe(
+        hass, config_entry, FORBIDDEN, f"{api_category}_{resource_id}", listed=False
     )
     return api_data

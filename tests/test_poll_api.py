@@ -50,12 +50,13 @@ async def test_a_refused_read_raises_a_repair(
     )
 
     assert result is None
-    issue = ir.async_get(hass).async_get_issue(
-        DOMAIN, f"{entry.entry_id}_{resource_id}_forbiden"
-    )
+    await hass.async_block_till_done()
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"{entry.entry_id}_forbidden")
     assert issue is not None
-    assert issue.translation_placeholders["resource"] == expected_resource
-    assert issue.translation_placeholders["permission"].startswith("['perm'")
+    assert issue.translation_placeholders["count"] == "1"
+    assert issue.translation_placeholders["items"].startswith(
+        f"* `{expected_resource}` — `['perm'"
+    )
 
 
 async def test_other_errors_fail_the_update(hass: HomeAssistant) -> None:

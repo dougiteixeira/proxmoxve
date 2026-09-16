@@ -102,17 +102,9 @@
             "title": "La configurazione di {integration} in formato YAML è deprecata.",
             "description": "La configurazione di {integration} ('{platform}') in formato YAML è deprecata e dovrebbe essere rimossa nella versione {version}.\n\nRisolvere i problemi di importazione e rimuovere la configurazione YAML dal tuo file configuration.yaml."
         },
-        "resource_nonexistent": {
-            "description": "Il {resource_type} {resource} non esiste su ({host}:{port}), rimuovilo dalle opzioni di integrazione.\n\nQuesto può anche essere causato se l'utente non ha sufficienti autorizzazioni per accedere alla risorsa.\n\nSuggerimento sui permessi necessari:\n* `{permission}`",
-            "title": "{resource_type} {resource} does not exist"
-        },
         "no_permissions": {
             "description": "L'utente '{user}' non ha le autorizzazioni necessarie per tutte le funzionalità.\n\nLe seguenti funzionalità non sono accessibili all'utente:\n'{errors}'\n\nControlla le autorizzazioni dell'utente come descritto nella documentazione.",
             "title": "L'utente '{user}' non ha le autorizzazioni necessarie."
-        },
-        "resource_exception_forbiden": {
-            "description": "L'utente {user} non ha le autorizzazioni sufficienti per accedere alla risorsa '{resource}'.\n\nSuggerimento sui permessi necessari:\n* `{permission}`\n\nSi prega di consultare la documentazione e verificare le autorizzazioni dell'utente..",
-            "title": "Errore di autorizzazioni per '{resource}'.`"
         },
         "resource_command_forbiden": {
             "description": "L'utente `{user}` non dispone delle autorizzazioni sufficienti per eseguire il comando `{command}` sulla risorsa `{resource}`.\n\nSuggerimento sulle autorizzazioni richieste:\n* `{permission}`\n\nSi prega di verificare la documentazione e le autorizzazioni dell'utente.",

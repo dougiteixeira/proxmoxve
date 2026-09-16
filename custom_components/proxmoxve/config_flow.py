@@ -54,6 +54,7 @@ from .const import (
     VERSION_REMOVE_YAML,
     ProxmoxType,
 )
+from .issues import NONEXISTENT, note_resource
 from .storage import backup_storage_options, storage_choices
 
 if TYPE_CHECKING:
@@ -504,10 +505,8 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
                 )
-                ir.async_delete_issue(
-                    self.hass,
-                    DOMAIN,
-                    f"{self.config_entry.entry_id}_{node}_resource_nonexistent",
+                note_resource(
+                    self.hass, self.config_entry, NONEXISTENT, str(node), listed=False
                 )
 
             if node not in (
@@ -556,10 +555,12 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
                 )
-                ir.async_delete_issue(
+                note_resource(
                     self.hass,
-                    DOMAIN,
-                    f"{self.config_entry.entry_id}_{qemu_id}_resource_nonexistent",
+                    self.config_entry,
+                    NONEXISTENT,
+                    str(qemu_id),
+                    listed=False,
                 )
 
         lxc_selecition = []
@@ -580,10 +581,8 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
                 )
-                ir.async_delete_issue(
-                    self.hass,
-                    DOMAIN,
-                    f"{self.config_entry.entry_id}_{lxc_id}_resource_nonexistent",
+                note_resource(
+                    self.hass, self.config_entry, NONEXISTENT, str(lxc_id), listed=False
                 )
 
         storage_selecition = []
@@ -602,10 +601,12 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     entry_id=self.config_entry.entry_id,
                     device_identifier=identifier,
                 )
-                ir.async_delete_issue(
+                note_resource(
                     self.hass,
-                    DOMAIN,
-                    f"{self.config_entry.entry_id}_{storage_id}_resource_nonexistent",
+                    self.config_entry,
+                    NONEXISTENT,
+                    str(storage_id),
+                    listed=False,
                 )
 
         return {

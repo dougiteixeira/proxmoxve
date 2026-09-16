@@ -9,7 +9,7 @@ To be able to obtain each type of integration information, the user used to conn
 
 It is not necessary to include all of the permission roles below, this will depend on your use of the integration.
 
-The integration will create a repair for each resource that is exposed in the integration configuration but is not accessible by the user, indicating the path and privilege necessary to access it.
+When the user may not read a resource that is tracked, one repair per integration entry lists every such resource with the path and privilege it needs; it grows and shrinks as resources are added or the privileges granted, and disappears when nothing is left. Resources that are tracked but no longer exist in the cluster have a repair of the same kind. Reading a VM's guest agent is a separate warning, since the integration works without it.
 
 Control buttons are only created for actions the user may actually perform: at setup the integration reads the effective privileges of its credentials (`GET /access/permissions`) and leaves out, for instance, the `Reboot` button of a node without `Sys.PowerMgmt`, the `Create snapshot` button of a guest without `VM.Snapshot`, or the `Start` button of a guest without `VM.PowerMgmt`. A button that could only ever fail is not worth having. Grant the privilege and reload the integration to get the button back. Should the privileges not be readable at all, every button is created as before.
 

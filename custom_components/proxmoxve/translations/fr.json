@@ -102,17 +102,9 @@
             "title": "La configuration de l' {integration} dans YAML est obsolète",
             "description": "La configuration de l' {integration} (`{platform}`) dans YAML est obsolète et devrait être supprimée dans {version}.\n\nRésoudre les problèmes d'importation et supprimer la configuration YAML de votre fichier `configuration.yaml`."
         },
-        "resource_nonexistent": {
-            "description": "La ressource {resource_type} {resource} n'existe pas à ({host}:{port}), supprimez-la dans les options de l'intégration.\n\nIl est possible que ce problème soit causé par une permission manquante de l'utilisateur pour accéder à cette ressource.\n\nPour information, les permissions requises sont :\n* `{permission}`",
-            "title": "{resource_type} {resource} n'existe pas"
-        },
         "no_permissions": {
             "description": "L'utilisateur `{user}` n'a pas les permissions requises pour toutes les fonctionnalités.\n\nLes fonctionnalités suivantes ne sont pas accessibles par l'utilisateur :\n`{errors}`\n\nVérifiez les permissions de l'utilisateur telles que décrites dans la documentation.",
             "title": "L'utilisateur `{user}` n'a pas les permissions requises"
-        },
-        "resource_exception_forbiden": {
-            "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour accéder à la ressource `{resource}`.\n\nInformation sur les permissions requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",
-            "title": "Erreur d'autorisation pour `{resource}`"
         },
         "resource_command_forbiden": {
             "description": "L'utilisateur `{user}` n'a pas les permissions suffisantes pour exécuter la commande `{command}` sur la ressource `{resource}`.\n\nInformation sur les permissions requises :\n* `{permission}`\n\nVeuillez vérifier la documentation et les autorisations d'utilisateur.",

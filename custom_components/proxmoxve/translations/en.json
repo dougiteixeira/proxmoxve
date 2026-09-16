@@ -104,17 +104,17 @@
         "title": "Configuration of the {integration} in YAML is deprecated",
         "description": "Configuration of the {integration} (`{platform}`) in YAML is deprecated and should be removed in {version}.\n\nResolve the import issues and remove the YAML configuration from your `configuration.yaml` file."
       },
-      "resource_nonexistent": {
-        "description": "{resource_type} {resource} does not exist on ({host}:{port}), remove it in integration options.\n\nThis can also be caused if the user doesn't have enough permission to access the resource.\n\nTip on required permissions:\n* `{permission}`",
-        "title": "{resource_type} {resource} does not exist"
+      "resources_nonexistent": {
+        "description": "These resources are tracked, but the cluster at `{host}:{port}` does not list them. Remove them in the integration options - or, if they do exist, user `{user}` may lack the privilege to see them, noted after each one:\n\n{items}",
+        "title": "{count} tracked resource(s) not found on {host}"
       },
       "no_permissions": {
         "description": "The user `{user}` does not have the required permissions for all features.\n\nThe following features are not accessible by the user:\n`{errors}`\n\nCheck the user permissions as described in the documentation.",
         "title": "User `{user}` does not have the required permissions"
       },
-      "resource_exception_forbiden": {
-        "description": "User `{user}` does not have sufficient permissions to access resource `{resource}`.\n\nTip on required permissions:\n* `{permission}`\n\nPlease check documentation and user permissions.",
-        "title": "Permissions error for `{resource}`"
+      "resources_forbidden": {
+        "description": "User `{user}` may not read these resources. Grant the privilege noted after each one, on the path shown or one above it, and reload the integration:\n\n{items}\n\nThe permissions documentation lists the roles the integration needs.",
+        "title": "{count} resource(s) not readable by `{user}`"
       },
       "guest_agent_fsinfo_forbidden": {
         "description": "User `{user}` may not query the QEMU guest agent of these VMs: {vms}.\n\nTheir disk usage falls back to what the host sees - for most VMs that is nothing. Reading it needs, on the VMs or on a path above them:\n* `{permission}`\n\nOn Proxmox VE 8 the privilege is `VM.Monitor` instead. The built-in `PVEAuditor` role carries it. Grant it and reload the integration.",

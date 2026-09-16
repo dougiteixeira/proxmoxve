@@ -53,7 +53,7 @@ async def test_a_refused_agent_read_raises_one_repair_naming_the_privilege(
     assert issue.translation_placeholders["vms"] == "101"
     # The guest's own repair - the VM.Audit one - is not raised: the status
     # read succeeded, and the VM is set up as usual.
-    assert _issue(hass, current_entry, "101_forbiden") is None
+    assert _issue(hass, current_entry, "forbidden") is None
     status = _state(
         hass, current_entry, f"{current_entry.entry_id}_101_status_raw", "sensor"
     )
@@ -118,4 +118,4 @@ async def test_the_file_sensor_has_a_repair_of_its_own(
     assert issue.translation_key == "guest_agent_file_forbidden"
     assert "VM.GuestAgent.FileRead" in issue.translation_placeholders["permission"]
     assert _issue(hass, current_entry, "guest_agent_fsinfo") is None
-    assert _issue(hass, current_entry, "101_forbiden") is None
+    assert _issue(hass, current_entry, "forbidden") is None

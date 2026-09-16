@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -79,6 +79,7 @@ from .const import (
     ProxmoxType,
 )
 from .coordinator import (
+    GUEST_AGENT_PRIVILEGES,
     ProxmoxBackupCoordinator,
     ProxmoxBackupInfoCoordinator,
     ProxmoxCephCoordinator,
@@ -97,6 +98,7 @@ from .coordinator import (
     ProxmoxTaskCoordinator,
     ProxmoxUpdateCoordinator,
     ProxmoxZFSCoordinator,
+    forget_untracked_guest_agents,
 )
 from .discovery import (
     discovered_resources,
@@ -104,6 +106,14 @@ from .discovery import (
     selected_resources,
 )
 from .disk import colliding_disk_wwns, resolve_disk_id
+from .issues import (
+    NONEXISTENT,
+    ResourceLine,
+    forget_entry,
+    forget_untracked,
+    note_resource,
+    sweep_legacy_issues,
+)
 from .permissions import (
     Permissions,
     ProxmoxPrivilege,
@@ -509,38 +519,23 @@ async def _get_api_or_retry_setup(
         raise ConfigEntryNotReady(msg) from error
 
 
-RESOURCE_NONEXISTENT_SUFFIX: Final = "_resource_nonexistent"
-
-
 def clear_stale_resource_issues(
     hass: HomeAssistant, config_entry: ConfigEntry, tracked: dict[str, list[Any]]
 ) -> None:
     """
-    Drop the "does not exist" repairs for resources this setup no longer tracks.
+    Drop the repair lines for resources this setup no longer tracks.
 
-    The repair tells you to remove the resource in the options. Doing that
-    reloads the entry, and setup then never looks at the resource again - so
-    nothing ever deleted the repair, and it sat there until it was ignored.
-    With discovery on the same happens to a picked resource the cluster
-    does not list. Either way, a repair for something not tracked any more
-    has nothing left to say.
+    The "does not exist" line tells you to remove the resource in the
+    options. Doing that reloads the entry, and setup then never looks at
+    the resource again - so nothing else would take the line off. The
+    per-resource repairs of earlier versions are swept out on the way.
     """
     still_tracked = {
         str(resource_id) for ids in tracked.values() for resource_id in ids
     }
-    prefix = f"{config_entry.entry_id}_"
-    registry = ir.async_get(hass)
-    for domain, issue_id in list(registry.issues):
-        if domain != DOMAIN:
-            continue
-        if not (
-            issue_id.startswith(prefix)
-            and issue_id.endswith(RESOURCE_NONEXISTENT_SUFFIX)
-        ):
-            continue
-        resource_id = issue_id[len(prefix) : -len(RESOURCE_NONEXISTENT_SUFFIX)]
-        if resource_id not in still_tracked:
-            ir.async_delete_issue(hass, DOMAIN, issue_id)
+    sweep_legacy_issues(hass, config_entry)
+    forget_untracked(hass, config_entry, still_tracked)
+    forget_untracked_guest_agents(hass, config_entry, still_tracked)
 
 
 def _resource_nonexistent_issue(
@@ -550,24 +545,22 @@ def _resource_nonexistent_issue(
     resource: str | int,
     permission: str,
 ) -> None:
-    """Raise the repair for a tracked resource the cluster does not list."""
-    ir.async_create_issue(
+    """Put a tracked resource the cluster does not list on the repair."""
+    note_resource(
         hass,
-        DOMAIN,
-        f"{config_entry.entry_id}_{resource}_resource_nonexistent",
-        is_fixable=False,
-        severity=ir.IssueSeverity.ERROR,
-        translation_key="resource_nonexistent",
-        translation_placeholders={
-            "integration": INTEGRATION_TITLE,
-            "platform": DOMAIN,
-            "host": config_entry.data[CONF_HOST],
-            "port": config_entry.data[CONF_PORT],
-            "resource_type": resource_type,
-            "resource": str(resource),
-            "permission": permission,
-        },
+        config_entry,
+        NONEXISTENT,
+        str(resource),
+        ResourceLine(f"{resource_type} {resource}", permission, str(resource)),
+        listed=True,
     )
+
+
+def _resource_exists_again(
+    hass: HomeAssistant, config_entry: ConfigEntry, resource: str | int
+) -> None:
+    """Take a resource the cluster lists off the repair."""
+    note_resource(hass, config_entry, NONEXISTENT, str(resource), listed=False)
 
 
 async def _async_setup_node(  # noqa: PLR0917
@@ -599,11 +592,7 @@ async def _async_setup_node(  # noqa: PLR0917
         )
         return None
 
-    ir.async_delete_issue(
-        hass,
-        DOMAIN,
-        f"{config_entry.entry_id}_{node}_resource_nonexistent",
-    )
+    _resource_exists_again(hass, config_entry, node)
     coordinator_node = ProxmoxNodeCoordinator(
         hass=hass,
         proxmox=proxmox,
@@ -761,11 +750,7 @@ async def _async_setup_guest(  # noqa: PLR0917
         )
         return False
 
-    ir.async_delete_issue(
-        hass,
-        DOMAIN,
-        f"{config_entry.entry_id}_{vm_id}_resource_nonexistent",
-    )
+    _resource_exists_again(hass, config_entry, vm_id)
     if api_category is ProxmoxType.QEMU:
         coordinator: ProxmoxQEMUCoordinator | ProxmoxLXCCoordinator = (
             ProxmoxQEMUCoordinator(
@@ -815,11 +800,7 @@ async def _async_setup_storage(  # noqa: PLR0917
         )
         return False
 
-    ir.async_delete_issue(
-        hass,
-        DOMAIN,
-        f"{config_entry.entry_id}_{storage_id}_resource_nonexistent",
-    )
+    _resource_exists_again(hass, config_entry, storage_id)
     coordinator_storage = ProxmoxStorageCoordinator(
         hass=hass,
         proxmox=proxmox,
@@ -1342,6 +1323,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     hass.data.get(DOMAIN, {}).get(GUEST_AGENT_REFUSALS, {}).pop(entry.entry_id, None)
+    for feature in GUEST_AGENT_PRIVILEGES:
+        ir.async_delete_issue(hass, DOMAIN, f"{entry.entry_id}_guest_agent_{feature}")
+    forget_entry(hass, entry.entry_id)
     return unload_ok
 
 
