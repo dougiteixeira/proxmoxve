@@ -29,6 +29,8 @@ Below is a summary of the permissions for each integration feature. I suggest yo
 |Perform commands on the node (shutdown, restart, start all, shutdown all)|Management permission|HomeAssistant.NodePowerMgmt|Sys.PowerMgmt|
 |Get information about available package updates to display on sensors (integration does not trigger the update)|Management permission|HomeAssistant.Update|Sys.Modify|
 |Perform commands on VM/CT (start, shutdown, restart, suspend, resume and hibernate)|Management permission|HomeAssistant.VMPowerMgmt|VM.PowerMgmt|
+|Create snapshots with the `Create snapshot` button|Management permission|HomeAssistant.VMSnapshot|VM.Snapshot|
+|Start backups with the backup buttons and the `proxmoxve.backup` action|Management permission|HomeAssistant.Backup|VM.Backup on the guests, Datastore.AllocateSpace on the backup storage|
 |**(Optional, separate user/token — see [Cluster HA Administration](entities.md#cluster-ha-administration-advanced-optional))** Arm/Disarm HA and read the HA-managed resource list and cluster HA status, root-scoped (`/`)|Cluster-wide management permission|HomeAssistant.ClusterHA|Sys.Console, Sys.Audit|
 
 ## Create Home Assistant Group
