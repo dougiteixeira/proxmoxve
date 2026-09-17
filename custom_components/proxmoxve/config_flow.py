@@ -30,6 +30,8 @@ from .const import (
     CONF_BACKUP_STORAGE,
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
+    CONF_ENTITY_ID_PREFIX,
+    CONF_ENTITY_ID_SCHEME,
     CONF_GUEST_FILE_PATH,
     CONF_HA_ADMIN_PASSWORD,
     CONF_HA_ADMIN_REALM,
@@ -43,14 +45,21 @@ from .const import (
     CONF_STORAGE,
     CONF_TASKS_ENABLE,
     CONF_TOKEN_NAME,
+    CONF_UPDATE_INTERVAL,
+    CONF_UPDATES_ENABLE,
     CONF_VMS,
     COORDINATORS,
+    DEFAULT_ENTITY_ID_PREFIX,
     DEFAULT_PORT,
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     INTEGRATION_TITLE,
     LOGGER,
+    SCHEME_EXTENDED,
+    SCHEME_STANDARD,
+    UPDATE_INTERVAL,
+    UPDATE_INTERVAL_CHOICES,
     VERSION_REMOVE_YAML,
     ProxmoxType,
 )
@@ -105,6 +114,28 @@ SCHEMA_CLUSTER_HA_AUTH: vol.Schema = vol.Schema(
 )
 
 
+def _update_interval_selector() -> selector.SelectSelector:
+    """Offer the polling interval as a pick-list of seconds."""
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[str(seconds) for seconds in UPDATE_INTERVAL_CHOICES],
+            translation_key=CONF_UPDATE_INTERVAL,
+            mode=selector.SelectSelectorMode.DROPDOWN,
+        )
+    )
+
+
+def _entity_id_scheme_selector() -> selector.SelectSelector:
+    """Offer standard or extended entity ids as a translated pick-list."""
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[SCHEME_STANDARD, SCHEME_EXTENDED],
+            translation_key=CONF_ENTITY_ID_SCHEME,
+            mode=selector.SelectSelectorMode.DROPDOWN,
+        )
+    )
+
+
 class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
     """Config flow options for ProxmoxVE."""
 
@@ -127,6 +158,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             menu_options=[
                 "host_auth",
                 "change_expose",
+                "advanced",
                 "cluster_ha_auth",
             ],
         )
@@ -391,45 +423,11 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                             }
                         ),
                         vol.Optional(
-                            CONF_DISKS_ENABLE,
-                            default=self.config_entry.options.get(
-                                CONF_DISKS_ENABLE, True
-                            ),
-                        ): selector.BooleanSelector(),
-                        vol.Optional(
-                            CONF_TASKS_ENABLE,
-                            default=self.config_entry.options.get(
-                                CONF_TASKS_ENABLE, True
-                            ),
-                        ): selector.BooleanSelector(),
-                        vol.Optional(
                             CONF_AUTO_DISCOVERY,
                             default=self.config_entry.options.get(
                                 CONF_AUTO_DISCOVERY, False
                             ),
                         ): selector.BooleanSelector(),
-                        vol.Optional(
-                            CONF_GUEST_FILE_PATH,
-                            description={
-                                "suggested_value": self.config_entry.options.get(
-                                    CONF_GUEST_FILE_PATH, ""
-                                )
-                            },
-                        ): selector.TextSelector(),
-                        vol.Optional(
-                            CONF_BACKUP_STORAGE,
-                            description={
-                                "suggested_value": self.config_entry.options.get(
-                                    CONF_BACKUP_STORAGE, ""
-                                )
-                            },
-                        ): selector.SelectSelector(
-                            selector.SelectSelectorConfig(
-                                options=backup_storage_options(resources),
-                                custom_value=True,
-                                mode=selector.SelectSelectorMode.DROPDOWN,
-                            )
-                        ),
                     }
                 ),
             )
@@ -450,11 +448,8 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
         options_data = {
-            CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
-            CONF_TASKS_ENABLE: user_input.get(CONF_TASKS_ENABLE),
+            **self.config_entry.options,
             CONF_AUTO_DISCOVERY: user_input.get(CONF_AUTO_DISCOVERY, False),
-            CONF_GUEST_FILE_PATH: user_input.get(CONF_GUEST_FILE_PATH, "").strip(),
-            CONF_BACKUP_STORAGE: (user_input.get(CONF_BACKUP_STORAGE) or "").strip(),
         }
 
         self.hass.config_entries.async_update_entry(
@@ -464,6 +459,132 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
         return self.async_abort(reason="changes_successful")
+
+    async def async_step_advanced(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        """
+        Handle the advanced options: what to read, how often, how to name it.
+
+        Kept apart from the selection so neither form is a wall of fields.
+        Everything here has a default a setup runs fine on.
+        """
+        if user_input is None:
+            resources = await self._async_cluster_resources()
+            if not isinstance(resources, list):
+                return resources
+            options = self.config_entry.options
+            return self.async_show_form(
+                step_id="advanced",
+                data_schema=vol.Schema(
+                    {
+                        vol.Optional(
+                            CONF_DISKS_ENABLE,
+                            default=options.get(CONF_DISKS_ENABLE, True),
+                        ): selector.BooleanSelector(),
+                        vol.Optional(
+                            CONF_TASKS_ENABLE,
+                            default=options.get(CONF_TASKS_ENABLE, True),
+                        ): selector.BooleanSelector(),
+                        vol.Optional(
+                            CONF_UPDATES_ENABLE,
+                            default=options.get(CONF_UPDATES_ENABLE, True),
+                        ): selector.BooleanSelector(),
+                        vol.Required(
+                            CONF_UPDATE_INTERVAL,
+                            default=str(
+                                options.get(CONF_UPDATE_INTERVAL, UPDATE_INTERVAL)
+                            ),
+                        ): _update_interval_selector(),
+                        vol.Optional(
+                            CONF_GUEST_FILE_PATH,
+                            description={
+                                "suggested_value": options.get(CONF_GUEST_FILE_PATH, "")
+                            },
+                        ): selector.TextSelector(),
+                        vol.Optional(
+                            CONF_BACKUP_STORAGE,
+                            description={
+                                "suggested_value": options.get(CONF_BACKUP_STORAGE, "")
+                            },
+                        ): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=backup_storage_options(resources),
+                                custom_value=True,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                            )
+                        ),
+                        vol.Required(
+                            CONF_ENTITY_ID_SCHEME,
+                            default=options.get(CONF_ENTITY_ID_SCHEME, SCHEME_STANDARD),
+                        ): _entity_id_scheme_selector(),
+                        vol.Optional(
+                            CONF_ENTITY_ID_PREFIX,
+                            description={
+                                "suggested_value": options.get(
+                                    CONF_ENTITY_ID_PREFIX, DEFAULT_ENTITY_ID_PREFIX
+                                )
+                            },
+                        ): selector.TextSelector(),
+                    }
+                ),
+            )
+
+        options_data = {
+            **self.config_entry.options,
+            CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE, True),
+            CONF_TASKS_ENABLE: user_input.get(CONF_TASKS_ENABLE, True),
+            CONF_UPDATES_ENABLE: user_input.get(CONF_UPDATES_ENABLE, True),
+            CONF_UPDATE_INTERVAL: int(
+                user_input.get(CONF_UPDATE_INTERVAL, UPDATE_INTERVAL)
+            ),
+            CONF_GUEST_FILE_PATH: (user_input.get(CONF_GUEST_FILE_PATH) or "").strip(),
+            CONF_BACKUP_STORAGE: (user_input.get(CONF_BACKUP_STORAGE) or "").strip(),
+            CONF_ENTITY_ID_SCHEME: user_input.get(
+                CONF_ENTITY_ID_SCHEME, SCHEME_STANDARD
+            ),
+            CONF_ENTITY_ID_PREFIX: (user_input.get(CONF_ENTITY_ID_PREFIX) or "").strip()
+            or DEFAULT_ENTITY_ID_PREFIX,
+        }
+        self.hass.config_entries.async_update_entry(
+            self.config_entry, options=options_data
+        )
+        await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+        return self.async_abort(reason="changes_successful")
+
+    async def _async_cluster_resources(self) -> list[dict[str, Any]] | FlowResult:
+        """
+        Connect with the entry's credentials and read the cluster's resources.
+
+        Returns the rows, or the abort result to hand back when connecting
+        failed - the same outcomes the selection step has always had.
+        """
+        data = self.config_entry.data
+        try:
+            self._proxmox_client = ProxmoxClient(
+                host=data[CONF_HOST],
+                port=data[CONF_PORT],
+                user=data[CONF_USERNAME],
+                token_name=data[CONF_TOKEN_NAME],
+                realm=data[CONF_REALM],
+                password=data[CONF_PASSWORD],
+                verify_ssl=data[CONF_VERIFY_SSL],
+            )
+            await self.hass.async_add_executor_job(self._proxmox_client.build_client)
+        except proxmoxer.backends.https.AuthenticationError:
+            return self.async_abort(reason="auth_error")
+        except SSLError:
+            return self.async_abort(reason="ssl_rejection")
+        except ConnectTimeout:
+            return self.async_abort(reason="cant_connect")
+        except Exception:  # pylint: disable=broad-except
+            return self.async_abort(reason="general_error")
+        proxmox = self._proxmox_client.get_api_client()
+        resources = await self.hass.async_add_executor_job(
+            get_api, proxmox, "cluster/resources"
+        )
+        return resources if isinstance(resources, list) else []
 
     async def async_remove_device(
         self,
@@ -1079,13 +1200,16 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     default=True,
                 ): selector.BooleanSelector(),
                 vol.Optional(
-                    CONF_TASKS_ENABLE,
-                    default=True,
-                ): selector.BooleanSelector(),
-                vol.Optional(
                     CONF_AUTO_DISCOVERY,
                     default=False,
                 ): selector.BooleanSelector(),
+                # No default on purpose: the ids are set for good once the
+                # entities exist, so the choice is made here, knowingly.
+                vol.Required(CONF_ENTITY_ID_SCHEME): _entity_id_scheme_selector(),
+                vol.Optional(
+                    CONF_ENTITY_ID_PREFIX,
+                    description={"suggested_value": DEFAULT_ENTITY_ID_PREFIX},
+                ): selector.TextSelector(),
             }
         )
 
@@ -1169,8 +1293,18 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data=self._config,
             options={
                 CONF_DISKS_ENABLE: user_input.get(CONF_DISKS_ENABLE),
-                CONF_TASKS_ENABLE: user_input.get(CONF_TASKS_ENABLE),
+                # Defaults for what the advanced options offer later.
+                CONF_TASKS_ENABLE: True,
+                CONF_UPDATES_ENABLE: True,
+                CONF_UPDATE_INTERVAL: UPDATE_INTERVAL,
                 CONF_AUTO_DISCOVERY: user_input.get(CONF_AUTO_DISCOVERY, False),
+                CONF_ENTITY_ID_SCHEME: user_input.get(
+                    CONF_ENTITY_ID_SCHEME, SCHEME_STANDARD
+                ),
+                CONF_ENTITY_ID_PREFIX: (
+                    user_input.get(CONF_ENTITY_ID_PREFIX) or ""
+                ).strip()
+                or DEFAULT_ENTITY_ID_PREFIX,
             },
         )
 

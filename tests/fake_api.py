@@ -170,11 +170,6 @@ def default_routes() -> dict[str, Any]:
             STORAGE_EXT_PVE2,
             {"id": f"sdn/{NODE}/localnetwork", "type": "sdn", "node": NODE},
         ],
-        "cluster/resources?type=storage": [
-            STORAGE_LOCAL,
-            STORAGE_EXT,
-            STORAGE_EXT_PVE2,
-        ],
         "access/permissions": {
             "/": {
                 "Sys.Audit": 1,
@@ -412,6 +407,71 @@ def default_routes() -> dict[str, Any]:
             ]
         },
         f"nodes/{NODE}/lxc/100/status/current": lxc_status(100, "lxc-test-100"),
+        # What `.../snapshot` lists: the snapshots, then the `current` pseudo
+        # entry for the live state, which is no snapshot.
+        f"nodes/{NODE}/qemu/101/snapshot": [
+            {
+                "name": "before-update",
+                "snaptime": 1_757_900_000,
+                "description": "Created by Home Assistant",
+                "vmstate": 0,
+            },
+            {"name": "clean-install", "snaptime": 1_757_000_000, "description": ""},
+            {"name": "current", "running": 1, "digest": "abc123"},
+        ],
+        f"nodes/{NODE}/lxc/100/snapshot": [{"name": "current", "digest": "def456"}],
+        # What the guest agent and a container report about their addresses.
+        f"nodes/{NODE}/qemu/101/agent/network-get-interfaces": {
+            "result": [
+                {
+                    "name": "lo",
+                    "hardware-address": "00:00:00:00:00:00",
+                    "ip-addresses": [
+                        {
+                            "ip-address": "127.0.0.1",
+                            "ip-address-type": "ipv4",
+                            "prefix": 8,
+                        },
+                        {"ip-address": "::1", "ip-address-type": "ipv6", "prefix": 128},
+                    ],
+                },
+                {
+                    "name": "ens18",
+                    "hardware-address": "02:00:0a:01:02:03",
+                    "ip-addresses": [
+                        {
+                            "ip-address": "192.0.2.10",
+                            "ip-address-type": "ipv4",
+                            "prefix": 24,
+                        },
+                        {
+                            "ip-address": "fe80::1ff:fe23:4567:890a",
+                            "ip-address-type": "ipv6",
+                            "prefix": 64,
+                        },
+                        {
+                            "ip-address": "2001:db8::10",
+                            "ip-address-type": "ipv6",
+                            "prefix": 64,
+                        },
+                    ],
+                },
+            ]
+        },
+        f"nodes/{NODE}/lxc/100/interfaces": [
+            {
+                "name": "lo",
+                "hwaddr": "00:00:00:00:00:00",
+                "inet": "127.0.0.1/8",
+                "inet6": "::1/128",
+            },
+            {
+                "name": "eth0",
+                "hwaddr": "02:00:0a:01:02:04",
+                "inet": "192.0.2.20/24",
+                "inet6": "fe80::2/64",
+            },
+        ],
     }
 
 

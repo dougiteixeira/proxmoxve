@@ -15,6 +15,7 @@ from custom_components.proxmoxve import DOMAIN
 from custom_components.proxmoxve.const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
+    CONF_ENTITY_ID_SCHEME,
     CONF_LXC,
     CONF_NODE,
     CONF_NODES,
@@ -116,6 +117,15 @@ USER_INPUT_SELECTION = {
     CONF_LXC: ["100"],
     CONF_STORAGE: ["storage/pve/local"],
     CONF_DISKS_ENABLE: True,
+    # Required at setup, with no default: the form insists on a choice.
+    CONF_ENTITY_ID_SCHEME: "standard",
+}
+# What the options' selection page takes: the selection and discovery only;
+# everything else moved to the Advanced configuration page.
+OPTIONS_INPUT_SELECTION = {
+    key: value
+    for key, value in USER_INPUT_SELECTION.items()
+    if key in (CONF_NODES, CONF_QEMU, CONF_LXC, CONF_STORAGE)
 }
 USER_INPUT_AUTH = {
     CONF_USERNAME: "root",

@@ -78,6 +78,20 @@ class ProxmoxVMData:
     # two-core guest at 100% is one twelfth of a twelve-thread node.
     cpus: int | UndefinedType = UNDEFINED
     cpu_of_host: float | UndefinedType = UNDEFINED
+    # The guest's snapshots, from `.../snapshot`: how many there are (the
+    # `current` pseudo entry not counted), their names newest first, and
+    # when the newest was taken. Plain values: they are state attributes.
+    snapshots: int | UndefinedType = UNDEFINED
+    snapshot_names: list[str] | None = None
+    snapshot_latest: datetime | None = None
+    # Whether the QEMU guest agent answers: UNDEFINED when it is not
+    # configured for the VM or the credentials may not ask it.
+    agent_running: bool | UndefinedType = UNDEFINED
+    # The guest's addresses as the agent (VM) or the container reports
+    # them: the address to show, every address, and them by interface.
+    ip_address: str | UndefinedType = UNDEFINED
+    ip_addresses: list[str] | None = None
+    interfaces: dict[str, list[str]] | None = None
 
 
 @dataclasses.dataclass
@@ -106,6 +120,15 @@ class ProxmoxLXCData:
     # two-core guest at 100% is one twelfth of a twelve-thread node.
     cpus: int | UndefinedType = UNDEFINED
     cpu_of_host: float | UndefinedType = UNDEFINED
+    # The guest's snapshots, from `.../snapshot`: how many there are (the
+    # `current` pseudo entry not counted), their names newest first, and
+    # when the newest was taken. Plain values: they are state attributes.
+    snapshots: int | UndefinedType = UNDEFINED
+    snapshot_names: list[str] | None = None
+    snapshot_latest: datetime | None = None
+    ip_address: str | UndefinedType = UNDEFINED
+    ip_addresses: list[str] | None = None
+    interfaces: dict[str, list[str]] | None = None
 
 
 @dataclasses.dataclass

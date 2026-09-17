@@ -15,10 +15,18 @@ CONF_VMS = "vms"
 CONF_CONTAINERS = "containers"
 CONF_DISKS_ENABLE = "disks_enable"
 CONF_TASKS_ENABLE = "tasks_enable"
+CONF_UPDATES_ENABLE = "updates_enable"
 # The storage the backup buttons write to. Unset means no buttons: vzdump
 # without a storage dumps into the node's local directory, which is never
 # what a button on a dashboard should do without being asked.
 CONF_BACKUP_STORAGE = "backup_storage"
+# How entity ids are built: Home Assistant's device-then-name, or the
+# extended scheme with a common prefix first and the id before the name.
+CONF_ENTITY_ID_SCHEME = "entity_id_scheme"
+SCHEME_STANDARD = "standard"
+SCHEME_EXTENDED = "extended"
+CONF_ENTITY_ID_PREFIX = "entity_id_prefix"
+DEFAULT_ENTITY_ID_PREFIX = "pve"
 CONF_AUTO_DISCOVERY = "auto_discovery"
 CONF_GUEST_FILE_PATH = "guest_file_path"
 CONF_HA_ADMIN_USERNAME = "ha_admin_username"
@@ -44,6 +52,11 @@ DEFAULT_PORT = 8006
 DEFAULT_REALM = "pam"
 DEFAULT_VERIFY_SSL = True
 UPDATE_INTERVAL = 60
+# The choices the options offer for it. Proxmox's own pvestatd refreshes
+# guest figures about every ten seconds; anything below thirty would mostly
+# read the same numbers again.
+CONF_UPDATE_INTERVAL = "update_interval"
+UPDATE_INTERVAL_CHOICES = (30, 45, 60, 90, 120)
 # For everything that changes when a person changes it, rather than on its
 # own: a certificate is replaced, a backup job is edited, a subscription is
 # entered. Polling those at the usual interval would spend a request a minute

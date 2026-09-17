@@ -23,8 +23,11 @@ from custom_components.proxmoxve import DOMAIN
 from custom_components.proxmoxve.const import (
     CONF_AUTO_DISCOVERY,
     CONF_DISKS_ENABLE,
+    CONF_ENTITY_ID_PREFIX,
+    CONF_ENTITY_ID_SCHEME,
     CONF_NODES,
     CONF_REALM,
+    CONF_UPDATE_INTERVAL,
 )
 
 from .const import (
@@ -251,12 +254,17 @@ async def test_an_empty_selection_with_discovery_on_is_accepted(
         assert result["step_id"] == "expose"
 
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input={CONF_AUTO_DISCOVERY: True}
+            result["flow_id"],
+            user_input={CONF_AUTO_DISCOVERY: True, CONF_ENTITY_ID_SCHEME: "extended"},
         )
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_NODES] == []
     assert result["options"][CONF_AUTO_DISCOVERY] is True
+    assert result["options"][CONF_ENTITY_ID_SCHEME] == "extended"
+    assert result["options"][CONF_ENTITY_ID_PREFIX] == "pve"
+    # What the advanced options offer later starts at its default.
+    assert result["options"][CONF_UPDATE_INTERVAL] == 60
 
 
 async def test_an_empty_selection_without_discovery_asks_for_a_node(
@@ -278,7 +286,8 @@ async def test_an_empty_selection_without_discovery_asks_for_a_node(
             result["flow_id"], user_input=USER_INPUT_USER_HOST
         )
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input={CONF_DISKS_ENABLE: False}
+            result["flow_id"],
+            user_input={CONF_DISKS_ENABLE: False, CONF_ENTITY_ID_SCHEME: "standard"},
         )
 
         assert result["type"] == FlowResultType.FORM

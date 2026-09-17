@@ -189,9 +189,9 @@ async def test_a_shared_storage_no_node_sees_still_has_an_entity(
     hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
 ) -> None:
     """Test a shared storage every node reports unavailable is still tracked."""
-    fake_api.routes["cluster/resources?type=storage"] = [
-        {**row, "status": "unknown"} if row["storage"] == "ext" else row
-        for row in fake_api.routes["cluster/resources?type=storage"]
+    fake_api.routes["cluster/resources"] = [
+        {**row, "status": "unknown"} if row.get("storage") == "ext" else row
+        for row in fake_api.routes["cluster/resources"]
     ]
     hass.config_entries.async_update_entry(
         current_entry, data={**current_entry.data, CONF_STORAGE: ["storage/ext"]}

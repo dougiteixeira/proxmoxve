@@ -110,6 +110,16 @@ PROXMOX_BINARYSENSOR_VM: Final[tuple[ProxmoxBinarySensorEntityDescription, ...]]
         on_value=[True],
         translation_key="locked",
     ),
+    # Only for VMs with the agent configured; whether it answers.
+    ProxmoxBinarySensorEntityDescription(
+        key="agent_running",
+        name="Guest agent",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        on_value=[True],
+        api_category=ProxmoxType.QEMU,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        translation_key="guest_agent",
+    ),
 )
 
 # Same three flags, same category and defaults as the Home Assistant core

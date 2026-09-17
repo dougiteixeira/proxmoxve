@@ -21,12 +21,10 @@
                     "lxc": "Контейнеры Linux (LXC)",
                     "storage": "Хранилища",
                     "disks_enable": "Включить мониторинг физических дисков",
-                    "tasks_enable": "Monitor failed tasks",
                     "auto_discovery": "Track everything automatically"
                 },
                 "data_description": {
                     "disks_enable": "При использовании гибернации дисков отключите эту опцию, чтобы предотвратить их нежелательное пробуждение.",
-                    "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes.",
                     "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked."
                 }
             },
@@ -169,17 +167,23 @@
                     "nodes": "Ноды",
                     "qemu": "Виртуальные машины (QEMU)",
                     "storage": "Хранилища",
+                    "auto_discovery": "Track everything automatically"
+                },
+                "data_description": {
+                    "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked."
+                }
+            },
+            "advanced": {
+                "data": {
                     "disks_enable": "Включить мониторинг физических дисков",
                     "tasks_enable": "Monitor failed tasks",
                     "guest_file_path": "Guest file path to monitor (QEMU, requires guest agent)",
-                    "auto_discovery": "Track everything automatically",
                     "backup_storage": "Backup storage for the backup buttons"
                 },
                 "data_description": {
                     "disks_enable": "При использовании гибернации дисков отключите эту опцию, чтобы предотвратить их нежелательное пробуждение.",
                     "tasks_enable": "Track and report failed tasks from the last 24 hours on selected nodes.",
                     "guest_file_path": "Absolute path of a file inside each tracked QEMU guest to read via the guest agent and expose as a sensor. Leave empty to disable. Requires the QEMU guest agent to be running in the guest.",
-                    "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked.",
                     "backup_storage": "Where the \"Back up now\" and \"Back up all\" buttons write their backups (snapshot mode). The buttons exist only while a storage is picked here and the credentials hold VM.Backup. Storages that accept backups are listed; any other name can be typed in."
                 }
             }

@@ -18,7 +18,7 @@ from custom_components.proxmoxve.coordinator import (
 )
 from custom_components.proxmoxve.models import ProxmoxStorageData
 
-# The storage as `GET /cluster/resources?type=storage` lists it.
+# The storage as the cluster's resource list (`GET /cluster/resources`) lists it.
 CLUSTER_VIEW = [
     {
         "id": "storage/pve1/nas",
@@ -64,7 +64,10 @@ def _coordinator(responses: dict[str, object]) -> ProxmoxStorageCoordinator:
     coordinator.hass.async_add_executor_job = AsyncMock(
         side_effect=lambda func, *args: func(*args)
     )
+    # The shared resource read keeps its cache in hass.data, per entry.
+    coordinator.hass.data = {}
     coordinator.config_entry = MagicMock()
+    coordinator.config_entry.entry_id = "test"
     coordinator.proxmox = MagicMock()
     coordinator.resource_id = "storage/pve1/nas"
 
@@ -117,7 +120,6 @@ async def test_the_node_view_is_read() -> None:
     data = await _update(
         {
             "cluster/resources": CLUSTER_VIEW,
-            "cluster/resources?type=storage": CLUSTER_VIEW,
             "nodes/pve1/storage?storage=nas": NODE_VIEW,
         }
     )
@@ -137,7 +139,6 @@ async def test_an_unreachable_storage_reads_inactive() -> None:
     data = await _update(
         {
             "cluster/resources": CLUSTER_VIEW,
-            "cluster/resources?type=storage": CLUSTER_VIEW,
             "nodes/pve1/storage?storage=nas": node_view,
         }
     )
@@ -156,7 +157,6 @@ async def test_without_the_node_view_the_flags_are_unknown() -> None:
     data = await _update(
         {
             "cluster/resources": CLUSTER_VIEW,
-            "cluster/resources?type=storage": CLUSTER_VIEW,
             "nodes/pve1/storage?storage=nas": None,
         }
     )

@@ -21,12 +21,10 @@
                     "lxc": "Linux 容器 (LXC)",
                     "storage": "存储",
                     "disks_enable": "启用物理磁盘监控",
-                    "tasks_enable": "监控任务失败",
                     "auto_discovery": "Track everything automatically"
                 },
                 "data_description": {
                     "disks_enable": "若使用磁盘休眠功能，请禁用此选项以避免意外唤醒磁盘。",
-                    "tasks_enable": "监测并报告过去 24 小时内选定节点的失败任务。",
                     "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked."
                 }
             },
@@ -169,17 +167,23 @@
                     "nodes": "节点",
                     "qemu": "虚拟机 (QEMU)",
                     "storage": "存储",
+                    "auto_discovery": "Track everything automatically"
+                },
+                "data_description": {
+                    "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked."
+                }
+            },
+            "advanced": {
+                "data": {
                     "disks_enable": "启用物理磁盘监控",
                     "tasks_enable": "监控任务失败",
                     "guest_file_path": "Guest file path to monitor (QEMU, requires guest agent)",
-                    "auto_discovery": "Track everything automatically",
                     "backup_storage": "Backup storage for the backup buttons"
                 },
                 "data_description": {
                     "disks_enable": "若使用磁盘休眠功能，请禁用此选项以避免意外唤醒磁盘。",
                     "tasks_enable": "监测并报告过去 24 小时内选定节点的失败任务。",
                     "guest_file_path": "Absolute path of a file inside each tracked QEMU guest to read via the guest agent and expose as a sensor. Leave empty to disable. Requires the QEMU guest agent to be running in the guest.",
-                    "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked.",
                     "backup_storage": "Where the \"Back up now\" and \"Back up all\" buttons write their backups (snapshot mode). The buttons exist only while a storage is picked here and the credentials hold VM.Backup. Storages that accept backups are listed; any other name can be typed in."
                 }
             }

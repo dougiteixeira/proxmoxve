@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import ipaddress
 import json
 import re
 import time
@@ -36,6 +38,7 @@ from .api import ProxmoxClient, get_api
 from .const import (
     CONF_GUEST_FILE_PATH,
     CONF_NODE,
+    CONF_UPDATE_INTERVAL,
     DOMAIN,
     GUEST_AGENT_REFUSALS,
     GUEST_FILE_READ_MAX_BYTES,
@@ -45,6 +48,7 @@ from .const import (
     SLOW_UPDATE_INTERVAL,
     TASKS_UPDATE_INTERVAL,
     UPDATE_INTERVAL,
+    UPDATE_INTERVAL_CHOICES,
     ProxmoxType,
 )
 from .discovery import (
@@ -398,6 +402,83 @@ def _task_timestamp(value: Any) -> datetime | UndefinedType:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return UNDEFINED
     return dt_util.utc_from_timestamp(value)
+
+
+def _shown_address(address: str) -> bool:
+    """Tell an address worth showing from loopback and link-local noise."""
+    try:
+        parsed = ipaddress.ip_address(address)
+    except ValueError:
+        return False
+    return not (parsed.is_loopback or parsed.is_link_local or parsed.is_unspecified)
+
+
+def parse_guest_addresses(kind: ProxmoxType, payload: Any) -> dict[str, Any]:
+    """
+    Read a guest's addresses from what the agent or the container reports.
+
+    A VM's agent (`agent/network-get-interfaces`) lists interfaces with
+    `ip-addresses` entries; a container (`lxc/{vmid}/interfaces`) lists
+    them with `inet`/`inet6` strings carrying the prefix. Loopback and
+    link-local addresses are left out; the address shown is the first
+    IPv4 in interface order, or the first IPv6 when there is none.
+    """
+    unknown = {"ip_address": UNDEFINED, "ip_addresses": None, "interfaces": None}
+    entries = payload.get("result") if isinstance(payload, dict) else payload
+    if not isinstance(entries, list):
+        return unknown
+    interfaces: dict[str, list[str]] = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or not (name := entry.get("name")):
+            continue
+        if kind is ProxmoxType.QEMU:
+            found = [
+                str(item["ip-address"])
+                for item in entry.get("ip-addresses") or []
+                if isinstance(item, dict) and item.get("ip-address")
+            ]
+        else:
+            found = [
+                str(entry[key]).split("/", 1)[0]
+                for key in ("inet", "inet6")
+                if entry.get(key)
+            ]
+        shown = [address for address in found if _shown_address(address)]
+        if shown:
+            interfaces[str(name)] = shown
+    addresses = [address for shown in interfaces.values() for address in shown]
+    if not addresses:
+        return {"ip_address": UNDEFINED, "ip_addresses": [], "interfaces": interfaces}
+    first = next(
+        (a for a in addresses if ipaddress.ip_address(a).version == 4), addresses[0]
+    )
+    return {"ip_address": first, "ip_addresses": addresses, "interfaces": interfaces}
+
+
+def parse_snapshots(entries: Any) -> dict[str, Any]:
+    """
+    Count a guest's snapshots from `nodes/{node}/{qemu|lxc}/{vmid}/snapshot`.
+
+    The list always ends with a `current` pseudo entry standing for the
+    live state; it is not a snapshot and is left out. Names come newest
+    first; `snapshot_latest` is when the newest was taken.
+    """
+    if not isinstance(entries, list):
+        return {"snapshots": UNDEFINED, "snapshot_names": None, "snapshot_latest": None}
+    taken = [
+        entry
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("name") not in (None, "current")
+    ]
+    taken.sort(key=lambda entry: entry.get("snaptime") or 0, reverse=True)
+    latest = next(
+        (entry.get("snaptime") for entry in taken if entry.get("snaptime")), None
+    )
+    return {
+        "snapshots": len(taken),
+        "snapshot_names": [str(entry["name"]) for entry in taken],
+        "snapshot_latest": dt_util.utc_from_timestamp(latest) if latest else None,
+    }
 
 
 def parse_running_backup(active: Any) -> dict[str, Any]:
@@ -856,6 +937,103 @@ class CurrentApiMixin:
         self._proxmox = proxmox
 
 
+def poll_interval(config_entry: ConfigEntry) -> timedelta:
+    """
+    Return the interval of the coordinators that follow the cluster live.
+
+    Configurable in the options between 30 and 120 seconds, 60 unless
+    changed. The hourly reads (certificate, subscription, Ceph) and the
+    five-minute task scan keep their own pace.
+    """
+    seconds = config_entry.options.get(CONF_UPDATE_INTERVAL, UPDATE_INTERVAL)
+    try:
+        seconds = int(seconds)
+    except (TypeError, ValueError):
+        seconds = UPDATE_INTERVAL
+    if seconds not in UPDATE_INTERVAL_CHOICES:
+        seconds = UPDATE_INTERVAL
+    return timedelta(seconds=seconds)
+
+
+RESOURCES_CACHE = "resources_cache"
+# How long one `cluster/resources` read serves every coordinator of an
+# entry. They all poll on the same 60 s interval and were started within
+# seconds of each other, so one read per burst is enough; well under the
+# interval, so the next burst reads afresh.
+RESOURCES_TTL: Final = 15.0
+
+
+class SharedResources:
+    """
+    One `cluster/resources` read per poll burst, shared by an entry's coordinators.
+
+    Every VM, container and storage coordinator, the cluster summary and
+    discovery used to read the same list themselves - forty identical
+    requests a minute on a modest cluster, the first thing a slow API
+    chokes on. The first caller of a burst reads; the others wait for it
+    and take the result. A failure is shared the same way, so a dead host
+    is hit once per burst, not once per coordinator.
+    """
+
+    def __init__(self) -> None:
+        """Start with nothing read."""
+        self._lock = asyncio.Lock()
+        self._read_at: float = -RESOURCES_TTL
+        self._rows: list[dict[str, Any]] | None = None
+        self._failure: str | None = None
+
+    async def get(
+        self,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        proxmox: ProxmoxAPI,
+        resource_type: str | None = None,
+        *,
+        fresh: bool = False,
+    ) -> list[dict[str, Any]] | None:
+        """
+        Return the rows, read afresh when the last read is older than the TTL.
+
+        `fresh` reads regardless - for discovery, whose job is to notice
+        what changed; its read then serves the burst that follows.
+        """
+        async with self._lock:
+            if fresh or time.monotonic() - self._read_at >= RESOURCES_TTL:
+                try:
+                    rows = await hass.async_add_executor_job(
+                        poll_api,
+                        hass,
+                        config_entry,
+                        proxmox,
+                        "cluster/resources",
+                        ProxmoxType.Resources,
+                        None,
+                    )
+                except UpdateFailed as error:
+                    self._rows, self._failure = None, str(error)
+                else:
+                    self._rows = rows if isinstance(rows, list) else None
+                    self._failure = (
+                        None if isinstance(rows, list) or rows is None else ""
+                    )
+                self._read_at = time.monotonic()
+        if self._failure is not None:
+            raise UpdateFailed(self._failure or "Cluster resources are not available")
+        if self._rows is None or resource_type is None:
+            return self._rows
+        return [row for row in self._rows if row.get("type") == resource_type]
+
+    def forget(self) -> None:
+        """Make the next caller read again - after something changed the cluster."""
+        self._read_at = -RESOURCES_TTL
+
+
+def shared_resources(hass: HomeAssistant, config_entry: ConfigEntry) -> SharedResources:
+    """Return the entry's shared resource read, creating it on first use."""
+    store = hass.data.setdefault(DOMAIN, {}).setdefault(RESOURCES_CACHE, {})
+    return store.setdefault(config_entry.entry_id, SharedResources())
+
+
 class ProxmoxCoordinator(
     CurrentApiMixin,
     DataUpdateCoordinator[
@@ -910,7 +1088,7 @@ class ProxmoxDiscoveryCoordinator(
             LOGGER,
             config_entry=config_entry,
             name="proxmox_coordinator_discovery",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -923,14 +1101,8 @@ class ProxmoxDiscoveryCoordinator(
 
     async def _async_update_data(self) -> dict[str, list[str]]:
         """Compare the cluster's resource list with what is tracked."""
-        resources = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            "cluster/resources",
-            ProxmoxType.Resources,
-            self.resource_id,
+        resources = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox, fresh=True
         )
 
         if not isinstance(resources, list):
@@ -981,7 +1153,7 @@ class ProxmoxHAResourcesCoordinator(DataUpdateCoordinator[set[str]]):
             LOGGER,
             config_entry=config_entry,
             name="proxmox_coordinator_ha_resources",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -1033,7 +1205,7 @@ class ProxmoxHAStatusCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name="proxmox_coordinator_ha_status",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -1085,7 +1257,7 @@ class ProxmoxClusterSummaryCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name="proxmox_coordinator_cluster_summary",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -1096,14 +1268,8 @@ class ProxmoxClusterSummaryCoordinator(ProxmoxCoordinator):
 
     async def _async_update_data(self) -> ProxmoxClusterSummaryData:
         """Add up the cluster's resource list."""
-        resources = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            "cluster/resources",
-            ProxmoxType.Resources,
-            None,
+        resources = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox
         )
         if resources is None:
             msg = "The cluster's resource list is not available"
@@ -1178,7 +1344,7 @@ class ProxmoxBackupCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_backup_{node_name}",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -1237,7 +1403,7 @@ class ProxmoxReplicationCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_replication_{node_name}",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -1335,7 +1501,7 @@ class ProxmoxCephCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name="proxmox_coordinator_ceph",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -1456,7 +1622,7 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -1759,6 +1925,28 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
         raise UpdateFailed(msg)
 
 
+async def poll_snapshots(
+    coordinator: ProxmoxCoordinator, kind: ProxmoxType, node_name: str
+) -> dict[str, Any]:
+    """Read a guest's snapshot list; a failed read leaves the figures unknown."""
+    try:
+        entries = await coordinator.hass.async_add_executor_job(
+            partial(
+                poll_api,
+                coordinator.hass,
+                coordinator.config_entry,
+                coordinator.proxmox,
+                f"nodes/{node_name!s}/{kind}/{coordinator.resource_id}/snapshot",
+                kind,
+                coordinator.resource_id,
+                issue_crete_permissions=False,
+            )
+        )
+    except UpdateFailed:
+        entries = None
+    return parse_snapshots(entries)
+
+
 class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
     """Proxmox VE QEMU data update coordinator."""
 
@@ -1777,7 +1965,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{qemu_id}",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -1831,15 +2019,8 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         node_name = None
         api_status = None
 
-        api_path = "cluster/resources"
-        resources = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            api_path,
-            ProxmoxType.Resources,
-            None,
+        resources = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox
         )
 
         node_cpus: Any = UNDEFINED
@@ -1941,6 +2122,26 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             except UpdateFailed:
                 pass
 
+        # The agent answers only while it runs: a successful read says so, a
+        # refusal (403) says nothing, anything else - not running, VM off -
+        # says no. Not configured for the VM at all leaves it undefined.
+        agent_running: bool | UndefinedType = UNDEFINED
+        addresses = parse_guest_addresses(ProxmoxType.QEMU, None)
+        if api_status.get("agent"):
+            try:
+                interfaces = await self._poll_guest_agent(
+                    f"nodes/{node_name!s}/qemu/{self.resource_id}/agent/network-get-interfaces",
+                    "fsinfo",
+                )
+            except UpdateFailed:
+                agent_running = False
+            else:
+                if interfaces is not None:
+                    agent_running = True
+                    addresses = parse_guest_addresses(ProxmoxType.QEMU, interfaces)
+
+        snapshots = await poll_snapshots(self, ProxmoxType.QEMU, node_name)
+
         update_device_via(self, ProxmoxType.QEMU, node_name)
 
         memory_total = api_status.get("maxmem", UNDEFINED)
@@ -1972,6 +2173,9 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             cpu_of_host=cpu_share_of_host(
                 api_status.get("cpu"), api_status.get("cpus"), node_cpus
             ),
+            **snapshots,
+            agent_running=agent_running,
+            **addresses,
             memory_total=memory_total,
             memory_used=memory_used,
             memory_free=memory_free,
@@ -2013,7 +2217,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{container_id}",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -2027,15 +2231,8 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         node_name = None
         api_status = None
 
-        api_path = "cluster/resources"
-        resources = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            api_path,
-            ProxmoxType.Resources,
-            None,
+        resources = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox
         )
 
         node_cpus: Any = UNDEFINED
@@ -2066,6 +2263,26 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             msg = f"LXC {self.resource_id} unable to be found"
             raise UpdateFailed(msg)
 
+        snapshots = await poll_snapshots(self, ProxmoxType.LXC, node_name)
+        addresses = parse_guest_addresses(ProxmoxType.LXC, None)
+        if api_status.get("status") == "running":
+            try:
+                interfaces = await self.hass.async_add_executor_job(
+                    partial(
+                        poll_api,
+                        self.hass,
+                        self.config_entry,
+                        self.proxmox,
+                        f"nodes/{node_name!s}/lxc/{self.resource_id}/interfaces",
+                        ProxmoxType.LXC,
+                        self.resource_id,
+                        issue_crete_permissions=False,
+                    )
+                )
+            except UpdateFailed:
+                interfaces = None
+            addresses = parse_guest_addresses(ProxmoxType.LXC, interfaces)
+
         update_device_via(self, ProxmoxType.LXC, node_name)
 
         return ProxmoxLXCData(
@@ -2080,6 +2297,8 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
             cpu_of_host=cpu_share_of_host(
                 api_status.get("cpu"), api_status.get("cpus"), node_cpus
             ),
+            **snapshots,
+            **addresses,
             memory_total=api_status.get("maxmem", UNDEFINED),
             memory_used=api_status.get("mem", UNDEFINED),
             memory_free=(
@@ -2128,7 +2347,7 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{storage_id}",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -2146,15 +2365,8 @@ class ProxmoxStorageCoordinator(ProxmoxCoordinator):
         figures; the row of a node that currently sees it as available is
         used, and every such node is carried along.
         """
-        api_path = "cluster/resources?type=storage"
-        api_storages = await self.hass.async_add_executor_job(
-            poll_api,
-            self.hass,
-            self.config_entry,
-            self.proxmox,
-            api_path,
-            ProxmoxType.Storage,
-            self.resource_id,
+        api_storages = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox, resource_type="storage"
         )
         rows = storage_entries(api_storages)
 
@@ -2237,7 +2449,7 @@ class ProxmoxZFSCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{zfs_id}",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -2297,7 +2509,7 @@ class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
@@ -2488,7 +2700,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
             LOGGER,
             config_entry=config_entry,
             name=f"proxmox_coordinator_{api_category}_{node_name}_{disk_id}",
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=poll_interval(config_entry),
         )
 
         self.hass = hass
