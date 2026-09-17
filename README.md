@@ -69,14 +69,17 @@ If the button doesn't work, add it by hand: Settings → Devices & Services → 
 
 ### Options
 
-Everything beyond the credentials lives in the integration options (Settings → Devices & services → Proxmox VE → Configure):
+Everything beyond the credentials lives in the integration options (Settings → Devices & services → Proxmox VE → Configure), split into the selection and an **Advanced configuration** page:
 
 - **Add or remove nodes, VMs, containers or storages** — what is tracked. Shared storage is listed once, marked *(shared)*.
-- **Enable physical disk information** — the per-disk devices with SMART, temperature and wearout. Reading SMART wakes sleeping disks, which is why it can be switched off.
+- **Monitor physical disks** — the per-disk devices with SMART, temperature and wearout. Reading SMART wakes sleeping disks, which is why it can be switched off.
+- **Polling interval** — 30, 45, 60, 90 or 120 seconds for nodes, guests, storage and backups; certificates, subscriptions and Ceph stay hourly, failed tasks at five minutes.
+- **Monitor package updates** — the [update entity](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md#package-updates); off means no `Sys.Modify` needed.
 - **Monitor failed tasks** — the [failed task sensors](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md#failed-task-monitoring).
 - **Track everything automatically** — [discovery](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md#tracking-everything-automatically): follow the cluster instead of a fixed selection.
 - **Guest file path to monitor** — the [guest file content sensor](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md#guest-file-content-sensor).
 - **Backup storage for the backup buttons** — the [backup buttons](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/actions.md#backup-buttons) exist only while this is set.
+- **Entity id scheme** — standard (Home Assistant's device then name) or extended (`pve_<kind>_<id>_<name>_<item>`, with the prefix of your choice); chosen at setup, existing ids never change ([details](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md#entity-ids)).
 - **Optional: cluster HA administration** — a second set of credentials for the [cluster-wide features](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md#cluster-ha-administration-advanced-optional).
 
 ## Permissions

@@ -30,6 +30,8 @@ FORBIDDEN = ResourceException(
     403, "Forbidden", "Permission check failed (/vms/101, VM.GuestAgent.Audit)"
 )
 FSINFO = f"nodes/{NODE}/qemu/101/agent/get-fsinfo"
+# The same privilege guards the address read; a real 403 hits both.
+NETWORK = f"nodes/{NODE}/qemu/101/agent/network-get-interfaces"
 
 
 def _issue(
@@ -43,6 +45,7 @@ async def test_a_refused_agent_read_raises_one_repair_naming_the_privilege(
 ) -> None:
     """Test the repair names the guest agent privilege and the VM, not VM.Audit."""
     fake_api.routes[FSINFO] = FORBIDDEN
+    fake_api.routes[NETWORK] = FORBIDDEN
     await _setup(hass, current_entry)
 
     issue = _issue(hass, current_entry, "guest_agent_fsinfo")
@@ -66,7 +69,9 @@ async def test_every_refused_vm_joins_the_same_repair(
     """Test two VMs without the privilege make one repair listing both."""
     add_guest(fake_api.routes, "qemu", 102, "vm-test-102")
     fake_api.routes[FSINFO] = FORBIDDEN
+    fake_api.routes[NETWORK] = FORBIDDEN
     fake_api.routes[f"nodes/{NODE}/qemu/102/agent/get-fsinfo"] = FORBIDDEN
+    fake_api.routes[f"nodes/{NODE}/qemu/102/agent/network-get-interfaces"] = FORBIDDEN
     hass.config_entries.async_update_entry(
         current_entry, data={**current_entry.data, CONF_QEMU: ["101", "102"]}
     )
@@ -87,6 +92,7 @@ async def test_the_repair_follows_the_reads(
     """Test the guest's status poll does not clear it; a working read does."""
     working = fake_api.routes[FSINFO]
     fake_api.routes[FSINFO] = FORBIDDEN
+    fake_api.routes[NETWORK] = FORBIDDEN
     await _setup(hass, current_entry)
     coordinator = current_entry.runtime_data[COORDINATORS]["qemu_101"]
 
@@ -95,6 +101,7 @@ async def test_the_repair_follows_the_reads(
     assert _issue(hass, current_entry, "guest_agent_fsinfo") is not None
 
     fake_api.routes[FSINFO] = working
+    fake_api.routes.pop(NETWORK, None)
     await coordinator.async_refresh()
     await hass.async_block_till_done()
     assert _issue(hass, current_entry, "guest_agent_fsinfo") is None

@@ -81,7 +81,7 @@ The node's device also carries the hardware addresses of its physical ports, rea
 
 Each node gets a `Software update` entity of Home Assistant's `update` type, so pending package upgrades show up under Settings → Updates and in the update card, next to everything else that wants upgrading. It behaves exactly like the entity in the Home Assistant core integration: the installed version is the node's Proxmox VE release, the latest version is the highest version among the installed release and Proxmox's own pending packages, written as `<version>-p<proxmox packages>-d<other packages>` so it changes whenever the set of pending packages does, and the release notes say how many packages are pending and link to the node.
 
-It reads `GET /nodes/{node}/apt/update`, which needs `Sys.Modify` on the node. Without that privilege nothing about package updates is created — no entity, no count sensor, and no repair asking for a permission a read-only setup deliberately does not hold. Grant it and reload the integration to get them. There is no install button: the API offers no way to run the upgrade, and a dist-upgrade of a hypervisor is not something to start from a dashboard anyway.
+It reads `GET /nodes/{node}/apt/update`, which needs `Sys.Modify` on the node. Without that privilege nothing about package updates is created — no entity, no count sensor, and no repair asking for a permission a read-only setup deliberately does not hold. Grant it and reload the integration to get them. The option **Monitor package updates** switches the whole thing off regardless, for a setup that holds the privilege but does not want the entities. There is no install button: the API offers no way to run the upgrade, and a dist-upgrade of a hypervisor is not something to start from a dashboard anyway.
 
 The older `Total updates` sensor and `Updates packages` binary sensor stay as they are.
 
@@ -149,6 +149,12 @@ This needs no permissions beyond being able to log in, and it is polled once an 
 A guest's `CPU used` is relative to its own cores: a two-core guest at 100 % and a twelve-core one at 100 % read the same while costing the host very different amounts. The sensor carries the guest's core count as an attribute, and a second sensor, **`CPU used of host`** (disabled by default), scales the guest's usage by its cores over the node's — the figure the Proxmox summary shows next to each guest.
 
 A VM's disk usage comes from inside the guest, through the QEMU guest agent's file system list, because the host only knows the size of the virtual disks. That read needs `VM.GuestAgent.Audit` on the guest since Proxmox VE 9 (`VM.Monitor` before) — a privilege `VM.Audit` does not include, though the built-in `PVEAuditor` role carries it. Without it one warning repair names the privilege and the VMs concerned, and the sensor falls back to what the host sees, which for most VMs is nothing.
+
+**`IP address`** — the guest's address, with every address and them by interface as attributes; loopback and link-local are left out, the first IPv4 is shown (the first IPv6 when there is none). A VM reports through the QEMU guest agent (`agent/network-get-interfaces`, `VM.GuestAgent.Audit` on Proxmox VE 9), a container through its own interface list (`VM.Audit`). Diagnostic; created once the address could be read, so a guest that is off at the first start gets it at the next reload.
+
+**`Guest agent`** — for VMs with the agent configured: on while the agent answers, off when it does not (agent not running, VM off). Diagnostic. Whether the agent is configured at all is what decides if the sensor exists.
+
+**`Snapshots`** — how many snapshots the guest has, with their names (newest first) and when the newest was taken as attributes; read from the guest's snapshot list, the `current` pseudo entry not counted. Diagnostic, **disabled by default**. Pairs with the `Create snapshot` button.
 
 A container that is not running reports its disk usage as *unknown* rather than 0 % used and 100 % free: Proxmox cannot look inside a stopped container and reports `disk: 0`, but the data is still on the volume. Memory and swap stay at 0 % for a stopped guest, because those really are zero.
 

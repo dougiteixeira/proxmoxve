@@ -21,12 +21,11 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve import DOMAIN
 from custom_components.proxmoxve.const import (
-    CONF_DISKS_ENABLE,
     CONF_LXC,
     CONF_NODES,
     CONF_QEMU,
     CONF_STORAGE,
-    CONF_TASKS_ENABLE,
+    CONF_UPDATES_ENABLE,
     COORDINATORS,
     ProxmoxType,
 )
@@ -176,6 +175,31 @@ async def test_no_sys_modify_means_no_update_entity_and_no_repair(
         "update", DOMAIN, f"{entry_id}_pve_node_update"
     )
     assert not ir.async_get(hass).async_get_issue(DOMAIN, f"{entry_id}_forbidden")
+
+
+async def test_updates_can_be_switched_off_whatever_the_privileges(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test the option leaves package updates out even with Sys.Modify held.
+
+    Upstream #588 asked for exactly this: a setup that does not want the
+    entities, or does not want to grant the privilege, opts out instead of
+    being told what is missing.
+    """
+    hass.config_entries.async_update_entry(
+        current_entry, options={**current_entry.options, CONF_UPDATES_ENABLE: False}
+    )
+
+    await _setup(hass, current_entry)
+
+    coordinators = current_entry.runtime_data[COORDINATORS]
+    assert f"{ProxmoxType.Update}_{NODE}" not in coordinators
+    entry_id = current_entry.entry_id
+    assert not er.async_get(hass).async_get_entity_id(
+        "update", DOMAIN, f"{entry_id}_pve_node_update"
+    )
+    assert f"nodes/{NODE}/apt/update" not in fake_api.paths()
 
 
 async def test_unknown_permissions_still_create_the_update_entity(
@@ -345,8 +369,6 @@ async def test_deselecting_the_node_removes_its_disk_and_pool_devices(
             CONF_QEMU: ["101"],
             CONF_LXC: ["100"],
             CONF_STORAGE: [],
-            CONF_DISKS_ENABLE: True,
-            CONF_TASKS_ENABLE: True,
         },
     )
     await hass.async_block_till_done()

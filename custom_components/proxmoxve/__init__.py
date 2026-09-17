@@ -60,6 +60,7 @@ from .const import (
     CONF_STORAGE,
     CONF_TASKS_ENABLE,
     CONF_TOKEN_NAME,
+    CONF_UPDATES_ENABLE,
     CONF_VMS,
     COORDINATORS,
     DEFAULT_PORT,
@@ -80,6 +81,7 @@ from .const import (
 )
 from .coordinator import (
     GUEST_AGENT_PRIVILEGES,
+    RESOURCES_CACHE,
     ProxmoxBackupCoordinator,
     ProxmoxBackupInfoCoordinator,
     ProxmoxCephCoordinator,
@@ -605,10 +607,13 @@ async def _async_setup_node(  # noqa: PLR0917
 
     # Reading `apt/update` needs Sys.Modify on the node - a management
     # privilege a read-only setup deliberately does not hold. Where the
-    # credentials' privileges are known and lack it, there is no update
-    # coordinator at all: no entity that can never know anything, and no
-    # repair demanding a permission the person chose not to give.
-    if permissions is None or is_granted(
+    # credentials' privileges are known and lack it, or the option says no,
+    # there is no update coordinator at all: no entity that can never know
+    # anything, and no repair demanding a permission the person chose not
+    # to give.
+    if not config_entry.options.get(CONF_UPDATES_ENABLE, True):
+        LOGGER.debug("Node %s: package updates switched off in the options", node)
+    elif permissions is None or is_granted(
         permissions, f"/nodes/{node}", ProxmoxPrivilege.SYS_MODIFY
     ):
         coordinator_updates = ProxmoxUpdateCoordinator(
@@ -1326,6 +1331,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     for feature in GUEST_AGENT_PRIVILEGES:
         ir.async_delete_issue(hass, DOMAIN, f"{entry.entry_id}_guest_agent_{feature}")
     forget_entry(hass, entry.entry_id)
+    hass.data.get(DOMAIN, {}).get(RESOURCES_CACHE, {}).pop(entry.entry_id, None)
     return unload_ok
 
 

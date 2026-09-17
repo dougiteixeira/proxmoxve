@@ -23,10 +23,16 @@ from requests.exceptions import ConnectTimeout, SSLError
 
 from custom_components.proxmoxve import DOMAIN
 from custom_components.proxmoxve.const import (
+    CONF_AUTO_DISCOVERY,
+    CONF_DISKS_ENABLE,
+    CONF_ENTITY_ID_PREFIX,
+    CONF_ENTITY_ID_SCHEME,
     CONF_LXC,
     CONF_NODES,
     CONF_QEMU,
     CONF_REALM,
+    CONF_UPDATE_INTERVAL,
+    CONF_UPDATES_ENABLE,
 )
 
 from . import async_init_integration, patch_async_setup_entry
@@ -34,10 +40,11 @@ from .const import (
     CURRENT_ENTRY_DATA,
     CURRENT_ENTRY_VERSION,
     MOCK_GET_RESPONSE,
+    OPTIONS_INPUT_SELECTION,
     USER_INPUT_OPTION_AUTH,
-    USER_INPUT_SELECTION,
     mock_config_entry,
 )
+from .fake_api import FakeProxmox
 
 
 async def test_options_flow_host_auth(hass: HomeAssistant) -> None:
@@ -190,7 +197,7 @@ async def test_options_flow_change_expose(hass: HomeAssistant) -> None:
 
             result = await hass.config_entries.options.async_configure(
                 result["flow_id"],
-                user_input=USER_INPUT_SELECTION,
+                user_input=OPTIONS_INPUT_SELECTION,
             )
 
             assert result["type"] == FlowResultType.ABORT
@@ -423,3 +430,49 @@ async def test_options_flow_change_expose_general_error(hass: HomeAssistant) -> 
 
             assert result["type"] == FlowResultType.ABORT
             assert result["reason"] == "general_error"
+
+
+async def test_options_flow_advanced_keeps_the_selection_and_sets_the_interval(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test the advanced step writes its fields and leaves the rest alone.
+
+    The selection step and the advanced step each save only what they show,
+    merged into the options that exist - so neither wipes the other's.
+    """
+    hass.config_entries.async_update_entry(
+        current_entry, options={**current_entry.options, CONF_AUTO_DISCOVERY: True}
+    )
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    assert current_entry.state is ConfigEntryState.LOADED
+
+    result = await hass.config_entries.options.async_init(
+        current_entry.entry_id, data=None
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "advanced"}
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "advanced"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_UPDATE_INTERVAL: "30",
+            CONF_UPDATES_ENABLE: False,
+            CONF_ENTITY_ID_SCHEME: "standard",
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "changes_successful"
+    options = current_entry.options
+    assert options[CONF_UPDATE_INTERVAL] == 30
+    assert options[CONF_UPDATES_ENABLE] is False
+    assert options[CONF_DISKS_ENABLE] is True
+    assert options[CONF_ENTITY_ID_PREFIX] == "pve"
+    # Set before, shown on the other form, untouched here.
+    assert options[CONF_AUTO_DISCOVERY] is True

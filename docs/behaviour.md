@@ -18,9 +18,30 @@ The integration now asks `cluster/status` at setup what address every node answe
 
 Two limits. The addresses in `cluster/status` are the ones the nodes joined the cluster on; if your cluster runs corosync on a separate network, Home Assistant cannot reach them and the fallback finds nothing — which leaves things exactly as they were before. And with **Verify SSL certificate** on, a fallback node has to present a certificate valid for that address, which per-node certificates usually are not.
 
+## How often it polls
+
+Nodes, guests, storage, backups, the cluster summary and discovery are read every **60 seconds** unless you pick another interval — 30, 45, 90 or 120 seconds — under *Advanced configuration*. Proxmox's own `pvestatd` refreshes guest figures about every ten seconds, so anything faster than 30 would mostly read the same numbers again. Certificates, subscriptions and Ceph are read hourly and the failed-task scan every five minutes, whatever the interval. The cluster's resource list, which every guest and storage coordinator needs, is read once per polling burst and shared — not once per entity. Any single coordinator can still be refreshed on demand with `homeassistant.update_entity` on one of its entities.
+
 ## Nodes that are switched off for a while
 
 With password authentication, a node that is off for longer than two hours used to demand new credentials when it came back: the login ticket had expired and its renewal was refused exactly like a wrong password. The integration now logs in again with the stored password before asking for anything, so a node that is off overnight simply resumes in the morning. A host that answers during boot but is not issuing tickets yet leaves setup retrying rather than asking for credentials. Tokens never had this problem; they do not expire.
+
+## Entity ids
+
+Home Assistant builds an entity id from the device name and the entity name: `sensor.qemu_docmost_109_cpu_used`, `sensor.node_pve_cpu_used`, `binary_sensor.storage_local_storage_active`. That puts the kind first and the guest's id last, and nothing in front by which a recorder filter or a search could catch everything of this integration. That is the **standard** scheme. The option **Entity id scheme** — chosen when you set the integration up, changeable in the integration options; setups from before the option are on standard — offers an **extended** scheme with a common prefix first and the id before the name:
+
+| Device | Entity id |
+|---|---|
+| Cluster | `<prefix>_cluster_<item>` |
+| Node | `<prefix>_node_<node>_<item>` |
+| VM / container | `<prefix>_qemu_<vmid>_<name>_<item>` / `<prefix>_lxc_<vmid>_<name>_<item>` |
+| Storage | `<prefix>_storage_<node>_<storage>_<item>`, shared: `<prefix>_storage_<storage>_<item>` |
+| Physical disk | `<prefix>_disk_<node>_<model>_<item>` |
+| ZFS pool | `<prefix>_zfs_<node>_<pool>_<item>` |
+
+`<prefix>` is `pve` unless you type another into **Prefix for the extended scheme**; `<item>` is the entity's translation key (`cpu_used`, `status_raw`, `backup_running`), so the ids read the same whatever language Home Assistant runs in. Sorted, a list of guests is now in vmid order; `pve_` in front of everything makes a recorder `include`/`exclude` a one-liner.
+
+**Nothing changes for entities that exist.** The scheme is a suggestion Home Assistant takes when it registers an entity for the first time; an entity that already has an id keeps it, whatever the option says, and there is no bulk rename — renaming ids would break every automation, dashboard and history that refers to them. Choose extended when you set the integration up and every entity gets those ids; switch a running setup to extended and only entities created from then on do. To move a running install over, remove the integration and add it again (history is lost), or rename the entities you care about by hand.
 
 ## Disabled entities
 
