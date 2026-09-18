@@ -52,7 +52,11 @@ async def test_a_refused_agent_read_raises_one_repair_naming_the_privilege(
     assert issue is not None
     assert issue.severity is ir.IssueSeverity.WARNING
     assert issue.translation_key == "guest_agent_fsinfo_forbidden"
-    assert "VM.GuestAgent.Audit" in issue.translation_placeholders["permission"]
+    # Either privilege satisfies the read, and the repair says both, so
+    # nobody goes looking for one their token already holds as the other.
+    assert issue.translation_placeholders["permission"] == (
+        "['perm','/vms',['VM.GuestAgent.Audit','VM.GuestAgent.Unrestricted'],'any',1]"
+    )
     assert issue.translation_placeholders["vms"] == "101"
     # The guest's own repair - the VM.Audit one - is not raised: the status
     # read succeeded, and the VM is set up as usual.
@@ -123,6 +127,9 @@ async def test_the_file_sensor_has_a_repair_of_its_own(
     issue = _issue(hass, current_entry, "guest_agent_file")
     assert issue is not None
     assert issue.translation_key == "guest_agent_file_forbidden"
-    assert "VM.GuestAgent.FileRead" in issue.translation_placeholders["permission"]
+    assert issue.translation_placeholders["permission"] == (
+        "['perm','/vms',"
+        "['VM.GuestAgent.FileRead','VM.GuestAgent.Unrestricted'],'any',1]"
+    )
     assert _issue(hass, current_entry, "guest_agent_fsinfo") is None
     assert _issue(hass, current_entry, "forbidden") is None

@@ -126,10 +126,22 @@ def _parse_sensors_dict(data: dict) -> dict[str, float]:
 # that every agent command took `VM.Monitor`. Reading these is optional -
 # the guest's disk figure and the file sensor - so a refusal is a warning
 # of its own, not the guest's "VM.Audit missing" repair.
+# What Proxmox checks before it answers a guest agent read, as its API
+# schema states it: either privilege of the pair is enough. Naming only
+# the first sends people looking for a privilege their token may already
+# hold under the other name.
 GUEST_AGENT_PRIVILEGES: Final = {
-    "fsinfo": "VM.GuestAgent.Audit",
-    "file": "VM.GuestAgent.FileRead",
+    "fsinfo": ("VM.GuestAgent.Audit", "VM.GuestAgent.Unrestricted"),
+    "file": ("VM.GuestAgent.FileRead", "VM.GuestAgent.Unrestricted"),
 }
+
+
+def guest_agent_permission(feature: str) -> str:
+    """Return the check for a guest agent read, the way the documentation writes it."""
+    privileges = ",".join(
+        f"'{privilege}'" for privilege in GUEST_AGENT_PRIVILEGES[feature]
+    )
+    return f"['perm','/vms',[{privileges}],'any',1]"
 
 
 def forget_untracked_guest_agents(
@@ -196,7 +208,7 @@ def note_guest_agent_refusal(
         translation_placeholders={
             "vms": ", ".join(str(affected_vmid) for affected_vmid in sorted(affected)),
             "user": config_entry.data[CONF_USERNAME],
-            "permission": f"['perm','/vms',['{GUEST_AGENT_PRIVILEGES[feature]}']]",
+            "permission": guest_agent_permission(feature),
         },
     )
 

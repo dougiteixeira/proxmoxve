@@ -138,8 +138,66 @@ def test_latest_version_survives_a_version_packaging_cannot_read() -> None:
     assert latest_version(["9.0.6", "2:1.0"]) == "9.0.6"
 
 
-def test_update_version_matches_the_core_integration() -> None:
-    """Test the id carries the release and both pending counts, like core."""
+# What a plain node with the bundled Ceph libraries waiting looks like:
+# the release moves from 9.2.11 to 9.2.20, and Ceph's own packages move
+# to 19.2.6 - a version that has nothing to do with the Proxmox release.
+CEPH_PENDING = [
+    {
+        "Package": "pve-manager",
+        "Title": "Proxmox Virtual Environment Management Tools",
+        "Version": "9.2.20",
+        "OldVersion": "9.2.11",
+        "Origin": "Proxmox",
+    },
+    {
+        "Package": "ceph-common",
+        "Title": "common utilities to mount and interact with a ceph storage cluster",
+        "Version": "19.2.6-pve4",
+        "OldVersion": "19.2.3-pve1",
+        "Origin": "Proxmox",
+    },
+    {
+        "Package": "librados2",
+        "Title": "RADOS distributed object store client library",
+        "Version": "19.2.6-pve4",
+        "OldVersion": "19.2.3-pve1",
+        "Origin": "Proxmox",
+    },
+]
+
+
+def test_the_release_comes_from_pve_manager_not_from_ceph() -> None:
+    """
+    Test the reported problem: the node looked like it was going to 19.2.6.
+
+    The latest version used to be the highest among Proxmox's pending
+    packages, and Proxmox ships the Ceph client libraries, which are at
+    19.x. `pve-manager` is what `pveversion` reports, so it is the one
+    that says where the release is going.
+    """
+    info = update_version("9.2.11", parse_updates(CEPH_PENDING, "pve").packages)
+
+    assert info.latest_version == "9.2.20"
+    assert info.latest_version_id == "9.2.20-p3-d0"
+    assert info.proxmox_updates == 3
+
+
+def test_without_a_pending_release_the_version_stays() -> None:
+    """
+    Test Ceph alone moves nothing: the release is where it was.
+
+    The id still differs from the installed version, so Home Assistant
+    keeps showing that something is pending.
+    """
+    info = update_version("9.2.11", parse_updates(CEPH_PENDING[1:], "pve").packages)
+
+    assert info.latest_version == "9.2.11"
+    assert info.latest_version_id == "9.2.11-p2-d0"
+    assert info.latest_version_id != "9.2.11"
+
+
+def test_update_version_uses_the_release_package() -> None:
+    """Test the id carries the release and both pending counts."""
     info = update_version("9.0.6", parse_updates(PENDING, "pve").packages)
 
     assert info.latest_version == "9.0.10"
@@ -252,15 +310,21 @@ def test_a_debian_version_is_not_read_as_markdown() -> None:
     assert r"Clients provided with BIND 9 \*and\* \_more\_" in notes
 
 
-def test_a_package_without_a_previous_version_shows_the_new_one() -> None:
-    """Test a package apt reports without OldVersion is listed all the same."""
+def test_a_package_apt_would_install_says_it_is_new() -> None:
+    """
+    Test a package with no previous version is not shown as half a line.
+
+    A new kernel brings its own versioned package names along, so apt
+    reports them without an `OldVersion` - and `proxmox-headers-7.0.14-17-pve
+    - 7.0.14-17` read like the rest of the line had gone missing.
+    """
     pending = [{key: value for key, value in PENDING[1].items() if key != "OldVersion"}]
     notes = _entity(parse_updates(pending, "pve")).release_notes()
 
     assert notes is not None
     assert (
-        "- Proxmox Virtual Environment Management Tools (`pve-manager`) — `9.0.10`"
-        in notes
+        "- Proxmox Virtual Environment Management Tools (`pve-manager`) "
+        "— new: `9.0.10`" in notes
     )
 
 
