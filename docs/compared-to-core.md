@@ -16,7 +16,9 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | Re-authentication and reconfiguration | ✅ | ✅ |
 | What is tracked | Everything the credentials can see, always | Your selection of nodes, guests and storages — or everything, with **Track everything automatically** ([details](behaviour.md#tracking-everything-automatically)) |
 | New and removed guests picked up at runtime | ✅ | ✅ with automatic tracking |
-| Options after setup | ➖ | ✅ — selection, physical disks, failed tasks, guest file, backup storage, cluster credentials |
+| Polling interval | 60 seconds, fixed | 30, 45, 60, 90 or 120 seconds ([details](behaviour.md#how-often-it-polls)) |
+| Entity id scheme | Home Assistant's device then name | that, or a prefix and the id before the name ([details](behaviour.md#entity-ids)) |
+| Options after setup | ➖ | ✅ — selection, and an **Advanced configuration** page: physical disks, failed tasks, package updates, polling interval, guest file, backup storage, entity id scheme, cluster credentials |
 | Buttons only where the privilege is held | ✅ | ✅ |
 | Repairs naming the missing privilege and path | ➖ | ✅ ([details](permissions.md)) |
 | Failover to another cluster node when the configured host is down | ➖ | ✅ ([details](behaviour.md#when-the-configured-host-is-down)) |

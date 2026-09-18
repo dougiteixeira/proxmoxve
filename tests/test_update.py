@@ -5,6 +5,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.typing import UNDEFINED
 
 from custom_components.proxmoxve.coordinator import is_proxmox_package, parse_updates
@@ -50,14 +51,19 @@ PENDING = [
 ]
 
 
+HOST = "pve.example.invalid"
+
+
 def _entity(
     update_data: object,
     node_version: object = "9.0.6",
+    host: str = HOST,
 ) -> ProxmoxUpdateEntity:
     """Build an update entity over the given update and node data."""
     coordinator = MagicMock()
     coordinator.data = update_data
     coordinator.last_update_success = True
+    coordinator.config_entry = SimpleNamespace(data={CONF_HOST: host, CONF_PORT: 8006})
     node_coordinator = MagicMock()
     node_coordinator.data = SimpleNamespace(version=node_version)
     return ProxmoxUpdateEntity(
@@ -96,6 +102,13 @@ def test_parse_updates_counts_and_orders() -> None:
     assert data.updates_list == sorted(
         f"{entry['Title']} - {entry['Version']}" for entry in PENDING
     )
+    # The version each package replaces is kept for the release notes.
+    assert [entry["old"] for entry in data.packages] == [
+        "9.0.8",
+        "6.14.8-2",
+        "9.0.6",
+        "3.5.1-1",
+    ]
 
 
 def test_parse_updates_without_proxmox_packages() -> None:
@@ -144,12 +157,111 @@ def test_entity_reports_the_pending_release() -> None:
     assert entity.installed_version == "9.0.6"
     assert entity.latest_version == "9.0.10-p3-d1"
     assert entity.release_summary == (
-        "A total of 4 package update(s) are pending installation: of these 3 "
-        "relate to Proxmox and 1 to other updates. Please visit the "
-        "[Proxmox VE node](https://pve.example.invalid:8006/) for details on "
-        "the pending updates and to upgrade to 9.0.10."
+        "4 package update(s) pending: 3 from Proxmox, 1 from other sources. "
+        "The newest pending Proxmox version is 9.0.10."
     )
-    assert entity.release_notes() == entity.release_summary
+
+
+def test_the_summary_stays_under_what_home_assistant_keeps() -> None:
+    """
+    Test the one line fits, whatever the host is called.
+
+    Home Assistant cuts `release_summary` at 255 characters. The node's
+    address used to be in this text, and a long host name pushed the cut
+    into the middle of the link.
+    """
+    entity = _entity(parse_updates(PENDING, "pve"), host="a" * 200)
+
+    assert entity.release_summary is not None
+    assert len(entity.release_summary) <= 255
+
+
+def test_the_release_url_points_at_the_node_update_panel() -> None:
+    """Test what Home Assistant offers as the release announcement."""
+    entity = _entity(parse_updates(PENDING, "pve"))
+
+    assert entity.release_url == (f"https://{HOST}:8006/#v1:0:=node%2Fpve:4:31::::::")
+
+
+def test_no_release_url_without_data() -> None:
+    """Test a node whose updates could not be read offers no link."""
+    assert _entity(None).release_url is None
+
+
+def test_the_release_notes_list_the_packages() -> None:
+    """
+    Test the notes say which package moves from which version to which.
+
+    Proxmox's own packages first, each group alphabetically, as the
+    coordinator sorted them; the counts are the first line.
+    """
+    entity = _entity(parse_updates(PENDING, "pve"))
+    notes = entity.release_notes()
+
+    assert notes is not None
+    assert notes.splitlines()[0] == entity.release_summary
+    assert "**Proxmox**" in notes
+    assert "**Other**" in notes
+    assert (
+        "- Proxmox VE base library (`libpve-common-perl`) — `9.0.8` → `9.0.9`" in notes
+    )
+    assert (
+        "- Proxmox Virtual Environment Management Tools (`pve-manager`) "
+        "— `9.0.6` → `9.0.10`" in notes
+    )
+    assert (
+        "- Secure Sockets Layer toolkit - cryptographic utility (`openssl`) "
+        "— `3.5.1-1` → `3.5.1-1+deb13u1`" in notes
+    )
+    # Proxmox's packages are listed before the rest.
+    assert notes.index("**Proxmox**") < notes.index("**Other**")
+
+
+def test_the_release_notes_leave_out_an_empty_group() -> None:
+    """Test a pending set without Proxmox packages has no Proxmox heading."""
+    notes = _entity(parse_updates([PENDING[0]], "pve")).release_notes()
+
+    assert notes is not None
+    assert "**Proxmox**" not in notes
+    assert "**Other**" in notes
+
+
+def test_a_debian_version_is_not_read_as_markdown() -> None:
+    """
+    Test the reported display: a tilde struck the versions through.
+
+    A Debian version carries a tilde, and one tilde is enough to open a
+    strikethrough - so `1:9.20.26-1~deb13u1 -> 1:9.20.29-1~deb13u1` came
+    out with everything between the two tildes struck out. Code spans keep
+    both versions as they are; a title that holds markdown characters is
+    escaped.
+    """
+    pending = [
+        {
+            "Package": "bind9-dnsutils",
+            "Title": "Clients provided with BIND 9 *and* _more_",
+            "Version": "1:9.20.29-1~deb13u1",
+            "OldVersion": "1:9.20.26-1~deb13u1",
+            "Origin": "Debian",
+        }
+    ]
+    notes = _entity(parse_updates(pending, "pve")).release_notes()
+
+    assert notes is not None
+    assert "`1:9.20.26-1~deb13u1` → `1:9.20.29-1~deb13u1`" in notes
+    assert r"Clients provided with BIND 9 \*and\* \_more\_" in notes
+
+
+def test_a_package_without_a_previous_version_shows_the_new_one() -> None:
+    """Test a package apt reports without OldVersion is listed all the same."""
+    pending = [{key: value for key, value in PENDING[1].items() if key != "OldVersion"}]
+    notes = _entity(parse_updates(pending, "pve")).release_notes()
+
+    assert notes is not None
+    assert (
+        "- Proxmox Virtual Environment Management Tools (`pve-manager`) — `9.0.10`"
+        in notes
+    )
 
 
 def test_entity_shows_an_update_for_other_packages_alone() -> None:
@@ -173,6 +285,8 @@ def test_entity_up_to_date() -> None:
     assert entity.latest_version == entity.installed_version == "9.0.6"
     assert entity.release_summary is None
     assert entity.release_notes() is None
+    # Nothing pending, but the panel is still where it is.
+    assert entity.release_url is not None
 
 
 def test_entity_unavailable_without_permission() -> None:

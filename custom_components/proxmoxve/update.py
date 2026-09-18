@@ -12,7 +12,7 @@ from homeassistant.components.update import (
     UpdateEntityDescription,
     UpdateEntityFeature,
 )
-from homeassistant.const import EntityCategory
+from homeassistant.const import CONF_HOST, CONF_PORT, EntityCategory
 from homeassistant.helpers.typing import UNDEFINED
 from packaging.version import InvalidVersion, Version
 
@@ -102,6 +102,36 @@ def update_version(installed: str, packages: list[dict]) -> ProxmoxUpdateInfo:
         proxmox_updates=len(proxmox),
         other_updates=other,
     )
+
+
+# What a release note has to survive being read as markdown: a Debian
+# version carries a tilde - `1:9.20.26-1~deb13u1` - and a single tilde
+# opens a strikethrough, so the two versions of one line struck each
+# other out in the dialog. A package title is free text from apt and can
+# hold any of these characters as well.
+_MARKDOWN_SPECIALS = str.maketrans(
+    {character: f"\\{character}" for character in "\\`*_[]~"}
+)
+
+
+def _as_text(value: str) -> str:
+    """Return `value` so markdown shows it as it is."""
+    return value.translate(_MARKDOWN_SPECIALS)
+
+
+def _package_line(entry: dict[str, str | bool]) -> str:
+    """
+    Return one pending package as a list item: what it is, and what changes.
+
+    The versions go in code spans - a tilde is literal in there, and a
+    version reads as the machine word it is.
+    """
+    title = _as_text(str(entry["title"]))
+    package = str(entry["package"])
+    version = str(entry["version"])
+    old = str(entry.get("old", ""))
+    change = f"`{old}` \u2192 `{version}`" if old else f"`{version}`"
+    return f"- {title} (`{package}`) \u2014 {change}"
 
 
 async def async_setup_entry(
@@ -219,20 +249,65 @@ class ProxmoxUpdateEntity(ProxmoxEntity, UpdateEntity):
         return info.latest_version_id if info else None
 
     @property
+    def release_url(self) -> str | None:
+        """
+        Return the address of the node's update panel in the web interface.
+
+        What Home Assistant shows as *Read release announcement*. The web
+        interface addresses its panels through the fragment: the node, then
+        the position of **Updates** in its menu - the same shape as the disk
+        and ZFS links on the devices, confirmed against Proxmox VE 9. An
+        index the installation does not know lands on the node itself.
+        """
+        data: ProxmoxUpdateData | None = self.coordinator.data
+        if data is None or not (node := data.node):
+            return None
+        entry_data = self.coordinator.config_entry.data
+        host = entry_data[CONF_HOST]
+        port = entry_data[CONF_PORT]
+        return f"https://{host}:{port}/#v1:0:=node%2F{node}:4:31::::::"
+
+    @property
     def release_summary(self) -> str | None:
-        """Return the core integration's account of what is pending."""
+        """
+        Return one line on what is pending.
+
+        Home Assistant cuts this at 255 characters, so the node's address
+        is not in here - it is the release URL - and the packages are in
+        the release notes.
+        """
         info = self._update_info()
         if info is None or not info.total_updates:
             return None
-        url = self.device_info.get("configuration_url") if self.device_info else None
-        return (
-            f"A total of {info.total_updates} package update(s) are pending "
-            f"installation: of these {info.proxmox_updates} relate to Proxmox and "
-            f"{info.other_updates} to other updates. Please visit the "
-            f"[Proxmox VE node]({url}) for details on the pending updates and to "
-            f"upgrade to {info.latest_version}."
+        summary = (
+            f"{info.total_updates} package update(s) pending: "
+            f"{info.proxmox_updates} from Proxmox, "
+            f"{info.other_updates} from other sources."
         )
+        if info.proxmox_updates:
+            summary += f" The newest pending Proxmox version is {info.latest_version}."
+        return summary
 
     def release_notes(self) -> str | None:
-        """Return the release notes for the update."""
-        return self.release_summary
+        """
+        Return the pending packages, Proxmox's own first.
+
+        Which package moves from which version to which is what the node's
+        own update panel shows, and the reason to look at the entity at all;
+        the counts alone say little.
+        """
+        data: ProxmoxUpdateData | None = self.coordinator.data
+        summary = self.release_summary
+        if summary is None or data is None:
+            return None
+
+        notes = [summary]
+        for heading, proxmox in (("Proxmox", True), ("Other", False)):
+            lines = [
+                _package_line(entry)
+                for entry in data.packages
+                if bool(entry["proxmox"]) is proxmox
+            ]
+            if lines:
+                notes.append(f"**{heading}**\n\n" + "\n".join(lines))
+        return "\n\n".join(notes)
