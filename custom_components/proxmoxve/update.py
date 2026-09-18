@@ -72,6 +72,15 @@ def _comparable(version: str) -> Version:
         return Version("0")
 
 
+# The package that carries the Proxmox VE release. `pveversion` reports
+# what `pve-manager` is at, so that is the one package whose pending
+# version is the node's pending release. Everything else Proxmox ships
+# has its own numbering - the bundled Ceph libraries are at 19.x - and
+# comparing those with the release number claims the node is about to
+# become Proxmox VE 19.
+RELEASE_PACKAGE = "pve-manager"
+
+
 def latest_version(versions: list[str]) -> str:
     """Return the highest of the given versions, suffixes ignored."""
     return max((version.split("-")[0] for version in versions), key=_comparable)
@@ -79,22 +88,31 @@ def latest_version(versions: list[str]) -> str:
 
 def update_version(installed: str, packages: list[dict]) -> ProxmoxUpdateInfo:
     """
-    Describe a pending upgrade the way the core integration does.
+    Describe a pending upgrade: which release, and how much is waiting.
 
-    The latest version is the highest version among the installed release
-    and Proxmox's own pending packages; the id Home Assistant compares
-    against the installed version carries the pending counts as well, so
-    it changes whenever the set of pending packages does, not only when a
-    Proxmox package is among them.
+    The latest version is what the pending `pve-manager` would install,
+    since that is the package `pveversion` reports - not the highest
+    version among Proxmox's pending packages, which on a node with the
+    bundled Ceph libraries waiting is Ceph's 19.x and has nothing to do
+    with the Proxmox VE release. With no `pve-manager` pending the release
+    stays where it is.
+
+    The id Home Assistant compares against the installed version carries
+    the pending counts as well, so it changes whenever the set of pending
+    packages does, not only when the release moves.
     """
     total = len(packages)
     proxmox = [entry for entry in packages if entry["proxmox"]]
     other = total - len(proxmox)
-    latest = (
-        latest_version([installed, *(str(entry["version"]) for entry in proxmox)])
-        if proxmox
-        else installed
+    release = next(
+        (
+            str(entry["version"])
+            for entry in packages
+            if entry["package"] == RELEASE_PACKAGE
+        ),
+        None,
     )
+    latest = latest_version([installed, release]) if release else installed
     return ProxmoxUpdateInfo(
         latest_version=latest if total else installed,
         latest_version_id=f"{latest}-p{len(proxmox)}-d{other}" if total else installed,
@@ -125,12 +143,17 @@ def _package_line(entry: dict[str, str | bool]) -> str:
 
     The versions go in code spans - a tilde is literal in there, and a
     version reads as the machine word it is.
+
+    A package apt would install rather than upgrade has no version to
+    come from - a new kernel brings its own versioned package names with
+    it - and is said to be new, rather than shown as a single version
+    that reads like the rest of the line went missing.
     """
     title = _as_text(str(entry["title"]))
     package = str(entry["package"])
     version = str(entry["version"])
     old = str(entry.get("old", ""))
-    change = f"`{old}` \u2192 `{version}`" if old else f"`{version}`"
+    change = f"`{old}` \u2192 `{version}`" if old else f"new: `{version}`"
     return f"- {title} (`{package}`) \u2014 {change}"
 
 

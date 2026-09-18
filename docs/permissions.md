@@ -25,7 +25,7 @@ Below is a summary of the permissions for each integration feature. I suggest yo
 |Purpose of Permission|Access Type|Role (name suggestion)|Privilegies|
 |---|---|---|---|
 |Get data from nodes, VM, CT and storages|Read only|HomeAssistant.Audit|VM.Audit, Sys.Audit and Datastore.Audit|
-|Read the QEMU guest agent: a VM's disk usage from inside the guest, its IP addresses, whether the agent answers, and the guest file sensor|Read only|HomeAssistant.GuestAgent|VM.GuestAgent.Audit, plus VM.GuestAgent.FileRead for the file sensor (Proxmox VE 8: VM.Monitor for both)|
+|Read the QEMU guest agent: a VM's disk usage from inside the guest, its IP addresses, whether the agent answers, and the guest file sensor|Read only|HomeAssistant.GuestAgent|VM.GuestAgent.Audit, plus VM.GuestAgent.FileRead for the file sensor — VM.GuestAgent.Unrestricted satisfies either of them on its own (Proxmox VE 8: VM.Monitor for both)|
 |Perform commands on the node (shutdown, restart, start all, shutdown all)|Management permission|HomeAssistant.NodePowerMgmt|Sys.PowerMgmt|
 |Get information about available package updates to display on sensors (integration does not trigger the update)|Management permission|HomeAssistant.Update|Sys.Modify|
 |Perform commands on VM/CT (start, shutdown, restart, suspend, resume and hibernate)|Management permission|HomeAssistant.VMPowerMgmt|VM.PowerMgmt|
