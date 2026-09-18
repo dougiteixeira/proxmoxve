@@ -202,14 +202,16 @@ def test_the_release_notes_list_the_packages() -> None:
     assert notes.splitlines()[0] == entity.release_summary
     assert "**Proxmox**" in notes
     assert "**Other**" in notes
-    assert "- Proxmox VE base library (`libpve-common-perl`) — 9.0.8 → 9.0.9" in notes
+    assert (
+        "- Proxmox VE base library (`libpve-common-perl`) — `9.0.8` → `9.0.9`" in notes
+    )
     assert (
         "- Proxmox Virtual Environment Management Tools (`pve-manager`) "
-        "— 9.0.6 → 9.0.10" in notes
+        "— `9.0.6` → `9.0.10`" in notes
     )
     assert (
         "- Secure Sockets Layer toolkit - cryptographic utility (`openssl`) "
-        "— 3.5.1-1 → 3.5.1-1+deb13u1" in notes
+        "— `3.5.1-1` → `3.5.1-1+deb13u1`" in notes
     )
     # Proxmox's packages are listed before the rest.
     assert notes.index("**Proxmox**") < notes.index("**Other**")
@@ -224,6 +226,32 @@ def test_the_release_notes_leave_out_an_empty_group() -> None:
     assert "**Other**" in notes
 
 
+def test_a_debian_version_is_not_read_as_markdown() -> None:
+    """
+    Test the reported display: a tilde struck the versions through.
+
+    A Debian version carries a tilde, and one tilde is enough to open a
+    strikethrough - so `1:9.20.26-1~deb13u1 -> 1:9.20.29-1~deb13u1` came
+    out with everything between the two tildes struck out. Code spans keep
+    both versions as they are; a title that holds markdown characters is
+    escaped.
+    """
+    pending = [
+        {
+            "Package": "bind9-dnsutils",
+            "Title": "Clients provided with BIND 9 *and* _more_",
+            "Version": "1:9.20.29-1~deb13u1",
+            "OldVersion": "1:9.20.26-1~deb13u1",
+            "Origin": "Debian",
+        }
+    ]
+    notes = _entity(parse_updates(pending, "pve")).release_notes()
+
+    assert notes is not None
+    assert "`1:9.20.26-1~deb13u1` → `1:9.20.29-1~deb13u1`" in notes
+    assert r"Clients provided with BIND 9 \*and\* \_more\_" in notes
+
+
 def test_a_package_without_a_previous_version_shows_the_new_one() -> None:
     """Test a package apt reports without OldVersion is listed all the same."""
     pending = [{key: value for key, value in PENDING[1].items() if key != "OldVersion"}]
@@ -231,7 +259,7 @@ def test_a_package_without_a_previous_version_shows_the_new_one() -> None:
 
     assert notes is not None
     assert (
-        "- Proxmox Virtual Environment Management Tools (`pve-manager`) — 9.0.10"
+        "- Proxmox Virtual Environment Management Tools (`pve-manager`) — `9.0.10`"
         in notes
     )
 

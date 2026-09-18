@@ -104,13 +104,33 @@ def update_version(installed: str, packages: list[dict]) -> ProxmoxUpdateInfo:
     )
 
 
+# What a release note has to survive being read as markdown: a Debian
+# version carries a tilde - `1:9.20.26-1~deb13u1` - and a single tilde
+# opens a strikethrough, so the two versions of one line struck each
+# other out in the dialog. A package title is free text from apt and can
+# hold any of these characters as well.
+_MARKDOWN_SPECIALS = str.maketrans(
+    {character: f"\\{character}" for character in "\\`*_[]~"}
+)
+
+
+def _as_text(value: str) -> str:
+    """Return `value` so markdown shows it as it is."""
+    return value.translate(_MARKDOWN_SPECIALS)
+
+
 def _package_line(entry: dict[str, str | bool]) -> str:
-    """Return one pending package as a list item: what it is, and what changes."""
-    title = str(entry["title"])
+    """
+    Return one pending package as a list item: what it is, and what changes.
+
+    The versions go in code spans - a tilde is literal in there, and a
+    version reads as the machine word it is.
+    """
+    title = _as_text(str(entry["title"]))
     package = str(entry["package"])
     version = str(entry["version"])
     old = str(entry.get("old", ""))
-    change = f"{old} \u2192 {version}" if old else version
+    change = f"`{old}` \u2192 `{version}`" if old else f"`{version}`"
     return f"- {title} (`{package}`) \u2014 {change}"
 
 
