@@ -174,8 +174,9 @@ class ProxmoxUpdateData:
     Data parsed from the Proxmox API for Updates.
 
     `packages` carries what the update entity needs to describe the pending
-    upgrade: each entry has a `package`, `title` and `version`, plus a
-    `proxmox` flag telling Proxmox's own packages from the Debian ones.
+    upgrade: each entry has a `package`, `title`, `version` and the `old`
+    version it replaces, plus a `proxmox` flag telling Proxmox's own
+    packages from the Debian ones.
     """
 
     type: str

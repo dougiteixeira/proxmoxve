@@ -885,6 +885,8 @@ def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateD
                 "package": package,
                 "title": str(update.get("Title", package)),
                 "version": version,
+                # What is installed now, so the notes can say what changes.
+                "old": str(update.get("OldVersion", "")),
                 "proxmox": is_proxmox_package(update),
             }
         )
