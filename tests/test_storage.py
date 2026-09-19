@@ -1,12 +1,14 @@
 # Copyright (c) 2019-2026
 # SPDX-License-Identifier: MIT
-"""Tests for a storage's active, enabled and shared flags."""
+"""Tests for a storage's flags, and for the ZFS pool coordinator."""
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import UNDEFINED
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.proxmoxve.binary_sensor import (
     PROXMOX_BINARYSENSOR_STORAGE,
@@ -14,6 +16,7 @@ from custom_components.proxmoxve.binary_sensor import (
 )
 from custom_components.proxmoxve.coordinator import (
     ProxmoxStorageCoordinator,
+    ProxmoxZFSCoordinator,
     _flag_or_undefined,
 )
 from custom_components.proxmoxve.models import ProxmoxStorageData
@@ -52,7 +55,7 @@ NODE_VIEW = [
 ]
 
 
-def _coordinator(responses: dict[str, object]) -> ProxmoxStorageCoordinator:
+def _storage_coordinator(responses: dict[str, object]) -> ProxmoxStorageCoordinator:
     """
     Build a storage coordinator whose API answers come from `responses`.
 
@@ -87,7 +90,7 @@ def _coordinator(responses: dict[str, object]) -> ProxmoxStorageCoordinator:
 
 async def _update(responses: dict[str, object]) -> ProxmoxStorageData:
     """Run one coordinator update against the given API answers."""
-    coordinator = _coordinator(responses)
+    coordinator = _storage_coordinator(responses)
     with patch(
         "custom_components.proxmoxve.coordinator.poll_api",
         side_effect=coordinator._poll,  # noqa: SLF001
@@ -180,3 +183,89 @@ def test_defaults_match_the_core_integration() -> None:
     for description in PROXMOX_BINARYSENSOR_STORAGE:
         assert description.entity_registry_enabled_default is True
         assert description.entity_category is EntityCategory.DIAGNOSTIC
+
+
+POOLS = [
+    {"name": "rpool", "health": "ONLINE", "size": 1, "alloc": 1, "free": 0},
+    {"name": "hddpool", "health": "DEGRADED", "size": 2, "alloc": 1, "free": 1},
+]
+
+
+def _zfs_coordinator(answer: object) -> ProxmoxZFSCoordinator:
+    """
+    Build a ZFS coordinator whose one read returns `answer`.
+
+    Constructing the real thing would need a config entry and an event
+    loop; the update method only touches these attributes.
+    """
+    coordinator = object.__new__(ProxmoxZFSCoordinator)
+    coordinator.hass = MagicMock()
+    coordinator.hass.async_add_executor_job = _returning(answer)
+    coordinator.config_entry = MagicMock()
+    coordinator.node_name = "pve"
+    coordinator.resource_id = "rpool"
+    coordinator._proxmox = MagicMock()  # noqa: SLF001
+    return coordinator
+
+
+def _returning(answer: object):  # noqa: ANN202 - a stand-in for the executor
+    """Return an executor stand-in that answers with `answer`."""
+
+    async def _run(*_args: object, **_kwargs: object) -> object:
+        return answer
+
+    return _run
+
+
+async def test_a_refused_pool_read_fails_the_update() -> None:
+    """
+    Test a refused read is one line, not a traceback every minute.
+
+    `poll_api` hands back nothing for a 403 - it files the repair instead -
+    and iterating that raised `TypeError: 'NoneType' object is not iterable`.
+    """
+    coordinator = _zfs_coordinator(None)
+
+    with pytest.raises(UpdateFailed, match="not available"):
+        await coordinator._async_update_data()  # noqa: SLF001
+
+
+async def test_a_pool_that_is_gone_fails_the_update() -> None:
+    """
+    Test the guard for a pool the listing no longer has actually fires.
+
+    It was written against `pool_status is None` while the variable started
+    as `[]`, so it never ran and `.get` was called on a list instead.
+    """
+    coordinator = _zfs_coordinator([{"name": "hddpool"}])
+
+    with pytest.raises(UpdateFailed, match="unable to be found"):
+        await coordinator._async_update_data()  # noqa: SLF001
+
+
+async def test_an_answer_that_is_not_a_listing_fails_the_update() -> None:
+    """Test anything but pools is reported, rather than iterated into pieces."""
+    coordinator = _zfs_coordinator({"name": "rpool"})
+
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()  # noqa: SLF001
+
+
+async def test_the_pool_is_read_as_before() -> None:
+    """Test the working case is untouched: the named pool's figures."""
+    coordinator = _zfs_coordinator(POOLS)
+
+    data = await coordinator._async_update_data()  # noqa: SLF001
+
+    assert data.name == "ZFS Pool rpool"
+    assert data.health == "ONLINE"
+    assert data.node == "pve"
+
+
+async def test_an_entry_without_a_name_is_skipped() -> None:
+    """Test a listing entry the API hands back without a name does not raise."""
+    coordinator = _zfs_coordinator([{"health": "ONLINE"}, *POOLS])
+
+    data = await coordinator._async_update_data()  # noqa: SLF001
+
+    assert data.health == "ONLINE"

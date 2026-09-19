@@ -153,3 +153,127 @@ async def test_without_a_stored_client_the_failure_stands(hass: HomeAssistant) -
         await hass.async_add_executor_job(
             poll_api, hass, entry, proxmox, "nodes/pve/status", ProxmoxType.Node, "pve"
         )
+
+
+@pytest.mark.parametrize(
+    ("api_path", "api_category", "resource_id", "expected"),
+    [
+        # A disk's id is a WWN, and the privilege belongs to its node.
+        (
+            "nodes/pve/disks/list",
+            ProxmoxType.Disk,
+            "0x5002538e40000001",
+            "['perm','/nodes/pve',['Sys.Audit']]",
+        ),
+        (
+            "nodes/pve/disks/smart?disk=/dev/sda",
+            ProxmoxType.Disk,
+            "0x5002538e40000001",
+            "['perm','/nodes/pve',['Sys.Audit']]",
+        ),
+        # A ZFS pool had no case at all and came out as "Unmapped".
+        (
+            "nodes/pve/disks/zfs",
+            ProxmoxType.ZFS,
+            "rpool",
+            "['perm','/nodes/pve',['Sys.Audit']]",
+        ),
+        # A storage id carries its node; the ACL path is the bare name.
+        (
+            "nodes/pve/storage?storage=local",
+            ProxmoxType.Storage,
+            "storage/pve/local",
+            "['perm','/storage/local',['Datastore.Audit'],'any',1]",
+        ),
+        (
+            "nodes/pve/storage?storage=nas",
+            ProxmoxType.Storage,
+            "storage/nas",
+            "['perm','/storage/nas',['Datastore.Audit'],'any',1]",
+        ),
+        # These were already right, and stay right.
+        (
+            "nodes/pve/status",
+            ProxmoxType.Node,
+            "pve",
+            "['perm','/nodes/pve',['Sys.Audit']]",
+        ),
+        (
+            "nodes/pve/tasks",
+            ProxmoxType.Tasks,
+            "pve",
+            "['perm','/nodes/pve',['Sys.Audit']]",
+        ),
+        (
+            "nodes/pve/apt/update",
+            ProxmoxType.Update,
+            "Update pve",
+            "['perm','/nodes/pve',['Sys.Modify']]",
+        ),
+        (
+            "nodes/pve/qemu/101/status/current",
+            ProxmoxType.QEMU,
+            "101",
+            "['perm','/vms/101',['VM.Audit']]",
+        ),
+        # The bare listing has no node in the path; the read passes it.
+        ("nodes", ProxmoxType.Node, "pve", "['perm','/nodes/pve',['Sys.Audit']]"),
+    ],
+)
+async def test_the_repair_names_the_path_the_privilege_belongs_to(
+    hass: HomeAssistant,
+    api_path: str,
+    api_category: ProxmoxType,
+    resource_id: str,
+    expected: str,
+) -> None:
+    """Test a refused read names an ACL path Proxmox actually has."""
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT_OK)
+    entry.add_to_hass(hass)
+    proxmox = MagicMock()
+    proxmox.get.side_effect = FORBIDDEN
+
+    await hass.async_add_executor_job(
+        poll_api, hass, entry, proxmox, api_path, api_category, resource_id
+    )
+    await hass.async_block_till_done()
+
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"{entry.entry_id}_forbidden")
+    assert issue is not None
+    assert expected in issue.translation_placeholders["items"]
+
+
+async def test_a_cluster_wide_refusal_raises_a_repair_not_a_name_error(
+    hass: HomeAssistant,
+) -> None:
+    """
+    Test the cluster-wide branch works at all.
+
+    It names the optional HA-admin credentials, and that constant was used
+    without being imported - so in the one situation the repair exists for,
+    the handler raised `NameError`.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={**USER_INPUT_OK, "ha_admin_username": "ha-admin"},
+    )
+    entry.add_to_hass(hass)
+    proxmox = MagicMock()
+    proxmox.get.side_effect = FORBIDDEN
+
+    result = await hass.async_add_executor_job(
+        poll_api,
+        hass,
+        entry,
+        proxmox,
+        "cluster/ceph/status",
+        ProxmoxType.Proxmox,
+        None,
+    )
+    await hass.async_block_till_done()
+
+    assert result is None
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"{entry.entry_id}_forbidden")
+    assert issue is not None
+    assert "ha-admin" in issue.translation_placeholders["items"]
+    assert "['perm','/',['Sys.Audit']]" in issue.translation_placeholders["items"]

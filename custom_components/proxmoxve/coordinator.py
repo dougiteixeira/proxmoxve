@@ -37,6 +37,7 @@ from requests.exceptions import (
 from .api import ProxmoxClient, get_api
 from .const import (
     CONF_GUEST_FILE_PATH,
+    CONF_HA_ADMIN_USERNAME,
     CONF_NODE,
     CONF_UPDATE_INTERVAL,
     DOMAIN,
@@ -2485,10 +2486,21 @@ class ProxmoxZFSCoordinator(ProxmoxCoordinator):
             self.resource_id,
         )
 
-        pool_status = []
-        for pool in pools:
-            if pool["name"] == self.resource_id:
-                pool_status = pool
+        # A refused read hands back nothing - `poll_api` files the repair and
+        # returns None - and iterating that raised a traceback every minute
+        # where one line of "not available" belongs.
+        if pools is None:
+            msg = f"ZFS pools on node {self.node_name} are not available"
+            raise UpdateFailed(msg)
+
+        pool_status = next(
+            (
+                pool
+                for pool in pools
+                if isinstance(pool, dict) and pool.get("name") == self.resource_id
+            ),
+            None,
+        )
 
         if pool_status is None:
             msg = f"ZFS Pool {self.resource_id} unable to be found for Node {self.node_name}"
@@ -3069,24 +3081,45 @@ def poll_api(  # noqa: PLR0917
 ) -> dict[str, Any] | None:
     """Return data from the Proxmox Node API."""
 
+    def node_of_path(fallback: str | int | None) -> str:
+        """
+        Return the node a `nodes/{node}/...` read is scoped to.
+
+        The privilege belongs to the node, but what the coordinator knows
+        itself is its resource: a disk id, a pool name. Both are in the
+        path, which every node-scoped read spells out. The two reads of
+        the bare `nodes` listing have no node in the path and pass it as
+        their resource instead, which is what the fallback is for.
+        """
+        parts = api_path.split("?", 1)[0].split("/")
+        if len(parts) >= 2 and parts[0] == "nodes" and parts[1]:
+            return parts[1]
+        return str(fallback) if fallback is not None else ""
+
     def permission_to_resource(
         api_category: ProxmoxType,
         resource_id: int | str | None = None,
     ) -> str:
         """Return the permissions required for the resource."""
         match api_category:
-            case ProxmoxType.Node:
-                return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
+            case (
+                ProxmoxType.Node
+                | ProxmoxType.Disk
+                | ProxmoxType.ZFS
+                | ProxmoxType.Tasks
+            ):
+                return f"['perm','/nodes/{node_of_path(resource_id)}',['Sys.Audit']]"
             case ProxmoxType.QEMU | ProxmoxType.LXC:
                 return f"['perm','/vms/{resource_id}',['VM.Audit']]"
             case ProxmoxType.Storage:
-                return f"['perm','/storage/{resource_id}',['Datastore.Audit'],'any',1]"
+                # The id carries the node for a per-node storage; the ACL
+                # path is the storage's own name either way.
+                return (
+                    f"['perm','/storage/{storage_name(str(resource_id))}',"
+                    "['Datastore.Audit'],'any',1]"
+                )
             case ProxmoxType.Update:
-                return f"['perm','/nodes/{resource_id}',['Sys.Modify']]"
-            case ProxmoxType.Disk:
-                return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
-            case ProxmoxType.Tasks:
-                return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
+                return f"['perm','/nodes/{node_of_path(resource_id)}',['Sys.Modify']]"
             case ProxmoxType.Proxmox:
                 return "['perm','/',['Sys.Audit']]"
             case ProxmoxType.Resources:
