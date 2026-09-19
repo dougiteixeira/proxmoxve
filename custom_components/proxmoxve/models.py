@@ -92,6 +92,22 @@ class ProxmoxVMData:
     ip_address: str | UndefinedType = UNDEFINED
     ip_addresses: list[str] | None = None
     interfaces: dict[str, list[str]] | None = None
+    # What Proxmox reports of the Linux pressure stall information for the
+    # guest's own cgroup, each the average over the last ten seconds in
+    # percent. `some` is the share of time at least one task waited,
+    # `full` the share where every task did - the latter is the one that
+    # means real trouble. For a container this is the workload itself; for
+    # a VM it is measured on the host for the VM's process, so it says the
+    # host is stalling for that VM, not what the guest OS experiences.
+    pressure_cpu_some: float | UndefinedType = UNDEFINED
+    pressure_cpu_full: float | UndefinedType = UNDEFINED
+    pressure_io_some: float | UndefinedType = UNDEFINED
+    pressure_io_full: float | UndefinedType = UNDEFINED
+    pressure_memory_some: float | UndefinedType = UNDEFINED
+    pressure_memory_full: float | UndefinedType = UNDEFINED
+    # The memory the VM costs the host, which is more than what the guest
+    # reports using: device models, migration buffers and the like.
+    memory_of_host: float | UndefinedType = UNDEFINED
 
 
 @dataclasses.dataclass
@@ -129,6 +145,19 @@ class ProxmoxLXCData:
     ip_address: str | UndefinedType = UNDEFINED
     ip_addresses: list[str] | None = None
     interfaces: dict[str, list[str]] | None = None
+    # What Proxmox reports of the Linux pressure stall information for the
+    # guest's own cgroup, each the average over the last ten seconds in
+    # percent. `some` is the share of time at least one task waited,
+    # `full` the share where every task did - the latter is the one that
+    # means real trouble. For a container this is the workload itself; for
+    # a VM it is measured on the host for the VM's process, so it says the
+    # host is stalling for that VM, not what the guest OS experiences.
+    pressure_cpu_some: float | UndefinedType = UNDEFINED
+    pressure_cpu_full: float | UndefinedType = UNDEFINED
+    pressure_io_some: float | UndefinedType = UNDEFINED
+    pressure_io_full: float | UndefinedType = UNDEFINED
+    pressure_memory_some: float | UndefinedType = UNDEFINED
+    pressure_memory_full: float | UndefinedType = UNDEFINED
 
 
 @dataclasses.dataclass

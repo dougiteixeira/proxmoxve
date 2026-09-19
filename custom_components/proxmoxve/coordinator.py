@@ -468,6 +468,29 @@ def parse_guest_addresses(kind: ProxmoxType, payload: Any) -> dict[str, Any]:
     return {"ip_address": first, "ip_addresses": addresses, "interfaces": interfaces}
 
 
+# The pressure stall fields as Proxmox names them, and as the guest data
+# carries them. Containers report them as strings ("0.46"), VMs as
+# numbers, and Proxmox VE 8 does not report them at all - so every one of
+# them is read the same forgiving way and stays unknown when it is absent.
+PRESSURE_FIELDS: Final = {
+    "pressure_cpu_some": "pressurecpusome",
+    "pressure_cpu_full": "pressurecpufull",
+    "pressure_io_some": "pressureiosome",
+    "pressure_io_full": "pressureiofull",
+    "pressure_memory_some": "pressurememorysome",
+    "pressure_memory_full": "pressurememoryfull",
+}
+
+
+def parse_pressure(api_status: dict[str, Any]) -> dict[str, Any]:
+    """Return the guest's pressure stall averages, as far as it reports them."""
+    pressure: dict[str, Any] = {}
+    for field, key in PRESSURE_FIELDS.items():
+        value = _try_parse_float(api_status.get(key))
+        pressure[field] = UNDEFINED if value is None else value
+    return pressure
+
+
 def parse_snapshots(entries: Any) -> dict[str, Any]:
     """
     Count a guest's snapshots from `nodes/{node}/{qemu|lxc}/{vmid}/snapshot`.
@@ -2191,6 +2214,8 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             **snapshots,
             agent_running=agent_running,
             **addresses,
+            **parse_pressure(api_status),
+            memory_of_host=_try_parse_float(api_status.get("memhost")) or UNDEFINED,
             memory_total=memory_total,
             memory_used=memory_used,
             memory_free=memory_free,
@@ -2303,6 +2328,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         return ProxmoxLXCData(
             type=ProxmoxType.LXC,
             node=node_name,
+            **parse_pressure(api_status),
             status=api_status.get("status", UNDEFINED),
             locked=bool(api_status.get("lock")),
             name=api_status.get("name", UNDEFINED),

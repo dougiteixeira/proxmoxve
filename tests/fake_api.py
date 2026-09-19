@@ -113,6 +113,15 @@ def qemu_status(vmid: int, name: str, status: str = "running") -> dict:
         "uptime": 309_941 if running else 0,
         "pid": 1234 if running else None,
         "ha": {"managed": 0},
+        # The host's memory for this VM, and the pressure stall averages
+        # Proxmox VE 9 reports per guest. A VM answers with numbers.
+        "memhost": 3_750_000_000 if running else 0,
+        "pressurecpusome": 0.12,
+        "pressurecpufull": 0,
+        "pressureiosome": 0.4,
+        "pressureiofull": 0.1,
+        "pressurememorysome": 0,
+        "pressurememoryfull": 0,
     }
 
 
@@ -139,6 +148,13 @@ def lxc_status(vmid: int, name: str, status: str = "running") -> dict:
         "diskwrite": 100_974_592,
         "uptime": 309_943 if running else 0,
         "ha": {"managed": 0},
+        # A container answers with strings, which is what Proxmox sends.
+        "pressurecpusome": "0.46",
+        "pressurecpufull": "0.00",
+        "pressureiosome": "0.00",
+        "pressureiofull": "0.00",
+        "pressurememorysome": "0.00",
+        "pressurememoryfull": "0.00",
     }
 
 
