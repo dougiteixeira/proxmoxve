@@ -154,6 +154,10 @@ A VM's disk usage comes from inside the guest, through the QEMU guest agent's fi
 
 **`Guest agent`** — for VMs with the agent configured: on while the agent answers, off when it does not (agent not running, VM off). Diagnostic. Whether the agent is configured at all is what decides if the sensor exists.
 
+**`CPU pressure`**, **`IO pressure`**, **`Memory pressure`** and the three **`… stalled`** counterparts — the Linux kernel's pressure stall information for the guest, each the share of the last ten seconds in which at least one task waited for that resource (`some`) or every task did (`stalled`, the kernel's `full`). Diagnostic, **disabled by default**, and the honest reading differs by guest type: for a **container** these are its own cgroup, so they say what the workload experiences; for a **VM** they are measured on the host for that VM's process, so they say the host is stalling for it — which is also why they exist for a Windows VM. Proxmox VE 8 does not report them; they stay unknown there.
+
+**`Memory used on host`** — for VMs, the memory the guest costs the host, which is more than what it reports using: device models, migration buffers and the like. Diagnostic, **disabled by default**.
+
 **`Snapshots`** — how many snapshots the guest has, with their names (newest first) and when the newest was taken as attributes; read from the guest's snapshot list, the `current` pseudo entry not counted. Diagnostic, **disabled by default**. Pairs with the `Create snapshot` button.
 
 A container that is not running reports its disk usage as *unknown* rather than 0 % used and 100 % free: Proxmox cannot look inside a stopped container and reports `disk: 0`, but the data is still on the volume. Memory and swap stay at 0 % for a stopped guest, because those really are zero.

@@ -37,6 +37,7 @@ from requests.exceptions import (
 from .api import ProxmoxClient, get_api
 from .const import (
     CONF_GUEST_FILE_PATH,
+    CONF_HA_ADMIN_USERNAME,
     CONF_NODE,
     CONF_UPDATE_INTERVAL,
     DOMAIN,
@@ -465,6 +466,29 @@ def parse_guest_addresses(kind: ProxmoxType, payload: Any) -> dict[str, Any]:
         (a for a in addresses if ipaddress.ip_address(a).version == 4), addresses[0]
     )
     return {"ip_address": first, "ip_addresses": addresses, "interfaces": interfaces}
+
+
+# The pressure stall fields as Proxmox names them, and as the guest data
+# carries them. Containers report them as strings ("0.46"), VMs as
+# numbers, and Proxmox VE 8 does not report them at all - so every one of
+# them is read the same forgiving way and stays unknown when it is absent.
+PRESSURE_FIELDS: Final = {
+    "pressure_cpu_some": "pressurecpusome",
+    "pressure_cpu_full": "pressurecpufull",
+    "pressure_io_some": "pressureiosome",
+    "pressure_io_full": "pressureiofull",
+    "pressure_memory_some": "pressurememorysome",
+    "pressure_memory_full": "pressurememoryfull",
+}
+
+
+def parse_pressure(api_status: dict[str, Any]) -> dict[str, Any]:
+    """Return the guest's pressure stall averages, as far as it reports them."""
+    pressure: dict[str, Any] = {}
+    for field, key in PRESSURE_FIELDS.items():
+        value = _try_parse_float(api_status.get(key))
+        pressure[field] = UNDEFINED if value is None else value
+    return pressure
 
 
 def parse_snapshots(entries: Any) -> dict[str, Any]:
@@ -2190,6 +2214,8 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             **snapshots,
             agent_running=agent_running,
             **addresses,
+            **parse_pressure(api_status),
+            memory_of_host=_try_parse_float(api_status.get("memhost")) or UNDEFINED,
             memory_total=memory_total,
             memory_used=memory_used,
             memory_free=memory_free,
@@ -2302,6 +2328,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
         return ProxmoxLXCData(
             type=ProxmoxType.LXC,
             node=node_name,
+            **parse_pressure(api_status),
             status=api_status.get("status", UNDEFINED),
             locked=bool(api_status.get("lock")),
             name=api_status.get("name", UNDEFINED),
@@ -2485,10 +2512,21 @@ class ProxmoxZFSCoordinator(ProxmoxCoordinator):
             self.resource_id,
         )
 
-        pool_status = []
-        for pool in pools:
-            if pool["name"] == self.resource_id:
-                pool_status = pool
+        # A refused read hands back nothing - `poll_api` files the repair and
+        # returns None - and iterating that raised a traceback every minute
+        # where one line of "not available" belongs.
+        if pools is None:
+            msg = f"ZFS pools on node {self.node_name} are not available"
+            raise UpdateFailed(msg)
+
+        pool_status = next(
+            (
+                pool
+                for pool in pools
+                if isinstance(pool, dict) and pool.get("name") == self.resource_id
+            ),
+            None,
+        )
 
         if pool_status is None:
             msg = f"ZFS Pool {self.resource_id} unable to be found for Node {self.node_name}"
@@ -3069,24 +3107,45 @@ def poll_api(  # noqa: PLR0917
 ) -> dict[str, Any] | None:
     """Return data from the Proxmox Node API."""
 
+    def node_of_path(fallback: str | int | None) -> str:
+        """
+        Return the node a `nodes/{node}/...` read is scoped to.
+
+        The privilege belongs to the node, but what the coordinator knows
+        itself is its resource: a disk id, a pool name. Both are in the
+        path, which every node-scoped read spells out. The two reads of
+        the bare `nodes` listing have no node in the path and pass it as
+        their resource instead, which is what the fallback is for.
+        """
+        parts = api_path.split("?", 1)[0].split("/")
+        if len(parts) >= 2 and parts[0] == "nodes" and parts[1]:
+            return parts[1]
+        return str(fallback) if fallback is not None else ""
+
     def permission_to_resource(
         api_category: ProxmoxType,
         resource_id: int | str | None = None,
     ) -> str:
         """Return the permissions required for the resource."""
         match api_category:
-            case ProxmoxType.Node:
-                return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
+            case (
+                ProxmoxType.Node
+                | ProxmoxType.Disk
+                | ProxmoxType.ZFS
+                | ProxmoxType.Tasks
+            ):
+                return f"['perm','/nodes/{node_of_path(resource_id)}',['Sys.Audit']]"
             case ProxmoxType.QEMU | ProxmoxType.LXC:
                 return f"['perm','/vms/{resource_id}',['VM.Audit']]"
             case ProxmoxType.Storage:
-                return f"['perm','/storage/{resource_id}',['Datastore.Audit'],'any',1]"
+                # The id carries the node for a per-node storage; the ACL
+                # path is the storage's own name either way.
+                return (
+                    f"['perm','/storage/{storage_name(str(resource_id))}',"
+                    "['Datastore.Audit'],'any',1]"
+                )
             case ProxmoxType.Update:
-                return f"['perm','/nodes/{resource_id}',['Sys.Modify']]"
-            case ProxmoxType.Disk:
-                return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
-            case ProxmoxType.Tasks:
-                return f"['perm','/nodes/{resource_id}',['Sys.Audit']]"
+                return f"['perm','/nodes/{node_of_path(resource_id)}',['Sys.Modify']]"
             case ProxmoxType.Proxmox:
                 return "['perm','/',['Sys.Audit']]"
             case ProxmoxType.Resources:
