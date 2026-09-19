@@ -364,6 +364,27 @@
             "cpu_of_host": {
                 "name": "CPU used of host"
             },
+            "pressure_cpu_some": {
+                "name": "CPU pressure"
+            },
+            "pressure_cpu_full": {
+                "name": "CPU pressure stalled"
+            },
+            "pressure_io_some": {
+                "name": "IO pressure"
+            },
+            "pressure_io_full": {
+                "name": "IO pressure stalled"
+            },
+            "pressure_memory_some": {
+                "name": "Memory pressure"
+            },
+            "pressure_memory_full": {
+                "name": "Memory pressure stalled"
+            },
+            "memory_of_host": {
+                "name": "Memory used on host"
+            },
             "ip_address": {
                 "name": "IP address",
                 "state_attributes": {
