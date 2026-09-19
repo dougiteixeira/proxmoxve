@@ -62,6 +62,8 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | A file read from inside the guest | ➖ | ✅ |
 | Snapshot count with names | ➖ | ✅ |
 | Guest IP addresses, guest agent answering | ➖ | ✅ |
+| Pressure stall information per guest (CPU, IO, memory; waiting and stalled) | ➖ | ✅ ([details](entities.md#virtual-machines-and-containers)) |
+| A VM's memory as the host sees it | ➖ | ✅ |
 | HA managed | ➖ | ✅ with optional cluster credentials |
 
 ## Storage
