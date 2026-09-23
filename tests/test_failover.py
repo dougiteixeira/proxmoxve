@@ -5,13 +5,19 @@
 from unittest.mock import MagicMock, patch
 
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from proxmoxer import AuthenticationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from custom_components.proxmoxve.api import ProxmoxClient
-from custom_components.proxmoxve.const import COORDINATORS, PROXMOX_CLIENT, ProxmoxType
+from custom_components.proxmoxve.const import (
+    CONF_CLUSTER_HOSTS,
+    COORDINATORS,
+    PROXMOX_CLIENT,
+    ProxmoxType,
+)
 
 from .fake_api import NODE, FakeProxmox
 
@@ -154,3 +160,72 @@ async def test_without_any_other_node_the_failure_is_reported(
 
     assert not node.last_update_success
     assert client.host == CONFIGURED
+
+
+async def test_the_entry_remembers_the_cluster_for_the_next_start(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test the addresses read from `cluster/status` are kept in the entry."""
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert current_entry.data[CONF_CLUSTER_HOSTS] == list(LEARNED)
+
+
+async def test_a_start_while_the_configured_host_is_down(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test the reported problem: a restart took the entry out until the node was back.
+
+    The fallback was learned from `cluster/status` once a connection stood,
+    and was forgotten with the session. Home Assistant restarting while the
+    configured node is down - a rack rebuild, in the report - then had
+    nowhere to go, because setup begins against the configured host and
+    nothing else was known.
+    """
+    hass.config_entries.async_update_entry(
+        current_entry,
+        data={**current_entry.data, CONF_CLUSTER_HOSTS: list(LEARNED)},
+    )
+    fake_api.dead_hosts.add(CONFIGURED)
+
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert current_entry.state is ConfigEntryState.LOADED
+    client: ProxmoxClient = current_entry.runtime_data[PROXMOX_CLIENT]
+    assert client.host == LEARNED[0]
+    # Still the configured host's entry; it is where setup goes again once
+    # the node is back, and nothing was rewritten behind the user's back.
+    assert current_entry.data[CONF_HOST] == CONFIGURED
+
+
+async def test_a_start_with_nothing_remembered_waits_as_before(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test a host that is down and no known cluster still leaves setup retrying."""
+    fake_api.dead_hosts.add(CONFIGURED)
+
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert current_entry.state is ConfigEntryState.SETUP_RETRY
+
+
+def test_a_single_host_is_not_read_twice() -> None:
+    """
+    Test nothing extra is asked of a setup that has nowhere to fall back to.
+
+    The `version` read that proves a host is there is worth one request
+    where it can save the entry; where the cluster is one node, or was
+    never readable, it would only be a second call for the same answer.
+    """
+    client = _client()
+    with patch.object(client, "_build", side_effect=lambda host: MagicMock(name=host)):
+        client.build_client()
+        assert client.get_api_client().version.get.call_count == 0
+
+        client.learn_hosts(LEARNED)
+        client.build_client()
+        assert client.get_api_client().version.get.call_count == 1

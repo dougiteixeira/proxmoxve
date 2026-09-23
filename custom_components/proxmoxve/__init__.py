@@ -46,6 +46,7 @@ from urllib3.exceptions import InsecureRequestWarning
 from .api import ProxmoxClient, auth_error_status, get_api
 from .const import (
     CONF_AUTO_DISCOVERY,
+    CONF_CLUSTER_HOSTS,
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_HA_ADMIN_PASSWORD,
@@ -851,7 +852,10 @@ async def _async_drop_coordinators(
 
 
 async def _learn_cluster_hosts(
-    hass: HomeAssistant, client: ProxmoxClient, proxmox: ProxmoxAPI
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    client: ProxmoxClient,
+    proxmox: ProxmoxAPI,
 ) -> str | None:
     """
     Tell the client what the other nodes of the cluster answer on.
@@ -878,8 +882,30 @@ async def _learn_cluster_hosts(
     client.learn_hosts([entry["ip"] for entry in nodes if entry.get("ip")])
     if len(client.hosts) > 1:
         LOGGER.debug("Fallback hosts for %s: %s", client.host, client.hosts[1:])
+    _remember_cluster_hosts(hass, config_entry, client)
     local = next((entry for entry in nodes if entry.get("local")), None)
     return str(local["name"]) if local and local.get("name") else None
+
+
+def _remember_cluster_hosts(
+    hass: HomeAssistant, config_entry: ConfigEntry, client: ProxmoxClient
+) -> None:
+    """
+    Keep the cluster's other addresses in the entry, for the next start.
+
+    They are read from `cluster/status`, which needs a host that answers -
+    so at the start of a setup, while the configured host is down, the only
+    addresses there are are the ones from the last time it was up. Written
+    only when they changed, and never emptied by a read that did not
+    happen: a single node, or credentials without Sys.Audit on `/`, returns
+    before this.
+    """
+    fallbacks = [host for host in client.hosts if host != config_entry.data[CONF_HOST]]
+    if list(config_entry.data.get(CONF_CLUSTER_HOSTS, [])) == fallbacks:
+        return
+    hass.config_entries.async_update_entry(
+        config_entry, data={**config_entry.data, CONF_CLUSTER_HOSTS: fallbacks}
+    )
 
 
 def async_merge_shared_storages(
@@ -971,6 +997,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         realm=realm,
         password=password,
         verify_ssl=verify_ssl,
+        fallback_hosts=entry_data.get(CONF_CLUSTER_HOSTS, []),
     )
     try:
         await hass.async_add_executor_job(proxmox_client.build_client)
@@ -1000,7 +1027,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         raise ConfigEntryNotReady from error
 
     proxmox = await hass.async_add_executor_job(proxmox_client.get_api_client)
-    local_node = await _learn_cluster_hosts(hass, proxmox_client, proxmox)
+    local_node = await _learn_cluster_hosts(hass, config_entry, proxmox_client, proxmox)
 
     coordinators: dict[
         str,
@@ -1091,13 +1118,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     ha_admin_password = config_entry.data.get(CONF_HA_ADMIN_PASSWORD)
     if ha_admin_user and ha_admin_password:
         candidate_client = ProxmoxClient(
-            host=host,
+            # The node the primary client ended up on, and the same places
+            # to go from there - the configured host may be the one down.
+            host=proxmox_client.host,
             port=port,
             user=ha_admin_user,
             token_name=config_entry.data.get(CONF_HA_ADMIN_TOKEN_NAME, ""),
             realm=config_entry.data.get(CONF_HA_ADMIN_REALM, DEFAULT_REALM),
             password=ha_admin_password,
             verify_ssl=verify_ssl,
+            fallback_hosts=proxmox_client.hosts,
         )
         try:
             await hass.async_add_executor_job(candidate_client.build_client)

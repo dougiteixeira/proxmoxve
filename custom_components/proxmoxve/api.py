@@ -75,6 +75,7 @@ class ProxmoxClient:
         port: int | None = DEFAULT_PORT,
         realm: str | None = DEFAULT_REALM,
         verify_ssl: bool | None = DEFAULT_VERIFY_SSL,
+        fallback_hosts: Iterable[str] = (),
     ) -> None:
         """Initialize the ProxmoxClient."""
         self._host = host
@@ -88,6 +89,10 @@ class ProxmoxClient:
         # nodes answer on. Only the first is ever written anywhere.
         self._hosts: list[str] = [host]
         self._host_index = 0
+        # What the cluster said the last time it could be asked. Without
+        # them the first request of a setup can only go to the configured
+        # host, and an entry whose host is down would never load again.
+        self.learn_hosts(fallback_hosts)
         # Every API object this client ever built. A coordinator that was
         # handed one of them asks for the current one by showing what it has.
         self._issued: list[ProxmoxAPI] = []
@@ -107,8 +112,34 @@ class ProxmoxClient:
         return tuple(self._hosts)
 
     def build_client(self) -> None:
-        """Construct the ProxmoxAPI client against the current host."""
-        self._proxmox = self._build(self.host)
+        """
+        Construct the ProxmoxAPI client against the current host.
+
+        Where other nodes are known from an earlier setup, a configured
+        host that does not answer is left for one of them right here: the
+        fallback used to be reachable only from a session that had already
+        talked to the cluster once, so a restart while that node was down
+        took the whole entry out until it came back.
+
+        The host is proved with `version`, the one call every credential
+        may make - a password is checked by the login the construction
+        performs, but a token client is built without touching the network
+        at all. That read is made only when there is somewhere to fall back
+        to, so nothing changes for a single host.
+        """
+        proxmox = self._build(self.host)
+        try:
+            if len(self._hosts) > 1:
+                proxmox.version.get()
+        except RequestException as error:
+            # Connection errors only: a refused credential is refused on
+            # every node of the cluster, and walking all of them for that
+            # would turn one 401 into as many logins as the cluster is big.
+            LOGGER.debug("Configured host %s did not answer: %s", self.host, error)
+            if not self.failover(self.generation):
+                raise
+            return
+        self._proxmox = proxmox
 
     def _build(self, host: str) -> ProxmoxAPI:
         """

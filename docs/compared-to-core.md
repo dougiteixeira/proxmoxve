@@ -21,7 +21,7 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | Options after setup | ➖ | ✅ — selection, and an **Advanced configuration** page: physical disks, failed tasks, package updates, polling interval, guest file, backup storage, entity id scheme, cluster credentials |
 | Buttons only where the privilege is held | ✅ | ✅ |
 | Repairs naming the missing privilege and path | ➖ | ✅ ([details](permissions.md)) |
-| Failover to another cluster node when the configured host is down | ➖ | ✅ ([details](behaviour.md#when-the-configured-host-is-down)) |
+| Failover to another cluster node when the configured host is down | ➖ | ✅, across a restart of Home Assistant too ([details](behaviour.md#when-the-configured-host-is-down)) |
 | Re-login instead of re-authentication after a node was off for hours | ➖ | ✅ ([details](behaviour.md#nodes-that-are-switched-off-for-a-while)) |
 | Diagnostics download | ✅ | ✅ |
 | Translations | Home Assistant's | Crowdin, currently 13 languages |
