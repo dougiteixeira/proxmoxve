@@ -45,6 +45,12 @@ Home Assistant builds an entity id from the device name and the entity name: `se
 
 **Nothing changes for entities that exist.** The scheme is a suggestion Home Assistant takes when it registers an entity for the first time; an entity that already has an id keeps it, whatever the option says, and there is no bulk rename — renaming ids would break every automation, dashboard and history that refers to them. Choose extended when you set the integration up and every entity gets those ids; switch a running setup to extended and only entities created from then on do. To move a running install over, remove the integration and add it again (history is lost), or rename the entities you care about by hand.
 
+## Guests renamed in Proxmox
+
+A guest renamed in Proxmox keeps its id, so it stays the same device here — only its name was stale: it was written when the device was created and then never again, which left a container you create and name afterwards showing `LXC CT516 (516)` until the next restart. The name now follows at the next poll, and with it the names of its entities, because Home Assistant builds those from the device name.
+
+A name you gave the device yourself in Home Assistant is untouched: Home Assistant keeps it separately and shows it instead, whatever Proxmox reports. Entity ids keep theirs as well — see [Entity ids](#entity-ids) above for why nothing is renamed in bulk.
+
 ## Disabled entities
 
 Some entities are disabled by default (including control buttons), see below how to enable them.

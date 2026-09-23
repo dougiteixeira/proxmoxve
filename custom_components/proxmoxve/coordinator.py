@@ -2180,7 +2180,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
 
         snapshots = await poll_snapshots(self, ProxmoxType.QEMU, node_name)
 
-        update_device_via(self, ProxmoxType.QEMU, node_name)
+        update_guest_device(self, ProxmoxType.QEMU, node_name, api_status.get("name"))
 
         memory_total = api_status.get("maxmem", UNDEFINED)
         memory_used = qemu_memory_used(api_status)
@@ -2323,7 +2323,7 @@ class ProxmoxLXCCoordinator(ProxmoxCoordinator):
                 interfaces = None
             addresses = parse_guest_addresses(ProxmoxType.LXC, interfaces)
 
-        update_device_via(self, ProxmoxType.LXC, node_name)
+        update_guest_device(self, ProxmoxType.LXC, node_name, api_status.get("name"))
 
         return ProxmoxLXCData(
             type=ProxmoxType.LXC,
@@ -2982,12 +2982,13 @@ class ProxmoxTaskCoordinator(ProxmoxCoordinator):
         )
 
 
-def update_device_via(
+def update_guest_device(
     self,
     api_category: ProxmoxType,
     node_name: str,
+    guest_name: str | None = None,
 ) -> None:
-    """Point the guest's device at the node it currently runs on."""
+    """Keep the guest's device on its node, and under the name Proxmox has."""
     dev_reg = dr.async_get(self.hass)
     # Scoped to this config entry: identifiers are only unique within one, so
     # async_get_device can resolve to a device belonging to a different
@@ -3005,6 +3006,19 @@ def update_device_via(
         # after the config entry, with no model and no entities, should
         # nothing come along to fill it in.
         return
+    if guest_name is not None:
+        # A guest renamed in Proxmox keeps its id, so this is the same device
+        # under a new name. A name given in Home Assistant is kept: it lives
+        # in `name_by_user` and is what the interface shows either way.
+        name = f"{api_category.upper()} {guest_name} ({self.resource_id})"
+        if device.name != name:
+            LOGGER.debug(
+                "Update device %s - name: old=%s, new=%s",
+                self.resource_id,
+                device.name,
+                name,
+            )
+            dev_reg.async_update_device(device.id, name=name)
     via_device = dev_reg.async_get_device_by_identifier(
         (
             DOMAIN,

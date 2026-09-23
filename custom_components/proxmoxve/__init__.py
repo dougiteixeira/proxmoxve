@@ -1501,7 +1501,7 @@ def device_info(
     # exist made Home Assistant log a report while dropping the link anyway.
     # That happens for a guest, storage, disk or pool on a node the user did not
     # select, so no node device was created for it. Leaving the link out loses
-    # nothing, and update_device_via() attaches a guest to its node as soon as
+    # nothing, and update_guest_device() attaches a guest to its node as soon as
     # that node has a device.
     via_device_id: str | None = None
     if via_device is not None:

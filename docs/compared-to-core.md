@@ -18,6 +18,7 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | New and removed guests picked up at runtime | ✅ | ✅ with automatic tracking |
 | Polling interval | 60 seconds, fixed | 30, 45, 60, 90 or 120 seconds ([details](behaviour.md#how-often-it-polls)) |
 | Entity id scheme | Home Assistant's device then name | that, or a prefix and the id before the name ([details](behaviour.md#entity-ids)) |
+| Guest renamed in Proxmox | Name follows at the next restart | Name follows at the next poll ([details](behaviour.md#guests-renamed-in-proxmox)) |
 | Options after setup | ➖ | ✅ — selection, and an **Advanced configuration** page: physical disks, failed tasks, package updates, polling interval, guest file, backup storage, entity id scheme, cluster credentials |
 | Buttons only where the privilege is held | ✅ | ✅ |
 | Repairs naming the missing privilege and path | ➖ | ✅ ([details](permissions.md)) |
