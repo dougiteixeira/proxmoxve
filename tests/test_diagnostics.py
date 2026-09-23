@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve.const import (
+    CONF_CLUSTER_HOSTS,
     CONF_HA_ADMIN_PASSWORD,
     CONF_HA_ADMIN_REALM,
     CONF_HA_ADMIN_TOKEN_NAME,
@@ -51,5 +52,7 @@ async def test_every_credential_is_redacted(
     assert config[CONF_PASSWORD] == REDACTED
     assert config[CONF_HA_ADMIN_USERNAME] == REDACTED
     assert config[CONF_HA_ADMIN_PASSWORD] == REDACTED
+    # The cluster's other addresses are the user's network, like the host.
+    assert config[CONF_CLUSTER_HOSTS] == REDACTED
     assert "admin-secret" not in str(diagnostics)
     assert "secret" not in str(diagnostics["config_entry"])

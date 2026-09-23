@@ -29,6 +29,9 @@ CONF_ENTITY_ID_PREFIX = "entity_id_prefix"
 DEFAULT_ENTITY_ID_PREFIX = "pve"
 CONF_AUTO_DISCOVERY = "auto_discovery"
 CONF_GUEST_FILE_PATH = "guest_file_path"
+# The addresses the cluster gave for its other nodes, kept in the entry so
+# the next start can reach one of them while the configured host is down.
+CONF_CLUSTER_HOSTS = "cluster_hosts"
 CONF_HA_ADMIN_USERNAME = "ha_admin_username"
 CONF_HA_ADMIN_TOKEN_NAME = "ha_admin_token_name"
 CONF_HA_ADMIN_PASSWORD = "ha_admin_password"

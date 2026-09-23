@@ -14,7 +14,9 @@ Because `cluster/resources` only lists what the credentials may audit, "everythi
 
 Every request goes through the one host you configured; its `pveproxy` forwards to the other nodes. Until now that host being down took the whole cluster out of Home Assistant, however many nodes were still running.
 
-The integration now asks `cluster/status` at setup what address every node answers on, and when the configured host stops answering it moves to the next node that does — logged as a warning — and keeps polling there. Nothing needs to be configured, and nothing is written to the entry: the configured host stays the one shown, and the next reload starts there again.
+The integration now asks `cluster/status` at setup what address every node answers on, and when the configured host stops answering it moves to the next node that does — logged as a warning — and keeps polling there. Nothing needs to be configured, and the configured host stays the one shown and the one every start goes to first.
+
+Those addresses are kept in the config entry, so a restart while the configured node is down finds them: the very first request of a setup can then go to another node, and the entry loads instead of waiting for the node to come back. They are refreshed whenever the cluster can be asked, and a reload that cannot read `cluster/status` leaves the last ones standing. Like the host itself, they are redacted from the diagnostics download.
 
 Two limits. The addresses in `cluster/status` are the ones the nodes joined the cluster on; if your cluster runs corosync on a separate network, Home Assistant cannot reach them and the fallback finds nothing — which leaves things exactly as they were before. And with **Verify SSL certificate** on, a fallback node has to present a certificate valid for that address, which per-node certificates usually are not.
 
@@ -42,6 +44,12 @@ Home Assistant builds an entity id from the device name and the entity name: `se
 `<prefix>` is `pve` unless you type another into **Prefix for the extended scheme**; `<item>` is the entity's translation key (`cpu_used`, `status_raw`, `backup_running`), so the ids read the same whatever language Home Assistant runs in. Sorted, a list of guests is now in vmid order; `pve_` in front of everything makes a recorder `include`/`exclude` a one-liner.
 
 **Nothing changes for entities that exist.** The scheme is a suggestion Home Assistant takes when it registers an entity for the first time; an entity that already has an id keeps it, whatever the option says, and there is no bulk rename — renaming ids would break every automation, dashboard and history that refers to them. Choose extended when you set the integration up and every entity gets those ids; switch a running setup to extended and only entities created from then on do. To move a running install over, remove the integration and add it again (history is lost), or rename the entities you care about by hand.
+
+## Guests renamed in Proxmox
+
+A guest renamed in Proxmox keeps its id, so it stays the same device here — only its name was stale: it was written when the device was created and then never again, which left a container you create and name afterwards showing `LXC CT516 (516)` until the next restart. The name now follows at the next poll, and with it the names of its entities, because Home Assistant builds those from the device name.
+
+A name you gave the device yourself in Home Assistant is untouched: Home Assistant keeps it separately and shows it instead, whatever Proxmox reports. Entity ids keep theirs as well — see [Entity ids](#entity-ids) above for why nothing is renamed in bulk.
 
 ## Disabled entities
 

@@ -18,10 +18,11 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | New and removed guests picked up at runtime | ✅ | ✅ with automatic tracking |
 | Polling interval | 60 seconds, fixed | 30, 45, 60, 90 or 120 seconds ([details](behaviour.md#how-often-it-polls)) |
 | Entity id scheme | Home Assistant's device then name | that, or a prefix and the id before the name ([details](behaviour.md#entity-ids)) |
+| Guest renamed in Proxmox | Name follows at the next restart | Name follows at the next poll ([details](behaviour.md#guests-renamed-in-proxmox)) |
 | Options after setup | ➖ | ✅ — selection, and an **Advanced configuration** page: physical disks, failed tasks, package updates, polling interval, guest file, backup storage, entity id scheme, cluster credentials |
 | Buttons only where the privilege is held | ✅ | ✅ |
 | Repairs naming the missing privilege and path | ➖ | ✅ ([details](permissions.md)) |
-| Failover to another cluster node when the configured host is down | ➖ | ✅ ([details](behaviour.md#when-the-configured-host-is-down)) |
+| Failover to another cluster node when the configured host is down | ➖ | ✅, across a restart of Home Assistant too ([details](behaviour.md#when-the-configured-host-is-down)) |
 | Re-login instead of re-authentication after a node was off for hours | ➖ | ✅ ([details](behaviour.md#nodes-that-are-switched-off-for-a-while)) |
 | Diagnostics download | ✅ | ✅ |
 | Translations | Home Assistant's | Crowdin, currently 13 languages |
@@ -62,6 +63,8 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | A file read from inside the guest | ➖ | ✅ |
 | Snapshot count with names | ➖ | ✅ |
 | Guest IP addresses, guest agent answering | ➖ | ✅ |
+| Pressure stall information per guest (CPU, IO, memory; waiting and stalled) | ➖ | ✅ ([details](entities.md#virtual-machines-and-containers)) |
+| A VM's memory as the host sees it | ➖ | ✅ |
 | HA managed | ➖ | ✅ with optional cluster credentials |
 
 ## Storage

@@ -18,6 +18,7 @@ from proxmoxer.core import ResourceException
 
 from .api import get_api
 from .const import (
+    CONF_CLUSTER_HOSTS,
     CONF_DISKS_ENABLE,
     CONF_HA_ADMIN_PASSWORD,
     CONF_HA_ADMIN_USERNAME,
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 TO_REDACT_CONFIG = {
+    CONF_CLUSTER_HOSTS,
     CONF_HOST,
     CONF_USERNAME,
     CONF_PASSWORD,
