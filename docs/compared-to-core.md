@@ -23,6 +23,7 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | Buttons only where the privilege is held | ✅ | ✅ |
 | Repairs naming the missing privilege and path | ➖ | ✅ ([details](permissions.md)) |
 | Failover to another cluster node when the configured host is down | ➖ | ✅, across a restart of Home Assistant too ([details](behaviour.md#when-the-configured-host-is-down)) |
+| Guests and storages on a node that is switched off | Read until the request fails | Not read while the cluster reports the node offline |
 | Re-login instead of re-authentication after a node was off for hours | ➖ | ✅ ([details](behaviour.md#nodes-that-are-switched-off-for-a-while)) |
 | Diagnostics download | ✅ | ✅ |
 | Translations | Home Assistant's | Crowdin, currently 13 languages |

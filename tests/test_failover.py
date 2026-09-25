@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from proxmoxer import AuthenticationError
+from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
@@ -18,11 +19,24 @@ from custom_components.proxmoxve.const import (
     PROXMOX_CLIENT,
     ProxmoxType,
 )
+from custom_components.proxmoxve.coordinator import shared_resources
 
 from .fake_api import NODE, FakeProxmox
 
 CONFIGURED = "192.168.10.101"
 LEARNED = ("192.0.2.10", "192.0.2.11")
+
+
+def _dead_host(client: ProxmoxClient) -> None:
+    """
+    Make the host the client is on stop answering `version`.
+
+    The failover asks before it switches, so a test about switching has to
+    say that the current host is really gone.
+    """
+    api = MagicMock(name="the host that went away")
+    api.version.get.side_effect = RequestsConnectionError("refused")
+    client._proxmox = api  # noqa: SLF001
 
 
 def _client() -> ProxmoxClient:
@@ -53,6 +67,7 @@ def test_failover_moves_to_the_first_host_that_answers() -> None:
     """Test a host that refuses is skipped and the next one taken."""
     client = _client()
     client.learn_hosts(LEARNED)
+    _dead_host(client)
     before = client.get_api_client()
 
     def build(host: str) -> MagicMock:
@@ -73,6 +88,7 @@ def test_failover_with_nothing_else_answering_reports_that() -> None:
     """Test the original failure stands when no other node answers."""
     client = _client()
     client.learn_hosts(LEARNED)
+    _dead_host(client)
 
     def build(host: str) -> MagicMock:
         api = MagicMock(name=host)
@@ -103,6 +119,7 @@ def test_a_poll_that_saw_the_old_generation_does_not_switch_again() -> None:
     """
     client = _client()
     client.learn_hosts(LEARNED)
+    _dead_host(client)
     seen = client.generation
 
     with patch.object(client, "_build", side_effect=lambda host: MagicMock(name=host)):
@@ -229,3 +246,95 @@ def test_a_single_host_is_not_read_twice() -> None:
         client.learn_hosts(LEARNED)
         client.build_client()
         assert client.get_api_client().version.get.call_count == 1
+
+
+def test_a_host_that_answers_is_kept() -> None:
+    """
+    Test a failed read is no proof that the host is gone.
+
+    A path names a node, and the host forwards what is not its own - so a
+    guest or a storage on a node that is down fails on a host that is
+    perfectly well. Switching on that walked the cluster, repeating the
+    same doomed read on every node; on a cluster of two it lands on the
+    node that is actually down. Found on a live four-node cluster.
+    """
+    client = _client()
+    client.learn_hosts(LEARNED)
+    alive = MagicMock(name="the host that is fine")
+    client._proxmox = alive  # noqa: SLF001
+
+    with patch.object(client, "_build", side_effect=AssertionError("switched")):
+        assert client.failover(client.generation) is False
+
+    assert client.host == CONFIGURED
+    assert client.generation == 0
+    assert client.get_api_client() is alive
+
+
+def test_the_setup_read_is_proof_enough() -> None:
+    """Test the host is not asked twice when setup just found it unreachable."""
+    client = _client()
+    client.learn_hosts(LEARNED)
+    api = MagicMock(name="never asked")
+    client._proxmox = api  # noqa: SLF001
+
+    with patch.object(client, "_build", side_effect=lambda host: MagicMock(name=host)):
+        assert client.failover(client.generation, verify_current=False) is True
+
+    assert client.host == LEARNED[0]
+    assert api.version.get.call_count == 0
+
+
+async def test_a_node_the_cluster_calls_offline_is_not_asked_after(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test the reads for a node that is off are skipped, with a reason.
+
+    Everything goes to one host, which forwards what belongs to another
+    node. With that node down, pveproxy waits and then answers 595 "No
+    route to host" - once per guest, storage and node read, every poll,
+    seconds at a time, and it was those failures that used to send the
+    client looking for another host.
+    """
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = current_entry.runtime_data[COORDINATORS][f"{ProxmoxType.LXC}_100"]
+
+    for row in fake_api.routes["cluster/resources"]:
+        if row.get("type") == "node" and row.get("node") == NODE:
+            row["status"] = "offline"
+    # The shared read is a few seconds old; in the real world the next
+    # burst reads again.
+    shared_resources(hass, current_entry).forget()
+    fake_api.calls.clear()
+    await coordinator.async_refresh()
+
+    assert not coordinator.last_update_success
+    assert "offline" in str(coordinator.last_exception)
+    assert not [path for path in fake_api.paths() if path.startswith(f"nodes/{NODE}/")]
+
+
+def test_a_host_that_refuses_the_read_is_still_a_host() -> None:
+    """
+    Test a 401 from the host counts as "I am here", not as silence.
+
+    A ticket outlives a host that is away for more than two hours, and the
+    renewal is then refused like a wrong password. Asked whether it is
+    there, such a host answers 401 - which is an answer, and no reason to
+    go looking for another node. On the library line, where `version` is
+    read without a ticket at setup, taking this for silence left a reload
+    failing in a loop while three nodes were running.
+    """
+    client = _client()
+    client.learn_hosts(LEARNED)
+    refusing = MagicMock(name="the host that wants a ticket")
+    refusing.version.get.side_effect = ResourceException(
+        401, "authentication failure", "no ticket"
+    )
+    client._proxmox = refusing  # noqa: SLF001
+
+    with patch.object(client, "_build", side_effect=AssertionError("switched")):
+        assert client.failover(client.generation) is False
+
+    assert client.host == CONFIGURED
