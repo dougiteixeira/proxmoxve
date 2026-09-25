@@ -21,13 +21,13 @@
                     "lxc": "Linux-Container (LXC)",
                     "storage": "Speicher",
                     "disks_enable": "Aktiviere physische Festplatteninformationen",
-                    "auto_discovery": "Track everything automatically",
+                    "auto_discovery": "Alles automatisch verfolgen",
                     "entity_id_scheme": "Entity id scheme",
-                    "entity_id_prefix": "Prefix for the extended scheme"
+                    "entity_id_prefix": "Präfix für das erweiterte Schema"
                 },
                 "data_description": {
                     "disks_enable": "Wenn du mit Disk-Ruhezustand arbeitest, musst du diese Integrationsoption deaktivieren, damit die Festplatten nicht unnötig reaktiviert werden.",
-                    "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked.",
+                    "auto_discovery": "Verfolgen Sie jeden Knoten, virtuelle Maschine, Container und Speicherung der Zugangsdaten und folgen Sie dann dem Cluster: Was hinzugefügt wird, wird abgeholt, was entfernt wird, wird fallen gelassen. Die obige Auswahl wird ignoriert, während diese aktiviert ist. Vorlagen werden niemals verfolgt.",
                     "entity_id_scheme": "Standard: Home Assistant's device then name, `qemu_win11_108_cpu_used`. Extended: prefix, kind, id, name, item - `pve_qemu_108_win11_cpu_used` - so a search or a recorder filter catches everything by the prefix and a list sorts by id. Applies to entities created from now on; ids that exist keep them.",
                     "entity_id_prefix": "The first part of every entity id under the extended scheme; `pve` unless you choose otherwise. Not used by the standard scheme."
                 }
@@ -109,7 +109,7 @@
         },
         "resources_nonexistent": {
             "description": "These resources are tracked, but the cluster at `{host}:{port}` does not list them. Remove them in the integration options - or, if they do exist, user `{user}` may lack the privilege to see them, noted after each one:\n\n{items}",
-            "title": "{count} tracked resource(s) not found on {host}"
+            "title": "{count} verfolgte Ressource(n) nicht in {host} gefunden"
         },
         "no_permissions": {
             "description": "Der Benutzer `{user}` verfügt nicht über die erforderlichen Berechtigungen für alle Funktionen.\n\nDie folgenden Funktionen sind für den Benutzer nicht zugänglich:\n`{errors}`\n\nÜberprüfe die Benutzerberechtigungen gemäß der Dokumentation.",
@@ -117,11 +117,11 @@
         },
         "resources_forbidden": {
             "description": "User `{user}` may not read these resources. Grant the privilege noted after each one, on the path shown or one above it, and reload the integration:\n\n{items}\n\nThe permissions documentation lists the roles the integration needs.",
-            "title": "{count} resource(s) not readable by `{user}`"
+            "title": "{count} Ressource(n) nicht lesbar durch `{user}`"
         },
         "guest_agent_fsinfo_forbidden": {
             "description": "User `{user}` may not query the QEMU guest agent of these VMs: {vms}.\n\nTheir disk usage falls back to what the host sees - for most VMs that is nothing. Reading it needs, on the VMs or on a path above them:\n* `{permission}`\n\nOn Proxmox VE 8 the privilege is `VM.Monitor` instead. The built-in `PVEAuditor` role carries it. Grant it and reload the integration.",
-            "title": "Guest agent not readable"
+            "title": "Gast-Agent nicht lesbar"
         },
         "guest_agent_file_forbidden": {
             "description": "User `{user}` may not read files through the QEMU guest agent of these VMs: {vms}.\n\nTheir guest file sensor cannot be created. Reading it needs, on the VMs or on a path above them:\n* `{permission}`\n\nOn Proxmox VE 8 the privilege is `VM.Monitor` instead. Grant it and reload the integration, or clear the file path in the integration options.",
@@ -285,7 +285,7 @@
                 }
             },
             "backup_status": {
-                "name": "Backup status",
+                "name": "Backup Status",
                 "state_attributes": {
                     "status": {
                         "name": "Status"
@@ -533,7 +533,7 @@
                 "name": "Memory total"
             },
             "certificate_expires": {
-                "name": "Certificate expires",
+                "name": "Zertifikat läuft ab",
                 "state_attributes": {
                     "filename": {
                         "name": "File"
@@ -565,8 +565,8 @@
             "subscription_status": {
                 "name": "Subscription",
                 "state": {
-                    "new": "New",
-                    "notfound": "None",
+                    "new": "Neu",
+                    "notfound": "Nichts",
                     "active": "Active",
                     "invalid": "Invalid",
                     "expired": "Expired",
@@ -781,7 +781,7 @@
             "options": {
                 "snapshot": "Snapshot",
                 "suspend": "Suspend",
-                "stop": "Stop"
+                "stop": "Stopp"
             }
         },
         "update_interval": {
@@ -810,7 +810,7 @@
     },
     "services": {
         "backup": {
-            "name": "Back up guests",
+            "name": "Gäste sichern",
             "description": "Starts backup runs (vzdump) for the targeted guests, nodes or cluster - or for the node and guest ids named. One run per node; returns their task ids.",
             "fields": {
                 "node": {
@@ -856,7 +856,7 @@
             "message": "{device} cannot be backed up; target a guest, a node or the cluster."
         },
         "backup_target_unknown": {
-            "message": "Device {device} does not exist."
+            "message": "Gerät {device} existiert nicht."
         },
         "backup_unknown_guest": {
             "message": "No configured Proxmox VE integration tracks guest {vmid}."
@@ -871,7 +871,7 @@
             "message": "Proxmox refused to start the backup on {node}: {error}"
         },
         "backup_unreachable": {
-            "message": "Node {node} could not be reached to start the backup: {error}"
+            "message": "Knoten {node} konnte nicht erreicht werden, um die Sicherung zu starten: {error}"
         }
     }
 }
