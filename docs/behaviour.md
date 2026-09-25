@@ -18,6 +18,8 @@ The integration now asks `cluster/status` at setup what address every node answe
 
 Those addresses are kept in the config entry, so a restart while the configured node is down finds them: the very first request of a setup can then go to another node, and the entry loads instead of waiting for the node to come back. They are refreshed whenever the cluster can be asked, and a reload that cannot read `cluster/status` leaves the last ones standing. Like the host itself, they are redacted from the diagnostics download.
 
+Before it moves, the integration asks the host it is on whether it is really gone — `version`, the one read every credential may make and one the host answers itself. A read that failed is no proof: every path names a node, and the host forwards what is not its own, so a guest or a storage on a node that is switched off fails on a host that is perfectly well. Taken as "this host is gone", that sent the integration around the cluster, repeating the same impossible read on every node; on a cluster of two it moved to the node that was actually down. Reads for a node the cluster itself reports as offline are not made at all now, so they neither wait for a timeout nor look like a host that went away.
+
 Two limits. The addresses in `cluster/status` are the ones the nodes joined the cluster on; if your cluster runs corosync on a separate network, Home Assistant cannot reach them and the fallback finds nothing — which leaves things exactly as they were before. And with **Verify SSL certificate** on, a fallback node has to present a certificate valid for that address, which per-node certificates usually are not.
 
 ## How often it polls
