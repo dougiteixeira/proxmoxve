@@ -129,7 +129,7 @@
         },
         "resource_command_forbiden": {
             "description": "用户 `{user}` 没有足够权限对资源 `{resource}` 执行命令 `{command}`。\n\n所需权限提示：\n* `{permission}`\n\n请检查文档中的权限要求并调整用户权限。",
-            "title": "执行 `{command}` 命令的权限错误"
+            "title": "执行 `{resource}` 命令的权限错误"
         }
     },
     "options": {
