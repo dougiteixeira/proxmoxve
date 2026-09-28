@@ -21,13 +21,13 @@
                     "lxc": "Contêiners Linux (LXC)",
                     "storage": "Armazenamentos",
                     "disks_enable": "Habilitar informações dos discos físicos",
-                    "auto_discovery": "Track everything automatically",
-                    "entity_id_scheme": "Entity id scheme",
-                    "entity_id_prefix": "Prefix for the extended scheme"
+                    "auto_discovery": "Rastrear tudo automaticamente",
+                    "entity_id_scheme": "Esquema do ID das entidades",
+                    "entity_id_prefix": "Prefixo para o esquema estendido"
                 },
                 "data_description": {
                     "disks_enable": "Se você trabalha com a hibernação dos discos, você deverá desabilitar esta opção da integração para que não cause a reativação dos discos indevidamente.",
-                    "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked.",
+                    "auto_discovery": "Rastrear cada nó, máquina virtual, contêiner e armazenamento de credenciais que podem ver, e siga o cluster daqui pra frente: o que for adicionado é incluído, o que for removido é removido. A seleção acima é ignorada enquanto isto estiver em andamento. Os modelos nunca são rastreados.",
                     "entity_id_scheme": "Standard: Home Assistant's device then name, `qemu_win11_108_cpu_used`. Extended: prefix, kind, id, name, item - `pve_qemu_108_win11_cpu_used` - so a search or a recorder filter catches everything by the prefix and a list sorts by id. Applies to entities created from now on; ids that exist keep them.",
                     "entity_id_prefix": "The first part of every entity id under the extended scheme; `pve` unless you choose otherwise. Not used by the standard scheme."
                 }
@@ -155,14 +155,14 @@
             "cluster_ha_auth": {
                 "description": "Optional and separate from the main credentials above. Enables the Arm HA / Disarm HA buttons and a per-VM/CT \"HA managed\" sensor. These require Sys.Console and Sys.Audit permissions on the Proxmox root path ('/') — significantly broader than anything else this integration needs, and enough to affect the whole cluster's HA fencing behavior. Only fill this in if you understand and accept that risk; leave every field empty to leave these features disabled.",
                 "data": {
-                    "ha_admin_username": "Username",
-                    "ha_admin_token_name": "Token name",
-                    "ha_admin_password": "Password or token value",
-                    "ha_admin_realm": "Realm"
+                    "ha_admin_username": "Usuário",
+                    "ha_admin_token_name": "Nome do token",
+                    "ha_admin_password": "Senha ou token",
+                    "ha_admin_realm": "Domínio"
                 },
                 "data_description": {
-                    "ha_admin_username": "Leave empty (along with the fields below) to disable the Arm/Disarm HA buttons and the HA managed sensor.",
-                    "ha_admin_password": "Needs Sys.Console (arm/disarm) and Sys.Audit (HA resource list) on '/' — not the scoped permissions recommended for the main integration user."
+                    "ha_admin_username": "Deixe em branco (junto com os campos abaixo) para desativar os botões de ativar/desativar HA e o sensor gerenciado pelo AHA",
+                    "ha_admin_password": "Precisa do `Sys.Console` (ativar/desativar) e `Sys.Audit` (lista de recursos HA) em '/' — não as permissões com o escopo recomendadas para o usuário de integração principal."
                 }
             },
             "change_expose": {
@@ -172,24 +172,24 @@
                     "nodes": "Nós",
                     "qemu": "Maquinas Virtuais (QEMU)",
                     "storage": "Armazenamentos",
-                    "auto_discovery": "Track everything automatically"
+                    "auto_discovery": "Rastrear tudo automaticamente"
                 },
                 "data_description": {
-                    "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked."
+                    "auto_discovery": "Rastrear cada nó, máquina virtual, contêiner e armazenamento de credenciais que podem ver, e siga o cluster daqui pra frente: o que for adicionado é incluído, o que for removido é removido. A seleção acima é ignorada enquanto isto estiver em andamento. Os modelos nunca são rastreados."
                 }
             },
             "advanced": {
-                "title": "Advanced configuration",
-                "description": "What is read besides the basics, how often, and how entities are named. Every field has a default a setup runs fine on.",
+                "title": "Configurações avançadas",
+                "description": "O que é lido além do básico, com que frequência e como as entidades são nomeadas. Cada campo tem uma configuração padrão é executada com sucesso.",
                 "data": {
                     "disks_enable": "Habilitar informações dos discos físicos",
                     "tasks_enable": "Monitorar tarefas que falharam",
-                    "updates_enable": "Monitor package updates",
-                    "update_interval": "Polling interval",
-                    "guest_file_path": "Guest file path to monitor (QEMU, requires guest agent)",
-                    "backup_storage": "Backup storage for the backup buttons",
-                    "entity_id_scheme": "Entity id scheme",
-                    "entity_id_prefix": "Prefix for the extended scheme"
+                    "updates_enable": "Monitorar atualizações de pacotes",
+                    "update_interval": "Intervalo de pesquisa",
+                    "guest_file_path": "Caminho do arquivo de convidado para monitorar (QEMU, requer agente convidado)",
+                    "backup_storage": "Local de armazenamento para os backups a partir dos botões",
+                    "entity_id_scheme": "Esquema do ID da entidade",
+                    "entity_id_prefix": "Prefixo para o esquema estendido"
                 },
                 "data_description": {
                     "disks_enable": "Se você trabalha com a hibernação dos discos, você deverá desabilitar esta opção da integração para que não cause a reativação dos discos indevidamente.",
@@ -229,13 +229,13 @@
                 "name": "Status"
             },
             "backup_running": {
-                "name": "Backup running",
+                "name": "Backup em andamento",
                 "state_attributes": {
                     "running_since": {
-                        "name": "Started"
+                        "name": "Iniciado"
                     },
                     "running_guests": {
-                        "name": "Guests"
+                        "name": "Convidados"
                     }
                 }
             },
@@ -243,19 +243,19 @@
                 "name": "Integridade"
             },
             "locked": {
-                "name": "Locked"
+                "name": "Bloqueado"
             },
             "guest_agent": {
-                "name": "Guest agent"
+                "name": "Agente convidado"
             },
             "update_avail": {
                 "name": "Pacotes de atualizações"
             },
             "ha_managed": {
-                "name": "HA managed"
+                "name": "HA gerenciada"
             },
             "replication_failing": {
-                "name": "Replication failing"
+                "name": "Falha na replicação"
             },
             "cluster_quorate": {
                 "name": "Quorate"
@@ -264,9 +264,9 @@
                 "name": "CRM master stale"
             },
             "storage_active": {
-                "name": "Storage active",
+                "name": "Armazenamento ativo",
                 "state": {
-                    "on": "Active",
+                    "on": "Ativo",
                     "off": "Inactive"
                 }
             },
