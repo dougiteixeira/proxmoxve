@@ -197,18 +197,26 @@ class ProxmoxClient:
         """Return whether `proxmox` is one of the API objects this client built."""
         return any(candidate is proxmox for candidate in self._issued)
 
-    def learn_hosts(self, hosts: Iterable[str]) -> None:
+    def learn_hosts(self, hosts: Iterable[str], *, replace: bool = False) -> None:
         """
         Remember the other nodes of the cluster as places to fall back to.
 
         `cluster/status` says what address every node answers on. That is the
         corosync address, which on a cluster with a separate cluster network
         is not reachable from Home Assistant at all - so these are tried, not
-        relied on. The configured host stays first.
+        relied on. The configured host stays first. A fresh membership list
+        replaces cached peers when requested, keeping the connected endpoint
+        if it differs from the addresses advertised by the cluster.
         """
+        current_host = self.host
+        if replace:
+            self._hosts = [self._hosts[0]]
         for host in hosts:
             if isinstance(host, str) and host and host not in self._hosts:
                 self._hosts.append(host)
+        if current_host not in self._hosts:
+            self._hosts.append(current_host)
+        self._host_index = self._hosts.index(current_host)
 
     def _answers(self) -> bool:
         """
