@@ -2106,6 +2106,16 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             msg = f"QEMU {self.resource_id} unable to be found"
             raise UpdateFailed(msg)
 
+        # Proxmox answers every agent read with a 500 while the agent is not
+        # enabled for the VM or the VM is not running (a paused VM still says
+        # `status: running`, only `qmpstatus` tells), so asking then only
+        # fills the Proxmox log with failed requests on every poll.
+        agent_configured = bool(api_status.get("agent"))
+        agent_reachable = (
+            agent_configured
+            and api_status.get("qmpstatus", api_status.get("status")) == "running"
+        )
+
         guest_disk_used: int | UndefinedType = UNDEFINED
         guest_disk_total: int | UndefinedType = UNDEFINED
 
@@ -2113,7 +2123,11 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
             fsinfo_path = (
                 f"nodes/{node_name!s}/qemu/{self.resource_id}/agent/get-fsinfo"
             )
-            fsinfo = await self._poll_guest_agent(fsinfo_path, "fsinfo")
+            fsinfo = (
+                await self._poll_guest_agent(fsinfo_path, "fsinfo")
+                if agent_reachable
+                else None
+            )
 
             entries = fsinfo.get("result", []) if isinstance(fsinfo, dict) else fsinfo
 
@@ -2165,7 +2179,7 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         guest_file_path = self.config_entry.options.get(CONF_GUEST_FILE_PATH)
         guest_file_content: str | UndefinedType = UNDEFINED
 
-        if guest_file_path:
+        if guest_file_path and agent_reachable:
             try:
                 file_read_path = (
                     f"nodes/{node_name!s}/qemu/{self.resource_id}/agent/file-read"
@@ -2185,7 +2199,9 @@ class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
         # says no. Not configured for the VM at all leaves it undefined.
         agent_running: bool | UndefinedType = UNDEFINED
         addresses = parse_guest_addresses(ProxmoxType.QEMU, None)
-        if api_status.get("agent"):
+        if agent_configured and not agent_reachable:
+            agent_running = False
+        elif agent_configured:
             try:
                 interfaces = await self._poll_guest_agent(
                     f"nodes/{node_name!s}/qemu/{self.resource_id}/agent/network-get-interfaces",
