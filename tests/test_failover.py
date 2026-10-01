@@ -4,6 +4,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
@@ -61,6 +62,100 @@ def test_learned_hosts_come_after_the_configured_one() -> None:
 
     assert client.hosts == (CONFIGURED, *LEARNED)
     assert client.host == CONFIGURED
+
+
+def test_replacing_hosts_removes_retired_peers() -> None:
+    """Test refreshed membership drops cached peers and deduplicates addresses."""
+    client = _client()
+    client.learn_hosts(LEARNED)
+
+    client.learn_hosts([LEARNED[1], CONFIGURED, LEARNED[1], "", None], replace=True)
+
+    assert client.hosts == (CONFIGURED, LEARNED[1])
+    assert client.host == CONFIGURED
+
+
+@pytest.mark.parametrize("members", [[LEARNED[1]], ["192.0.2.12"]])
+def test_replacing_hosts_preserves_the_connected_endpoint(members: list[str]) -> None:
+    """Test reindexing or an unadvertised address does not retarget the API."""
+    client = _client()
+    client.learn_hosts(LEARNED)
+    _dead_host(client)
+    with patch.object(client, "_build", return_value=MagicMock()):
+        assert client.failover(client.generation)
+        _dead_host(client)
+        assert client.failover(client.generation)
+    assert client.host == LEARNED[1]
+    api = client.get_api_client()
+    generation = client.generation
+
+    client.learn_hosts(members, replace=True)
+
+    assert client.host == LEARNED[1]
+    assert LEARNED[0] not in client.hosts
+    assert client.get_api_client() is api
+    assert client.generation == generation
+
+
+async def test_standalone_membership_replaces_persisted_cluster_peers(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test retired peers disappear from both the live client and next-start cache."""
+    hass.config_entries.async_update_entry(
+        current_entry,
+        data={**current_entry.data, CONF_CLUSTER_HOSTS: list(LEARNED)},
+    )
+    fake_api.routes["cluster/status"] = [
+        {"type": "node", "name": NODE, "ip": CONFIGURED, "local": 1, "online": 1}
+    ]
+
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert current_entry.state is ConfigEntryState.LOADED
+    client: ProxmoxClient = current_entry.runtime_data[PROXMOX_CLIENT]
+    assert client.hosts == (CONFIGURED,)
+    assert current_entry.data[CONF_CLUSTER_HOSTS] == []
+
+
+@pytest.mark.parametrize("status", [[], None, {}, [{"type": "cluster"}], [None]])
+async def test_unusable_membership_preserves_persisted_peers(
+    hass: HomeAssistant,
+    fake_api: FakeProxmox,
+    current_entry: MockConfigEntry,
+    status: object,
+) -> None:
+    """Test missing membership is not interpreted as removal of cached peers."""
+    hass.config_entries.async_update_entry(
+        current_entry,
+        data={**current_entry.data, CONF_CLUSTER_HOSTS: list(LEARNED)},
+    )
+    fake_api.routes["cluster/status"] = status
+
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    client: ProxmoxClient = current_entry.runtime_data[PROXMOX_CLIENT]
+    assert client.hosts == (CONFIGURED, *LEARNED)
+    assert current_entry.data[CONF_CLUSTER_HOSTS] == list(LEARNED)
+
+
+async def test_failed_membership_read_preserves_persisted_peers(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test an inaccessible endpoint leaves the startup fallback cache intact."""
+    hass.config_entries.async_update_entry(
+        current_entry,
+        data={**current_entry.data, CONF_CLUSTER_HOSTS: list(LEARNED)},
+    )
+    del fake_api.routes["cluster/status"]
+
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    client: ProxmoxClient = current_entry.runtime_data[PROXMOX_CLIENT]
+    assert client.hosts == (CONFIGURED, *LEARNED)
+    assert current_entry.data[CONF_CLUSTER_HOSTS] == list(LEARNED)
 
 
 def test_failover_moves_to_the_first_host_that_answers() -> None:

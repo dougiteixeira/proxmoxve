@@ -879,7 +879,13 @@ async def _learn_cluster_hosts(
         for entry in (status if isinstance(status, list) else [])
         if isinstance(entry, dict) and entry.get("type") == "node"
     ]
-    client.learn_hosts([entry["ip"] for entry in nodes if entry.get("ip")])
+    # A successful membership read supersedes cached peers, including when a
+    # former cluster now consists of a single standalone node. An empty or
+    # malformed response is not evidence that the cached peers were removed.
+    if nodes:
+        client.learn_hosts(
+            [entry["ip"] for entry in nodes if entry.get("ip")], replace=True
+        )
     if len(client.hosts) > 1:
         LOGGER.debug("Fallback hosts for %s: %s", client.host, client.hosts[1:])
     _remember_cluster_hosts(hass, config_entry, client)
