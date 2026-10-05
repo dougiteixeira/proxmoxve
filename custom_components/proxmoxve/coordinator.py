@@ -1010,6 +1010,12 @@ RESOURCES_TTL: Final = 15.0
 # is deliberately not in here: asking again would wait out a second
 # timeout for a node that is down.
 PVEPROXY_BUSY: Final = frozenset({596, 597})
+# The two node reads Proxmox checks against the root rather than against
+# the node, per its own API schema. A Sys.Audit that covers only
+# `/nodes/<name>` lists the disks and is then refused for their SMART
+# data and for the pools - and a repair naming the node would send the
+# user round in circles.
+ROOT_CHECKED_READS: Final = ("/disks/smart", "/disks/zfs")
 
 
 class SharedResources:
@@ -3191,6 +3197,8 @@ def poll_api(  # noqa: PLR0917
                 | ProxmoxType.ZFS
                 | ProxmoxType.Tasks
             ):
+                if any(read in api_path for read in ROOT_CHECKED_READS):
+                    return "['perm','/',['Sys.Audit']]"
                 return f"['perm','/nodes/{node_of_path(resource_id)}',['Sys.Audit']]"
             case ProxmoxType.QEMU | ProxmoxType.LXC:
                 return f"['perm','/vms/{resource_id}',['VM.Audit']]"
