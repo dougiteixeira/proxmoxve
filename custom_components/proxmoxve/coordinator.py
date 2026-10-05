@@ -932,8 +932,12 @@ def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateD
     packages.sort(key=lambda entry: (not entry["proxmox"], entry["package"]))
     proxmox_updates = sum(1 for entry in packages if entry["proxmox"])
 
+    # The package, not apt's Title: the attribute of a sensor counting
+    # updates was listing short descriptions - "Linux kernel image for
+    # version ..." - where the name is what you act on. Reported upstream
+    # in #702. The titles are still in the update entity's release notes.
     updates_list = sorted(
-        f"{entry['title']} - {entry['version']}" for entry in packages
+        f"{entry['package']} - {entry['version']}" for entry in packages
     )
     total = len(packages)
 
@@ -999,6 +1003,19 @@ RESOURCES_CACHE = "resources_cache"
 # seconds of each other, so one read per burst is enough; well under the
 # interval, so the next burst reads afresh.
 RESOURCES_TTL: Final = 15.0
+# What pveproxy answers when it could not finish passing a request on:
+# the connection to the node stood, the exchange did not complete in
+# time. That is a busy moment, not a refusal and not a node that is
+# gone - 595, which is the connection it could not establish at all,
+# is deliberately not in here: asking again would wait out a second
+# timeout for a node that is down.
+PVEPROXY_BUSY: Final = frozenset({596, 597})
+# The two node reads Proxmox checks against the root rather than against
+# the node, per its own API schema. A Sys.Audit that covers only
+# `/nodes/<name>` lists the disks and is then refused for their SMART
+# data and for the pools - and a repair naming the node would send the
+# user round in circles.
+ROOT_CHECKED_READS: Final = ("/disks/smart", "/disks/zfs")
 
 
 class SharedResources:
@@ -1064,6 +1081,18 @@ class SharedResources:
         if self._rows is None or resource_type is None:
             return self._rows
         return [row for row in self._rows if row.get("type") == resource_type]
+
+    def note_nodes(self, rows: Any) -> None:
+        """
+        Take the offline nodes from a `cluster/resources` read made elsewhere.
+
+        Setup makes that read itself, before any coordinator exists. Without
+        this, the node-scoped coordinators of a node that is off each wait
+        out pveproxy's answer on their first refresh - seconds apiece, and
+        Home Assistant waiting for the entry all the while.
+        """
+        if isinstance(rows, list):
+            self.nodes_off = nodes_not_online(rows)
 
     def forget(self) -> None:
         """Make the next caller read again - after something changed the cluster."""
@@ -3168,6 +3197,8 @@ def poll_api(  # noqa: PLR0917
                 | ProxmoxType.ZFS
                 | ProxmoxType.Tasks
             ):
+                if any(read in api_path for read in ROOT_CHECKED_READS):
+                    return "['perm','/',['Sys.Audit']]"
                 return f"['perm','/nodes/{node_of_path(resource_id)}',['Sys.Audit']]"
             case ProxmoxType.QEMU | ProxmoxType.LXC:
                 return f"['perm','/vms/{resource_id}',['VM.Audit']]"
@@ -3205,7 +3236,15 @@ def poll_api(  # noqa: PLR0917
     generation = client.generation if client is not None else 0
     try:
         try:
-            api_data = get_api(proxmox, api_path)
+            try:
+                api_data = get_api(proxmox, api_path)
+            except ResourceException as error:
+                if error.status_code not in PVEPROXY_BUSY:
+                    raise
+                # One such moment used to take an entity out for a whole
+                # polling interval; asked again, the node usually answers.
+                LOGGER.debug("Read %s came back %s, asking once more", api_path, error)
+                api_data = get_api(proxmox, api_path)
         except AuthenticationError as error:
             api_data = _retry_after_relogin(config_entry, proxmox, api_path, error)
         except (ConnectTimeout, ConnectionError, connError, RetryError) as error:

@@ -433,3 +433,28 @@ def test_a_host_that_refuses_the_read_is_still_a_host() -> None:
         assert client.failover(client.generation) is False
 
     assert client.host == CONFIGURED
+
+
+async def test_a_node_that_is_off_is_left_alone_from_the_first_refresh(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test setup knows which nodes are off before any coordinator asks.
+
+    Setup reads `cluster/resources` itself, and that read used to tell the
+    shared one nothing - so on a start with a node switched off, every
+    node-scoped coordinator of that node still waited out pveproxy's
+    answer on its first refresh. Seconds apiece, with Home Assistant
+    reporting that it is waiting for the integration all the while.
+    """
+    for row in fake_api.routes["cluster/resources"]:
+        if row.get("type") == "node" and row.get("node") == NODE:
+            row["status"] = "offline"
+
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert current_entry.state is ConfigEntryState.LOADED
+    # The node listing is cluster-wide and answered by the host itself;
+    # everything addressed to the node that is off was skipped.
+    assert not [path for path in fake_api.paths() if path.startswith(f"nodes/{NODE}/")]
