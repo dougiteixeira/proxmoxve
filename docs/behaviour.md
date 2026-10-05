@@ -24,6 +24,12 @@ Before it moves, the integration asks the host it is on whether it is really gon
 
 Two limits. The addresses in `cluster/status` are the ones the nodes joined the cluster on; if your cluster runs corosync on a separate network, Home Assistant cannot reach them and the fallback finds nothing — which leaves things exactly as they were before. And with **Verify SSL certificate** on, a fallback node has to present a certificate valid for that address, which per-node certificates usually are not.
 
+## When the API is busy
+
+Everything goes through one host's `pveproxy`, which passes on what belongs to another node. When it cannot finish that in time it answers `596` (or `597`) — the connection stood, the exchange did not complete. That is a busy moment, not a refusal, and it used to take an entity out until the next poll a minute later; on a cluster whose API is slow that shows up as sensors dropping out every so often. Such a read is now repeated once, straight away, and the entity keeps its value if the second attempt answers.
+
+`595` is deliberately treated differently: that is the connection `pveproxy` could not establish at all, which is what a node that is switched off answers. Asking again would only wait out a second timeout for an answer that cannot come.
+
 ## How often it polls
 
 Nodes, guests, storage, backups, the cluster summary and discovery are read every **60 seconds** unless you pick another interval — 30, 45, 90 or 120 seconds — under *Advanced configuration*. Proxmox's own `pvestatd` refreshes guest figures about every ten seconds, so anything faster than 30 would mostly read the same numbers again. Certificates, subscriptions and Ceph are read hourly and the failed-task scan every five minutes, whatever the interval. The cluster's resource list, which every guest and storage coordinator needs, is read once per polling burst and shared — not once per entity. Any single coordinator can still be refreshed on demand with `homeassistant.update_entity` on one of its entities.

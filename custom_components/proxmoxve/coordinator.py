@@ -999,6 +999,13 @@ RESOURCES_CACHE = "resources_cache"
 # seconds of each other, so one read per burst is enough; well under the
 # interval, so the next burst reads afresh.
 RESOURCES_TTL: Final = 15.0
+# What pveproxy answers when it could not finish passing a request on:
+# the connection to the node stood, the exchange did not complete in
+# time. That is a busy moment, not a refusal and not a node that is
+# gone - 595, which is the connection it could not establish at all,
+# is deliberately not in here: asking again would wait out a second
+# timeout for a node that is down.
+PVEPROXY_BUSY: Final = frozenset({596, 597})
 
 
 class SharedResources:
@@ -3205,7 +3212,15 @@ def poll_api(  # noqa: PLR0917
     generation = client.generation if client is not None else 0
     try:
         try:
-            api_data = get_api(proxmox, api_path)
+            try:
+                api_data = get_api(proxmox, api_path)
+            except ResourceException as error:
+                if error.status_code not in PVEPROXY_BUSY:
+                    raise
+                # One such moment used to take an entity out for a whole
+                # polling interval; asked again, the node usually answers.
+                LOGGER.debug("Read %s came back %s, asking once more", api_path, error)
+                api_data = get_api(proxmox, api_path)
         except AuthenticationError as error:
             api_data = _retry_after_relogin(config_entry, proxmox, api_path, error)
         except (ConnectTimeout, ConnectionError, connError, RetryError) as error:

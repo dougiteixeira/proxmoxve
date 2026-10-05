@@ -14,10 +14,15 @@ from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import PROXMOX_CLIENT, ProxmoxType
+from custom_components.proxmoxve.const import (
+    COORDINATORS,
+    PROXMOX_CLIENT,
+    ProxmoxType,
+)
 from custom_components.proxmoxve.coordinator import poll_api
 
 from .const import USER_INPUT_OK
+from .fake_api import NODE, Answers, FakeProxmox
 
 FORBIDDEN = ResourceException(403, "Forbidden", "Permission check failed")
 
@@ -277,3 +282,63 @@ async def test_a_cluster_wide_refusal_raises_a_repair_not_a_name_error(
     assert issue is not None
     assert "ha-admin" in issue.translation_placeholders["items"]
     assert "['perm','/',['Sys.Audit']]" in issue.translation_placeholders["items"]
+
+
+async def test_a_busy_proxy_is_asked_once_more(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test a read pveproxy could not finish is repeated instead of given up on.
+
+    Reported in #595: a storage went unavailable every so often, and once
+    5.3.2 named the reason it was `596 Errors during TLS negotiation,
+    request sending and header processing: Connection timed out` -
+    pveproxy passed the request on and the answer did not come back in
+    time. Nothing refused it and no node was gone; the node was busy for
+    a moment, and that moment took the entity out for a whole polling
+    interval.
+    """
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    key = f"{ProxmoxType.Storage}_storage/{NODE}/local"
+    coordinator = current_entry.runtime_data[COORDINATORS][key]
+    path = f"nodes/{NODE}/storage?storage=local"
+    fake_api.routes[path] = Answers(
+        ResourceException(
+            596,
+            "Errors during TLS negotiation, request sending and header processing",
+            "Connection timed out",
+        ),
+        fake_api.routes[path],
+    )
+    fake_api.calls.clear()
+
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success
+    assert fake_api.paths().count(path) == 2
+
+
+async def test_a_proxy_that_cannot_reach_the_node_is_not_asked_twice(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test 595 is taken at its word: the node is not there.
+
+    `595 No route to host` is the connection pveproxy could not establish
+    at all, which is what a node that is switched off answers. Asking
+    again would only wait out a second timeout - up to 25 seconds on a
+    live cluster - for an answer that cannot come.
+    """
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    key = f"{ProxmoxType.Storage}_storage/{NODE}/local"
+    coordinator = current_entry.runtime_data[COORDINATORS][key]
+    path = f"nodes/{NODE}/storage?storage=local"
+    fake_api.routes[path] = ResourceException(595, "No route to host", "")
+    fake_api.calls.clear()
+
+    await coordinator.async_refresh()
+
+    assert not coordinator.last_update_success
+    assert fake_api.paths().count(path) == 1
