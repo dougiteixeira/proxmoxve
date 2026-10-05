@@ -102,6 +102,7 @@ from .coordinator import (
     ProxmoxUpdateCoordinator,
     ProxmoxZFSCoordinator,
     forget_untracked_guest_agents,
+    shared_resources,
 )
 from .discovery import (
     discovered_resources,
@@ -678,7 +679,12 @@ async def _async_setup_node(  # noqa: PLR0917
         await coordinator_tasks.async_refresh()
         coordinators[f"{ProxmoxType.Tasks}_{node}"] = coordinator_tasks
 
-    if config_entry.options.get(CONF_DISKS_ENABLE, True):
+    # The disks and the pools are read here rather than through the
+    # coordinators' own path, so the skip for a node the cluster reports
+    # as offline has to be repeated: two reads that would each wait out
+    # pveproxy's answer while Home Assistant waits for the entry.
+    node_is_off = node in shared_resources(hass, config_entry).nodes_off
+    if config_entry.options.get(CONF_DISKS_ENABLE, True) and not node_is_off:
         try:
             disks = await hass.async_add_executor_job(
                 get_api, proxmox, f"nodes/{node}/disks/list"
@@ -1049,6 +1055,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     nodes_add_device = []
 
     resources = await _get_api_or_retry_setup(hass, proxmox, "cluster/resources", host)
+    # What the cluster says about its nodes, before the first coordinator
+    # asks anything: a node that is off is then skipped from the very
+    # first refresh instead of once the polling bursts have begun.
+    shared_resources(hass, config_entry).note_nodes(resources)
     async_merge_shared_storages(hass, config_entry, resources, local_node)
 
     # What these credentials may do, so the button platform can leave out

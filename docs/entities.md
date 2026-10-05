@@ -83,7 +83,7 @@ Each node gets a `Software update` entity of Home Assistant's `update` type, so 
 
 It reads `GET /nodes/{node}/apt/update`, which needs `Sys.Modify` on the node. Without that privilege nothing about package updates is created — no entity, no count sensor, and no repair asking for a permission a read-only setup deliberately does not hold. Grant it and reload the integration to get them. The option **Monitor package updates** switches the whole thing off regardless, for a setup that holds the privilege but does not want the entities. There is no install button: the API offers no way to run the upgrade, and a dist-upgrade of a hypervisor is not something to start from a dashboard anyway.
 
-The older `Total updates` sensor and `Updates packages` binary sensor stay as they are.
+The older `Total updates` sensor and `Updates packages` binary sensor stay as they are, except that the `updates_list` attribute now names the packages — `pve-manager - 9.0.6` — where it used to carry apt's short description. A template that matched on that text has to be adjusted; the descriptions are still in the update entity's release notes.
 
 ### Last backup per node
 

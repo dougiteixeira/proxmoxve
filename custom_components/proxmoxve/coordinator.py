@@ -932,8 +932,12 @@ def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateD
     packages.sort(key=lambda entry: (not entry["proxmox"], entry["package"]))
     proxmox_updates = sum(1 for entry in packages if entry["proxmox"])
 
+    # The package, not apt's Title: the attribute of a sensor counting
+    # updates was listing short descriptions - "Linux kernel image for
+    # version ..." - where the name is what you act on. Reported upstream
+    # in #702. The titles are still in the update entity's release notes.
     updates_list = sorted(
-        f"{entry['title']} - {entry['version']}" for entry in packages
+        f"{entry['package']} - {entry['version']}" for entry in packages
     )
     total = len(packages)
 
@@ -1071,6 +1075,18 @@ class SharedResources:
         if self._rows is None or resource_type is None:
             return self._rows
         return [row for row in self._rows if row.get("type") == resource_type]
+
+    def note_nodes(self, rows: Any) -> None:
+        """
+        Take the offline nodes from a `cluster/resources` read made elsewhere.
+
+        Setup makes that read itself, before any coordinator exists. Without
+        this, the node-scoped coordinators of a node that is off each wait
+        out pveproxy's answer on their first refresh - seconds apiece, and
+        Home Assistant waiting for the entry all the while.
+        """
+        if isinstance(rows, list):
+            self.nodes_off = nodes_not_online(rows)
 
     def forget(self) -> None:
         """Make the next caller read again - after something changed the cluster."""

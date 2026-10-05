@@ -98,10 +98,13 @@ def test_parse_updates_counts_and_orders() -> None:
         "pve-manager",
         "openssl",
     ]
-    # The flat list the existing sensor attribute carries is unchanged.
+    # The attribute of the counting sensor names packages. It listed
+    # apt's Title - the short description - which reads as prose and
+    # cannot be matched on; reported upstream in #702.
     assert data.updates_list == sorted(
-        f"{entry['Title']} - {entry['Version']}" for entry in PENDING
+        f"{entry['Package']} - {entry['Version']}" for entry in PENDING
     )
+    assert data.updates_list[0].startswith("libpve-common-perl - ")
     # The version each package replaces is kept for the release notes.
     assert [entry["old"] for entry in data.packages] == [
         "9.0.8",

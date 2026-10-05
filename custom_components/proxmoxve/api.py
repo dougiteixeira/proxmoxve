@@ -209,14 +209,16 @@ class ProxmoxClient:
         if it differs from the addresses advertised by the cluster.
         """
         current_host = self.host
-        if replace:
-            self._hosts = [self._hosts[0]]
+        # Built aside and swapped in together with its index: a poll that
+        # fails over reads both, and this runs at setup only - but a list
+        # one statement shorter than its index is not worth the thought.
+        kept = [self._hosts[0]] if replace else list(self._hosts)
         for host in hosts:
-            if isinstance(host, str) and host and host not in self._hosts:
-                self._hosts.append(host)
-        if current_host not in self._hosts:
-            self._hosts.append(current_host)
-        self._host_index = self._hosts.index(current_host)
+            if isinstance(host, str) and host and host not in kept:
+                kept.append(host)
+        if current_host not in kept:
+            kept.append(current_host)
+        self._hosts, self._host_index = kept, kept.index(current_host)
 
     def _answers(self) -> bool:
         """
