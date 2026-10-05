@@ -134,7 +134,7 @@ from .storage import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
 
     from homeassistant.core import Event, HomeAssistant
     from homeassistant.helpers.typing import ConfigType
@@ -1381,6 +1381,51 @@ async def async_remove_config_entry_device(
     return True
 
 
+def usable_mac_connections(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    macs: Iterable[str],
+    identifier: str,
+) -> set[tuple[str, str]]:
+    """
+    Return the addresses this device may claim as its own.
+
+    Home Assistant gives a connection to one device per config entry, and
+    two nodes can report the same address: the listing names a port after
+    its permanent address, and a board that keeps that address in shared
+    flash hands out the same one twice. The node then overrides it in its
+    own configuration, while the listing still shows the original.
+
+    Claiming an address a sibling already has is refused, and the refusal
+    used to fail the whole entry at setup - reported upstream in #700 by
+    someone whose two nodes share an onboard Intel controller. The node
+    keeps everything else and simply goes without that connection.
+    """
+    dev_reg = dr.async_get(hass)
+    ours = (DOMAIN, identifier)
+    free: set[tuple[str, str]] = set()
+    for mac in macs:
+        connection = (dr.CONNECTION_NETWORK_MAC, mac)
+        # Scoped to this entry: a connection is unique within one, and
+        # another integration holding the same address is none of our
+        # business.
+        holder = dev_reg.async_get_device_by_connection(
+            connection, config_entry.entry_id
+        )
+        if holder is not None and ours not in holder.identifiers:
+            LOGGER.warning(
+                "The address %s is reported by more than one node and already "
+                "belongs to %s; leaving it off %s. Proxmox names a port after "
+                "its permanent address, which two boards can share",
+                mac,
+                holder.name or holder.id,
+                identifier,
+            )
+            continue
+        free.add(connection)
+    return free
+
+
 def device_info(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -1446,16 +1491,14 @@ def device_info(
 
     elif api_category in (ProxmoxType.Node, ProxmoxType.Update):
         coordinator = coordinators[f"{ProxmoxType.Node}_{node}"]
+        name = f"{ProxmoxType.Node.capitalize()} {node}"
+        identifier = f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
         if (coordinator_data := coordinator.data) is not None:
             model_processor = coordinator_data.model
             proxmox_version = f"Proxmox {coordinator_data.version}"
-            connections = {
-                (dr.CONNECTION_NETWORK_MAC, mac)
-                for mac in coordinator_data.mac_addresses
-            }
-
-        name = f"{ProxmoxType.Node.capitalize()} {node}"
-        identifier = f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
+            connections = usable_mac_connections(
+                hass, config_entry, coordinator_data.mac_addresses, identifier
+            )
         url = f"https://{host}:{port}/#v1:0:=node/{node}"
         via_device = None
         model = model_processor
@@ -1518,20 +1561,45 @@ def device_info(
 
     if create:
         device_registry = dr.async_get(hass)
-        return device_registry.async_get_or_create(
-            config_entry_id=config_entry.entry_id,
-            entry_type=dr.DeviceEntryType.SERVICE,
-            configuration_url=url,
-            identifiers={(DOMAIN, identifier)},
-            connections=connections,
-            manufacturer=manufacturer or INTEGRATION_TITLE,
-            name=name,
-            model=model,
-            sw_version=proxmox_version,
-            hw_version=None,
-            via_device_id=via_device_id,
-            serial_number=serial_number or None,
-        )
+        try:
+            return device_registry.async_get_or_create(
+                config_entry_id=config_entry.entry_id,
+                entry_type=dr.DeviceEntryType.SERVICE,
+                configuration_url=url,
+                identifiers={(DOMAIN, identifier)},
+                connections=connections,
+                manufacturer=manufacturer or INTEGRATION_TITLE,
+                name=name,
+                model=model,
+                sw_version=proxmox_version,
+                hw_version=None,
+                via_device_id=via_device_id,
+                serial_number=serial_number or None,
+            )
+        except dr.DeviceInfoError:
+            # An address two devices of this entry both claim is refused,
+            # and the refusal would otherwise fail the setup of every
+            # resource after it. The device is worth more than the
+            # connection, so it is created without one.
+            LOGGER.warning(
+                "Device %s could not be created with the connections %s; "
+                "creating it without them",
+                identifier,
+                sorted(connections),
+            )
+            return device_registry.async_get_or_create(
+                config_entry_id=config_entry.entry_id,
+                entry_type=dr.DeviceEntryType.SERVICE,
+                configuration_url=url,
+                identifiers={(DOMAIN, identifier)},
+                manufacturer=manufacturer or INTEGRATION_TITLE,
+                name=name,
+                model=model,
+                sw_version=proxmox_version,
+                hw_version=None,
+                via_device_id=via_device_id,
+                serial_number=serial_number or None,
+            )
     return DeviceInfo(
         entry_type=dr.DeviceEntryType.SERVICE,
         configuration_url=url,

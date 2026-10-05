@@ -75,7 +75,7 @@ Beyond CPU, memory, swap and disk, each node reports:
 - **`Version`** — the Proxmox VE version, as a diagnostic sensor rather than only on the device page.
 - **`CPUs`** — the node's logical CPU count, diagnostic, disabled by default.
 
-The node's device also carries the hardware addresses of its physical ports, read from the MAC-based interface names Proxmox lists, so Home Assistant can merge it with what a network integration sees of the same machine.
+The node's device also carries the hardware addresses of its physical ports, read from the MAC-based interface names Proxmox lists, so Home Assistant can merge it with what a network integration sees of the same machine. Those names come from each port's permanent address, and two boards can carry the same one — an onboard controller whose address lives in flash that was cloned, for instance, where one node then overrides it in its own configuration. Home Assistant gives an address to one device per integration entry, so the node that comes second goes without it and says so in the log; everything else about that node is unaffected.
 
 ### Package updates
 
