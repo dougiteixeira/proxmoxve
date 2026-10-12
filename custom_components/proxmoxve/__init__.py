@@ -1503,6 +1503,13 @@ def device_info(
         coordinator = coordinators[f"{ProxmoxType.Node}_{node}"]
         name = f"{ProxmoxType.Node.capitalize()} {node}"
         identifier = f"{config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node}"
+        # A node whose first read failed has no data, and the processor is
+        # then simply unknown. Leaving the name unbound instead raised
+        # UnboundLocalError out of here and took the whole platform setup
+        # with it, so a node the cluster does not list - a renamed node, a
+        # token that may not see it - cost every other entity of the entry
+        # as well. Reported upstream in #712.
+        model_processor = None
         if (coordinator_data := coordinator.data) is not None:
             model_processor = coordinator_data.model
             proxmox_version = f"Proxmox {coordinator_data.version}"

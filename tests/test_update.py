@@ -370,3 +370,20 @@ def test_entity_without_node_version() -> None:
 
     assert entity.installed_version == "unknown"
     assert entity.latest_version == "9.0.10-p3-d1"
+
+
+def test_a_pending_set_without_pve_manager_still_counts_as_an_update() -> None:
+    """
+    Test the version id is read as newer, whatever AwesomeVersion makes of it.
+
+    Reported upstream in #711: with nine packages pending and none of them
+    `pve-manager`, the release stays the installed one and only the
+    `-p<n>-d<m>` suffix differs - which AwesomeVersion reads as a SemVer
+    pre-release, ranking `9.1.4-p7-d2` below `9.1.4`. The entity said "up
+    to date" with nine packages waiting.
+    """
+    entity = object.__new__(ProxmoxUpdateEntity)
+
+    assert entity.version_is_newer("9.1.4-p7-d2", "9.1.4") is True
+    assert entity.version_is_newer("9.1.5-p1-d0", "9.1.4") is True
+    assert entity.version_is_newer("9.1.4", "9.1.4") is False
