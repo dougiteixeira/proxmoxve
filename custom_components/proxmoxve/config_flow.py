@@ -630,9 +630,22 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     self.hass, self.config_entry, NONEXISTENT, str(node), listed=False
                 )
 
-            if node not in (
-                node_selecition if node_selecition is not None else []
-            ) or not user_input.get(CONF_DISKS_ENABLE):
+            # The disks switch moved to the Advanced configuration page in
+            # 5.2.0, so the selection form does not carry it - and reading
+            # it from there made this true on every save, deleting the
+            # node's disk and pool devices and creating them again. With
+            # "Enable newly added entities" off that silently disabled
+            # their entities. Reported upstream in #713. The advanced form
+            # does pass the field, and turning it off there still removes
+            # them, which is the point of the switch.
+            disks_enabled = user_input.get(
+                CONF_DISKS_ENABLE,
+                self.config_entry.options.get(CONF_DISKS_ENABLE, True),
+            )
+            if (
+                node not in (node_selecition if node_selecition is not None else [])
+                or not disks_enabled
+            ):
                 coordinators = self.config_entry.runtime_data[COORDINATORS]
                 if f"{ProxmoxType.Disk}_{node}" in coordinators:
                     for coordinator_disk in coordinators[f"{ProxmoxType.Disk}_{node}"]:

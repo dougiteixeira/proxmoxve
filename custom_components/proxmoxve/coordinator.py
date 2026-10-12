@@ -105,6 +105,62 @@ def _try_parse_float(raw: object) -> float | None:
     return None
 
 
+# Where PVE-mods puts its readings in the node status. It renamed the
+# field twice: `PveMod_JsonSensorInfo` up to v1.0.7, `PveMods_JsonSensorInfo`
+# in v2.0.0 - a pure rename - and `PveMods_SensorInfo` from v2.1.0, which
+# also changed the shape. All three are read, because all three are
+# installed out there and nothing about the payload says which it is.
+SENSOR_FIELDS: Final = (
+    "PveMods_SensorInfo",
+    "PveMods_JsonSensorInfo",
+    "PveMod_JsonSensorInfo",
+)
+# The block the first shape nests its chips in, under `data`.
+SENSORS_BLOCK: Final = "PVE MOD lm-sensors Enhanced"
+
+
+def _readings_of(payload: dict) -> dict:
+    """
+    Return the chips of a PVE-mods payload in the shape `sensors -j` has.
+
+    Two shapes exist. Up to v2.0.0 the chips sit under `data` in a named
+    block, each reading a flat number called `temp1_input` under the label
+    it carries - `coretemp-isa-0000` -> `Package id 0` -> `temp1_input`.
+
+    From v2.1.0 they sit under `enhanced_sensors`, keyed by the raw sensor
+    id, and a reading became an object: `temp1` -> `label` plus
+    `input` -> {quantity, unit, value}. That is turned back into the older
+    shape here, label and all, so the entities a node already has keep
+    their names and their history across a PVE-mods upgrade.
+    """
+    if isinstance(block := payload.get("data"), dict):
+        nested = block.get(SENSORS_BLOCK)
+        return nested if isinstance(nested, dict) else {}
+
+    chips = payload.get("enhanced_sensors")
+    if not isinstance(chips, dict):
+        return {}
+
+    flattened: dict[str, dict[str, Any]] = {}
+    for chip_name, chip in chips.items():
+        if not isinstance(chip, dict):
+            continue
+        readings: dict[str, Any] = {}
+        for sensor_id, sensor in chip.items():
+            if not isinstance(sensor, dict):
+                # `Adapter`, `cpu_model` and the like, as before.
+                continue
+            value = sensor.get("input")
+            if not isinstance(value, dict) or "value" not in value:
+                continue
+            label = sensor.get("label")
+            name = str(label) if isinstance(label, str) and label else str(sensor_id)
+            readings[name] = {f"{sensor_id}_input": value["value"]}
+        if readings:
+            flattened[str(chip_name)] = readings
+    return flattened
+
+
 def _parse_sensors_dict(data: dict) -> dict[str, float]:
     """Parse raw sensors -j dict format: {chip: {sensor: {_input: value}}}."""
     result: dict[str, float] = {}
@@ -1900,26 +1956,26 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 LOGGER.debug(
                     "Failed to parse sensorsOutput for node %s", self.resource_id
                 )
-        elif isinstance(
-            v2_sensor_info := api_status.get("PveMod_JsonSensorInfo"), dict
+        elif field := next(
+            (name for name in SENSOR_FIELDS if isinstance(api_status.get(name), dict)),
+            None,
         ):
-            # PVE-mods v2 (node_info package): already-decoded object, with
-            # the `sensors -j`-shaped data nested under
-            # data["PVE MOD lm-sensors Enhanced"] and extra per-chip
-            # metadata (Adapter/model/serial/cpu_model/...) mixed in
-            # alongside the sensor readings; _parse_sensors_dict already
-            # ignores anything whose keys don't end in "_input".
-            lm_sensors_data = v2_sensor_info.get("data", {}).get(
-                "PVE MOD lm-sensors Enhanced"
-            )
-            if isinstance(lm_sensors_data, dict):
+            # PVE-mods as a package: an already-decoded object, with the
+            # per-chip metadata (Adapter, cpu_model, serial) mixed in
+            # alongside the readings; _parse_sensors_dict ignores whatever
+            # does not end in "_input".
+            lm_sensors_data = _readings_of(api_status[field])
+            if lm_sensors_data:
                 sensors = _parse_sensors_dict(lm_sensors_data)
                 sensors_raw = json.dumps(lm_sensors_data)
             else:
+                # Also the normal answer of a collector that has gone idle:
+                # it tears itself down after ten seconds, and the field is
+                # then there with the switches in it and no readings.
                 LOGGER.debug(
-                    "Node %s returned PveMod_JsonSensorInfo without the expected "
-                    "lm-sensors block",
+                    "Node %s returned %s without readings",
                     self.resource_id,
+                    field,
                 )
         else:
             LOGGER.debug(

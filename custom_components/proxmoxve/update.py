@@ -271,6 +271,24 @@ class ProxmoxUpdateEntity(ProxmoxEntity, UpdateEntity):
         info = self._update_info()
         return info.latest_version_id if info else None
 
+    def version_is_newer(self, latest_version: str, installed_version: str) -> bool:
+        """
+        Return whether the version id stands for a pending upgrade.
+
+        Home Assistant compares the two with AwesomeVersion, which reads
+        the `-p7-d2` this entity appends - the number of Proxmox and other
+        packages, so the version changes whenever the pending set does - as
+        a SemVer pre-release. `9.1.4-p7-d2` therefore ranks *below* `9.1.4`,
+        and with no `pve-manager` among the pending packages, where the
+        release stays the installed one, the entity said "up to date" while
+        nine packages waited. Reported upstream in #711.
+
+        The id is only ever set to something other than the installed
+        version when something is pending, so that difference is the
+        answer.
+        """
+        return latest_version != installed_version
+
     @property
     def release_url(self) -> str | None:
         """

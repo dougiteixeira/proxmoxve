@@ -4,15 +4,17 @@
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from proxmoxer import AuthenticationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from .fake_api import FakeProxmox
+from .fake_api import NODE, FakeProxmox
 
 
 async def test_unreachable_host_asks_to_be_retried(
@@ -108,3 +110,34 @@ async def test_a_refused_password_asks_for_credentials(
         await hass.async_block_till_done()
 
     assert current_entry.state is ConfigEntryState.SETUP_ERROR
+
+
+async def test_a_node_without_data_leaves_the_other_entities_alone(
+    hass: HomeAssistant,
+    fake_api: FakeProxmox,
+    current_entry: MockConfigEntry,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """
+    Test a node without data does not take the platforms down with it.
+
+    Reported upstream in #712: a node whose status read fails leaves its
+    coordinator without data, and the device description then read a
+    processor name that was never assigned. The UnboundLocalError came out
+    of `device_info` while the platforms were being set up, so one node
+    that could not be read cost the entry every entity it has - the
+    cluster's and the other nodes' included.
+    """
+    # Listed by the cluster, so its coordinators are built - but its own
+    # status read fails, which is what leaves the coordinator without data.
+    del fake_api.routes[f"nodes/{NODE}/status"]
+
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert current_entry.state is ConfigEntryState.LOADED
+    assert "model_processor" not in caplog.text
+    assert "Error while setting up proxmoxve platform" not in caplog.text
+    # The sensor platform ran to the end: the node's failed-task sensor is
+    # created from the same device description that used to raise.
+    assert er.async_get(hass).async_get(f"sensor.node_{NODE}_failed_tasks") is not None
