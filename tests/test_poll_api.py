@@ -345,3 +345,62 @@ async def test_a_proxy_that_cannot_reach_the_node_is_not_asked_twice(
 
     assert not coordinator.last_update_success
     assert fake_api.paths().count(path) == 1
+
+
+async def test_a_refused_node_read_blames_the_credentials(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test a node nobody may read is reported as that, not as missing.
+
+    Reported upstream in #712: an API token with Privilege Separation on
+    and no ACL of its own is refused every node read, and the integration
+    answered `Node pve unable to be found in host …`. That reads as "the
+    node is gone", and sent the reporter - and me - looking for a renamed
+    node while the privileges were the whole story. The repair naming the
+    privilege was there all along; the message talked past it.
+    """
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = current_entry.runtime_data[COORDINATORS][f"{ProxmoxType.Node}_{NODE}"]
+    fake_api.routes[f"nodes/{NODE}/status"] = ResourceException(
+        403, "Permission check failed", f"(/nodes/{NODE}, Sys.Audit)"
+    )
+
+    await coordinator.async_refresh()
+
+    assert not coordinator.last_update_success
+    reason = str(coordinator.last_exception)
+    assert "refused" in reason
+    assert "may not be allowed to see it" in reason
+    assert "unable to be found" not in reason
+
+
+async def test_a_listing_that_goes_empty_says_what_it_means(
+    hass: HomeAssistant,
+    fake_api: FakeProxmox,
+    current_entry: MockConfigEntry,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """
+    Test privileges taken away while running are named as the reason.
+
+    Proxmox filters `GET /nodes` by privilege instead of refusing it, so
+    credentials that may no longer audit anything get an empty list rather
+    than a 403 - and nothing is refused, so nothing would create a repair.
+    The node would simply read as gone.
+    """
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = current_entry.runtime_data[COORDINATORS][f"{ProxmoxType.Node}_{NODE}"]
+    fake_api.routes["nodes"] = []
+
+    await coordinator.async_refresh()
+
+    assert not coordinator.last_update_success
+    assert "may not be allowed to see it" in str(coordinator.last_exception)
+    assert "Privilege Separation" in caplog.text
+    assert any(
+        issue.domain == DOMAIN and "forbidden" in issue.issue_id
+        for issue in ir.async_get(hass).issues.values()
+    )

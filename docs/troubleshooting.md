@@ -21,6 +21,19 @@ logger:
 ```
 </details>
 
+## "Everything is 0" or a node that cannot be read
+
+Proxmox filters what it lists by privilege rather than refusing the request, so credentials that may not see a node, a guest or a storage get an empty list — not an error. The integration then has nothing to show, and the node reads as unreadable.
+
+The usual cause is an API token: Proxmox creates them with **Privilege Separation** on, and such a token holds only what is granted to the token itself, not what its user has. Compare the two on any node:
+
+```bash
+pvesh get /access/permissions --userid 'user@realm!tokenname'
+pvesh get /access/permissions --userid 'user@realm'
+```
+
+If the token's list is empty and the user's is not, either untick *Privilege Separation* on the token or give the token its own ACL, as in [Permissions](permissions.md). A refused read also creates a repair naming the privilege and the path it wanted.
+
 ## Diagnostics
 
 The integration supports Home Assistant's standard diagnostics download (Settings > Devices & services > Proxmox VE > ⋮ > Download diagnostics), useful for attaching to bug reports. It includes the config entry's settings (credentials redacted) and a snapshot of the last data polled by every active coordinator (nodes, VMs/CTs, storage, disks, ZFS, tasks, updates, and — if configured — the HA-managed resource list and cluster HA status). Node, VM/CT, and storage names are not redacted since they're the point of a diagnostics dump; review the file before sharing it publicly if that's a concern for your setup.
