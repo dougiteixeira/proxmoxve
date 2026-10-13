@@ -60,7 +60,12 @@ from .discovery import (
     resource_changes,
 )
 from .disk import disk_matches_id
-from .issues import FORBIDDEN, ResourceLine, note_resource_threadsafe
+from .issues import (
+    FORBIDDEN,
+    ResourceLine,
+    note_resource,
+    note_resource_threadsafe,
+)
 from .models import (
     ProxmoxBackupData,
     ProxmoxBackupInfoData,
@@ -1747,6 +1752,52 @@ def parse_mac_addresses(interfaces: Any) -> tuple[str, ...]:
     return tuple(found)
 
 
+def node_is_invisible(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    node: str,
+    listing: Any,
+) -> bool:
+    """
+    Note the credentials as the reason a node is not in the listing.
+
+    Proxmox filters `GET /nodes` by privilege rather than refusing it, so
+    credentials that may audit nothing get an empty list and a node that
+    is running reads as missing. Reported upstream in #712 by someone
+    whose API token had Privilege Separation on and no ACL of its own: the
+    integration said the node could not be found, which sounds like the
+    node is gone, and created no repair because nothing was refused.
+
+    An empty listing is the case this covers. A listing that names other
+    nodes but not this one is a different matter - that node really is not
+    in the cluster, and the repair for a resource that does not exist says
+    so already.
+    """
+    if listing:
+        return False
+    note_resource(
+        hass,
+        config_entry,
+        FORBIDDEN,
+        f"{ProxmoxType.Node}_{node}",
+        ResourceLine(
+            label=f"{ProxmoxType.Node.capitalize()} {node}",
+            permission=f"['perm','/nodes/{node}',['Sys.Audit']]",
+            tracked_as=node,
+        ),
+        listed=True,
+    )
+    LOGGER.warning(
+        "The node listing came back empty, so node %s cannot be read. Proxmox "
+        "filters that listing by privilege, so this is what credentials that "
+        "may not audit the node look like - an API token created with "
+        "Privilege Separation holds only what is granted to the token itself. "
+        "See the repair the integration created",
+        node,
+    )
+    return True
+
+
 class ProxmoxNodeCoordinator(ProxmoxCoordinator):
     """Proxmox VE Node data update coordinator."""
 
@@ -1849,6 +1900,14 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
             if node_status == "":
                 LOGGER.debug("Node %s status is %s", self.resource_id, node_status)
                 node_status = "offline"
+        elif node_is_invisible(
+            self.hass, self.config_entry, self.resource_id, nodes_api
+        ):
+            msg = (
+                f"The node listing is empty, so node {self.resource_id} cannot be "
+                "read - the credentials may not be allowed to see it"
+            )
+            raise UpdateFailed(msg)
 
         if node_status == "online":
             api_path = f"nodes/{self.resource_id}/status"
@@ -1862,7 +1921,17 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 self.resource_id,
             )
             if api_status is None:
-                msg = f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
+                # poll_api hands back None for a read Proxmox refused, and
+                # has already put the privilege it wanted into a repair.
+                # "Unable to be found" read as "the node is gone", which
+                # sent a reporter looking for a renamed node while his API
+                # token simply held no privileges - #712.
+                msg = (
+                    f"Node {self.resource_id} could not be read on "
+                    f"{self.config_entry.data[CONF_HOST]}: the read was refused, so "
+                    "the credentials may not be allowed to see it - see the repair "
+                    "the integration created"
+                )
                 raise UpdateFailed(msg)
 
             api_status["status"] = node_api["status"]
@@ -2064,7 +2133,11 @@ class ProxmoxNodeCoordinator(ProxmoxCoordinator):
                 sensors_raw=sensors_raw,
                 mac_addresses=self._mac_addresses or (),
             )
-        msg = f"Node {self.resource_id} unable to be found in host {self.config_entry.data[CONF_HOST]}"
+        msg = (
+            f"Node {self.resource_id} is not in the node listing of "
+            f"{self.config_entry.data[CONF_HOST]} - it was removed from the cluster, "
+            "or the credentials may not see it"
+        )
         raise UpdateFailed(msg)
 
 
