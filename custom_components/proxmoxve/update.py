@@ -325,8 +325,15 @@ class ProxmoxUpdateEntity(ProxmoxEntity, UpdateEntity):
             f"{info.proxmox_updates} from Proxmox, "
             f"{info.other_updates} from other sources."
         )
-        if info.proxmox_updates:
+        # Only a pending pve-manager is a new Proxmox VE release. Proxmox's
+        # other packages - libpve-storage-perl, qemu-server - can be pending
+        # without one, and then the version here is the installed one: the
+        # sentence read as a release waiting that was not. Reported upstream
+        # in #711.
+        if info.latest_version != self.installed_version:
             summary += f" The newest pending Proxmox version is {info.latest_version}."
+        elif info.proxmox_updates:
+            summary += " No new Proxmox VE release among them."
         return summary
 
     def release_notes(self) -> str | None:
