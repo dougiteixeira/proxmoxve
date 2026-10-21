@@ -84,7 +84,7 @@ def _storage_coordinator(responses: dict[str, object]) -> ProxmoxStorageCoordina
     ) -> object:
         return responses.get(api_path)
 
-    coordinator._poll = _poll  # noqa: SLF001
+    coordinator._poll = _poll
     return coordinator
 
 
@@ -204,7 +204,7 @@ def _zfs_coordinator(answer: object) -> ProxmoxZFSCoordinator:
     coordinator.config_entry = MagicMock()
     coordinator.node_name = "pve"
     coordinator.resource_id = "rpool"
-    coordinator._proxmox = MagicMock()  # noqa: SLF001
+    coordinator._proxmox = MagicMock()
     return coordinator
 
 
