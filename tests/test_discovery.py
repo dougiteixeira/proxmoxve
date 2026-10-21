@@ -170,8 +170,8 @@ def _discovery_coordinator(
     coordinator.resource_id = "discovery"
     add = AsyncMock()
     remove = AsyncMock()
-    coordinator._add_resource = add  # noqa: SLF001
-    coordinator._remove_resource = remove  # noqa: SLF001
+    coordinator._add_resource = add
+    coordinator._remove_resource = remove
     return coordinator, add, remove
 
 
