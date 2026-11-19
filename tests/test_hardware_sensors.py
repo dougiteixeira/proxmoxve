@@ -25,9 +25,9 @@ def _coordinator() -> ProxmoxNodeCoordinator:
     """
     coordinator = object.__new__(ProxmoxNodeCoordinator)
     coordinator.resource_id = "node1"
-    coordinator._last_sensors = {}  # noqa: SLF001
-    coordinator._last_sensors_raw = None  # noqa: SLF001
-    coordinator._last_sensors_at = None  # noqa: SLF001
+    coordinator._last_sensors = {}
+    coordinator._last_sensors_raw = None
+    coordinator._last_sensors_at = None
     return coordinator
 
 

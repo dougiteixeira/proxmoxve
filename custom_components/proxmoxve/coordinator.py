@@ -33,6 +33,7 @@ from requests.exceptions import (
     RetryError,
     SSLError,
 )
+from urllib3.exceptions import ProtocolError
 
 from .api import ProxmoxClient, get_api
 from .const import (
@@ -3250,6 +3251,24 @@ def _client_for(config_entry: ConfigEntry, proxmox: ProxmoxAPI) -> ProxmoxClient
     return None
 
 
+def _closed_before_answering(error: connError) -> bool:
+    """
+    Return whether the host closed the connection before it answered.
+
+    pveproxy closes a connection that has been idle for five seconds.
+    A read that goes out on it just then finds it closed under the
+    request, and requests reports `ConnectionError(ProtocolError(
+    'Connection aborted.', RemoteDisconnected(...)))` - or the same with
+    ConnectionResetError, which RemoteDisconnected is one of, when the
+    close came as a reset. A connection that was refused or timed out
+    carries a different reason, and is not taken for this.
+    """
+    reason = error.args[0] if error.args else None
+    return isinstance(reason, ProtocolError) and any(
+        isinstance(arg, ConnectionResetError) for arg in reason.args
+    )
+
+
 def _retry_on_another_node(
     client: ProxmoxClient | None,
     generation: int,
@@ -3389,6 +3408,15 @@ def poll_api(  # noqa: PLR0917
                 # One such moment used to take an entity out for a whole
                 # polling interval; asked again, the node usually answers.
                 LOGGER.debug("Read %s came back %s, asking once more", api_path, error)
+                api_data = get_api(proxmox, api_path)
+            except connError as error:
+                if not _closed_before_answering(error):
+                    raise
+                # The host is there; only the kept-alive connection was
+                # not. A new one gets the answer. Failing over finds the
+                # host answering, or has no other host, and the read fails
+                # for a whole polling interval (#723).
+                LOGGER.debug("Read %s lost its connection, asking once more", api_path)
                 api_data = get_api(proxmox, api_path)
         except AuthenticationError as error:
             api_data = _retry_after_relogin(config_entry, proxmox, api_path, error)

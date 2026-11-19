@@ -29,7 +29,7 @@
                     "disks_enable": "Wenn du mit Disk-Ruhezustand arbeitest, musst du diese Integrationsoption deaktivieren, damit die Festplatten nicht unnötig reaktiviert werden.",
                     "auto_discovery": "Verfolgen Sie jeden Knoten, virtuelle Maschine, Container und Speicherung der Zugangsdaten und folgen Sie dann dem Cluster: Was hinzugefügt wird, wird abgeholt, was entfernt wird, wird fallen gelassen. Die obige Auswahl wird ignoriert, während diese aktiviert ist. Vorlagen werden niemals verfolgt.",
                     "entity_id_scheme": "Standard: Home Assistant's device then name, `qemu_win11_108_cpu_used`. Extended: prefix, kind, id, name, item - `pve_qemu_108_win11_cpu_used` - so a search or a recorder filter catches everything by the prefix and a list sorts by id. Applies to entities created from now on; ids that exist keep them.",
-                    "entity_id_prefix": "The first part of every entity id under the extended scheme; `pve` unless you choose otherwise. Not used by the standard scheme."
+                    "entity_id_prefix": "Der erste Teil jeder Entitäts-ID unter dem erweiterten Schema; `pve`, es sei denn, du wählst etwas anderes. Nicht vom Standardschema verwendet."
                 }
             },
             "reauth_confirm": {
@@ -161,7 +161,7 @@
                     "ha_admin_realm": "Realm"
                 },
                 "data_description": {
-                    "ha_admin_username": "Leave empty (along with the fields below) to disable the Arm/Disarm HA buttons and the HA managed sensor.",
+                    "ha_admin_username": "Lassen Sie leer (zusammen mit den untenstehenden Feldern), um die HA-Tasten und den HA-verwalteten Sensor zu deaktivieren.",
                     "ha_admin_password": "Needs Sys.Console (arm/disarm) and Sys.Audit (HA resource list) on '/' — not the scoped permissions recommended for the main integration user."
                 }
             },
@@ -255,7 +255,7 @@
                 "name": "HA managed"
             },
             "replication_failing": {
-                "name": "Replication failing"
+                "name": ""
             },
             "cluster_quorate": {
                 "name": "Quorate"
@@ -580,7 +580,7 @@
                         "name": "Product"
                     },
                     "next_due": {
-                        "name": "Next due"
+                        "name": "Nächste Fälligkeit"
                     }
                 }
             },
@@ -605,7 +605,7 @@
                 "name": "CRM-Master zuletzt gesehen"
             },
             "ha_resources_error": {
-                "name": "HA resources in error",
+                "name": "HA Ressourcen fehlerhaft",
                 "state_attributes": {
                     "ha_resources_error_list": {
                         "name": "Resources in error"

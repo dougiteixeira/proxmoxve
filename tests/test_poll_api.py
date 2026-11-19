@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Tests for how a refused API read turns into a repair issue."""
 
+from http.client import RemoteDisconnected
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,6 +13,8 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from proxmoxer import AuthenticationError
 from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from urllib3.exceptions import MaxRetryError, NewConnectionError, ProtocolError
 
 from custom_components.proxmoxve import DOMAIN
 from custom_components.proxmoxve.const import (
@@ -345,6 +348,80 @@ async def test_a_proxy_that_cannot_reach_the_node_is_not_asked_twice(
 
     assert not coordinator.last_update_success
     assert fake_api.paths().count(path) == 1
+
+
+# What requests raises when the host closes a kept-alive connection under
+# the request, and when it refuses a new one.
+CLOSED_BEFORE_ANSWERING = RequestsConnectionError(
+    ProtocolError(
+        "Connection aborted.",
+        RemoteDisconnected("Remote end closed connection without response"),
+    )
+)
+REFUSED_CONNECTION = RequestsConnectionError(
+    MaxRetryError(
+        None,
+        "/api2/json/nodes",
+        NewConnectionError(None, "Failed to establish a new connection"),
+    )
+)
+
+
+async def test_a_connection_closed_before_the_answer_is_asked_once_more(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test a read whose connection the host closed is repeated.
+
+    Reported in #723: pveproxy closes a connection after five idle
+    seconds, and a read sent on it at that moment failed with
+    `RemoteDisconnected` while the host answered everything else. The
+    entities went unavailable until the next poll.
+    """
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    key = f"{ProxmoxType.Storage}_storage/{NODE}/local"
+    coordinator = current_entry.runtime_data[COORDINATORS][key]
+    path = f"nodes/{NODE}/storage?storage=local"
+    fake_api.routes[path] = Answers(CLOSED_BEFORE_ANSWERING, fake_api.routes[path])
+    fake_api.calls.clear()
+
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success
+    assert fake_api.paths().count(path) == 2
+
+
+@pytest.mark.parametrize(
+    ("error", "reads"),
+    [
+        # Asked once more, not over and over.
+        (CLOSED_BEFORE_ANSWERING, 2),
+        # A host that refuses the connection is not asked again; that is
+        # for the failover to decide.
+        (REFUSED_CONNECTION, 1),
+    ],
+)
+async def test_a_connection_that_keeps_failing_fails_the_update(
+    hass: HomeAssistant,
+    fake_api: FakeProxmox,
+    current_entry: MockConfigEntry,
+    error: Exception,
+    reads: int,
+) -> None:
+    """Test a connection error that repeats, or is not a closed one, still fails."""
+    await hass.config_entries.async_setup(current_entry.entry_id)
+    await hass.async_block_till_done()
+    key = f"{ProxmoxType.Storage}_storage/{NODE}/local"
+    coordinator = current_entry.runtime_data[COORDINATORS][key]
+    path = f"nodes/{NODE}/storage?storage=local"
+    fake_api.routes[path] = error
+    fake_api.calls.clear()
+
+    await coordinator.async_refresh()
+
+    assert not coordinator.last_update_success
+    assert fake_api.paths().count(path) == reads
 
 
 async def test_a_refused_node_read_blames_the_credentials(
