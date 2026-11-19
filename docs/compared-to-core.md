@@ -2,7 +2,7 @@
 
 # Compared with the core integration
 
-Home Assistant ships its own [Proxmox VE integration](https://www.home-assistant.io/integrations/proxmoxve/). This one grew out of it and replaces it when installed, so the fair question is what you get for the extra install. The table is taken from the core integration's source as of **Home Assistant 2026.9** and from this integration's current release; the core integration is being worked on again, so check its documentation if the column looks out of date.
+Home Assistant ships its own [Proxmox VE integration](https://www.home-assistant.io/integrations/proxmoxve/). This one grew out of it and replaces it when installed, so the fair question is what you get for the extra install. The table is taken from the core integration's source as of **Home Assistant 2026.11** and from this integration's current release; the core integration is being worked on again, so check its documentation if the column looks out of date.
 
 Everything the core integration reads or does is here as well, so switching does not take anything away; entity ids differ, so automations built on the core integration need pointing at the new ones.
 
@@ -23,9 +23,9 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | Buttons only where the privilege is held | ✅ | ✅ |
 | Repairs naming the missing privilege and path | ➖ | ✅ ([details](permissions.md)) |
 | Failover to another cluster node when the configured host is down | ➖ | ✅, across a restart of Home Assistant too ([details](behaviour.md#when-the-configured-host-is-down)) |
-| Guests and storages on a node that is switched off | Read until the request fails | Not read while the cluster reports the node offline |
-| A read the proxy could not finish (`596`) | The entity goes unavailable | Repeated once before it does ([details](behaviour.md#when-the-api-is-busy)) |
-| A kept-alive connection the proxy closed just as a read went out | The entity goes unavailable | Repeated once on a new connection before it does ([details](behaviour.md#when-the-api-is-busy)) |
+| Guests and storages on a node that is switched off | Not read while Proxmox reports the node offline | Not read while the cluster reports the node offline |
+| A read the proxy could not finish (`596`) | The whole poll fails: one coordinator reads everything, so every entity goes unavailable | Repeated once before it does ([details](behaviour.md#when-the-api-is-busy)) |
+| A kept-alive connection the proxy closed just as a read went out | The whole poll fails: one coordinator reads everything, so every entity goes unavailable | Repeated once on a new connection before it does ([details](behaviour.md#when-the-api-is-busy)) |
 | Re-login instead of re-authentication after a node was off for hours | ➖ | ✅ ([details](behaviour.md#nodes-that-are-switched-off-for-a-while)) |
 | Diagnostics download | ✅ | ✅ |
 | Translations | Home Assistant's | Crowdin, currently 13 languages |
@@ -47,7 +47,8 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | Swap, IO delay, load average, version | ➖ | ✅ |
 | Last backup, backup status, backup duration | ✅ | ✅ |
 | Backup running (for automations that wait) | ➖ | ✅ |
-| Package updates as an `update` entity, pending package count | ➖ | ✅ (needs `Sys.Modify`) |
+| Package updates as an `update` entity | ✅ (needs `Sys.Modify`) | ✅ (needs `Sys.Modify`) |
+| Pending package count as a sensor | ➖ | ✅ (needs `Sys.Modify`) |
 | Failed tasks of the last 24 h | ➖ | ✅ |
 | Replication, subscription, certificate expiry | ➖ | ✅ |
 | Hardware temperatures, fans, voltages, power | ➖ | ✅ via [PVE-mods](hardware-sensors.md) |
