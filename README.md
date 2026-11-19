@@ -34,18 +34,26 @@ Many entities are created **disabled by default** — the buttons that change th
 
 ## Install
 
-### Installation via HACS
+### Installation via the Marketplace (Home Assistant 2026.11 and newer)
 
-Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
-
-* Adding Proxmox VE to HACS can be using this button:
+HACS is built into Home Assistant as the Marketplace. Proxmox VE is not in its catalog, so it is added as a custom repository - this button does that:
 
 [![image](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dougiteixeira&repository=proxmoxve&category=integration)
 
-If the button above doesn't work, add `https://github.com/dougiteixeira/proxmoxve` as a custom repository of type Integration in HACS.
+The Marketplace asks before it adds the repository, and it needs a connected GitHub account for it. Without the button: Settings > Marketplace > Custom repositories, add `https://github.com/dougiteixeira/proxmoxve` as type Integration.
 
+* Click Install on `Proxmox VE`.
+* Restart Home Assistant if the Marketplace asks for it.
+
+An installation from HACS moves to the Marketplace by itself when Home Assistant is updated to 2026.11.
+
+### Installation via HACS (before Home Assistant 2026.11)
+
+Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
+
+* Add Proxmox VE to HACS with the same button as above. If it does not work, add `https://github.com/dougiteixeira/proxmoxve` as a custom repository of type Integration in HACS.
 * Click Install on the `Proxmox VE` integration.
-* Restart the Home Assistant.
+* Restart Home Assistant.
 
 **Manual installation**
 
