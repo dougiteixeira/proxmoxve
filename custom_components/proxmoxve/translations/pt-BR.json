@@ -267,34 +267,34 @@
                 "name": "Armazenamento ativo",
                 "state": {
                     "on": "Ativo",
-                    "off": "Inactive"
+                    "off": "Inativo"
                 }
             },
             "storage_enabled": {
                 "name": "Storage enabled",
                 "state": {
-                    "on": "Enabled",
-                    "off": "Disabled"
+                    "on": "Habilitado",
+                    "off": "Desabilitado"
                 }
             },
             "storage_shared": {
-                "name": "Storage shared",
+                "name": "Armazenamento compartilhado",
                 "state": {
-                    "on": "Shared",
-                    "off": "Not shared"
+                    "on": "Compartilhado",
+                    "off": "Não compartilhado"
                 }
             },
             "backup_status": {
-                "name": "Backup status",
+                "name": "Status do backup",
                 "state_attributes": {
                     "status": {
                         "name": "Status"
                     },
                     "guests": {
-                        "name": "Guests"
+                        "name": "Convidados"
                     },
                     "user": {
-                        "name": "User"
+                        "name": "Usuário"
                     }
                 }
             }
@@ -319,7 +319,7 @@
                 "name": "Parar"
             },
             "unlock": {
-                "name": "Unlock"
+                "name": "Desbloquear"
             },
             "resume": {
                 "name": "Retomar"
@@ -340,16 +340,16 @@
                 "name": "Disarm HA"
             },
             "suspend_all": {
-                "name": "Suspend all"
+                "name": "Suspender todos"
             },
             "snapshot": {
                 "name": "Create snapshot"
             },
             "backup": {
-                "name": "Back up now"
+                "name": "Fazer backup agora"
             },
             "backup_all": {
-                "name": "Back up all"
+                "name": "Fazer backup de todos"
             }
         },
         "sensor": {
@@ -357,7 +357,7 @@
                 "name": "CPU em uso",
                 "state_attributes": {
                     "cpus": {
-                        "name": "Cores"
+                        "name": "Núcleos"
                     }
                 }
             },
@@ -386,10 +386,10 @@
                 "name": "Memory used on host"
             },
             "ip_address": {
-                "name": "IP address",
+                "name": "Endereço IP",
                 "state_attributes": {
                     "ip_addresses": {
-                        "name": "IP addresses"
+                        "name": "Endereços IP"
                     },
                     "interfaces": {
                         "name": "Interfaces"
@@ -423,7 +423,7 @@
                 "name": "IO delay"
             },
             "version": {
-                "name": "Version"
+                "name": "Versão"
             },
             "disk_free": {
                 "name": "Disco disponível"
@@ -475,8 +475,8 @@
                 "name": "Ceph health",
                 "state": {
                     "ok": "OK",
-                    "warning": "Warning",
-                    "error": "Error"
+                    "warning": "Aviso",
+                    "error": "Erro"
                 },
                 "state_attributes": {
                     "checks": {
@@ -494,55 +494,55 @@
                 "name": "Ceph used percentage"
             },
             "cluster_nodes_online": {
-                "name": "Nodes online",
+                "name": "Nós online",
                 "state_attributes": {
                     "nodes_total": {
-                        "name": "Nodes"
+                        "name": "Nós"
                     },
                     "nodes_offline": {
-                        "name": "Nodes offline"
+                        "name": "Nós offline"
                     }
                 }
             },
             "cluster_qemu_running": {
-                "name": "Virtual machines running",
+                "name": "Máquinas virtuais em execução",
                 "state_attributes": {
                     "qemu_total": {
-                        "name": "Virtual machines"
+                        "name": "Máquinas virtuais"
                     }
                 }
             },
             "cluster_lxc_running": {
-                "name": "Containers running",
+                "name": "Contêineres em execução",
                 "state_attributes": {
                     "lxc_total": {
-                        "name": "Containers"
+                        "name": "Contêineres"
                     }
                 }
             },
             "cluster_cpu_used": {
-                "name": "CPU used"
+                "name": "CPU em uso"
             },
             "cluster_memory_used_perc": {
-                "name": "Memory used percentage"
+                "name": "Porcentagem de memória em uso"
             },
             "cluster_memory_used": {
-                "name": "Memory used"
+                "name": "Memória em uso"
             },
             "cluster_memory_total": {
-                "name": "Memory total"
+                "name": "Memória total"
             },
             "certificate_expires": {
-                "name": "Certificate expires",
+                "name": "Certificado expirado",
                 "state_attributes": {
                     "filename": {
-                        "name": "File"
+                        "name": "Arquivo"
                     },
                     "subject": {
-                        "name": "Subject"
+                        "name": "Assunto"
                     },
                     "issuer": {
-                        "name": "Issuer"
+                        "name": "Emissor"
                     }
                 }
             },
@@ -550,7 +550,7 @@
                 "name": "Guests without backup",
                 "state_attributes": {
                     "guests": {
-                        "name": "Guests"
+                        "name": "Convidados"
                     }
                 }
             },
@@ -563,21 +563,21 @@
                 }
             },
             "subscription_status": {
-                "name": "Subscription",
+                "name": "Assinatura",
                 "state": {
-                    "new": "New",
-                    "notfound": "None",
-                    "active": "Active",
-                    "invalid": "Invalid",
-                    "expired": "Expired",
-                    "suspended": "Suspended"
+                    "new": "Novo ",
+                    "notfound": "Nenhum",
+                    "active": "Ativo",
+                    "invalid": "Inválido",
+                    "expired": "Expirado",
+                    "suspended": "Suspenso"
                 },
                 "state_attributes": {
                     "level": {
-                        "name": "Level"
+                        "name": "Nível"
                     },
                     "product": {
-                        "name": "Product"
+                        "name": "Produto"
                     },
                     "next_due": {
                         "name": "Next due"
@@ -587,10 +587,10 @@
             "ha_armed_state": {
                 "name": "HA armed state",
                 "state": {
-                    "armed": "Armed",
+                    "armed": "Armado",
                     "standby": "Standby",
-                    "disarming": "Disarming",
-                    "disarmed": "Disarmed"
+                    "disarming": "Desarmando",
+                    "disarmed": "Desarmado"
                 },
                 "state_attributes": {
                     "resource_mode": {
@@ -666,7 +666,7 @@
                 "name": "Nó",
                 "state_attributes": {
                     "nodes": {
-                        "name": "Nodes"
+                        "name": "Nós"
                     }
                 }
             },
@@ -696,16 +696,16 @@
                     "stopped": "Desligado",
                     "suspended": "Suspenso",
                     "running": "Executando",
-                    "shutdown": "Shutting down",
+                    "shutdown": "Desligando",
                     "io-error": "I/O error",
                     "guest-panicked": "Guest panicked",
                     "watchdog": "Watchdog",
                     "inmigrate": "Incoming migration",
                     "postmigrate": "Migrated away",
                     "finish-migrate": "Finishing migration",
-                    "restore-vm": "Restoring",
+                    "restore-vm": "Restaurando",
                     "save-vm": "Saving state",
-                    "debug": "Debug",
+                    "debug": "Depuração",
                     "colo": "COLO"
                 }
             },
@@ -739,16 +739,16 @@
                 "name": "Última inicialização"
             },
             "backup_last": {
-                "name": "Last backup",
+                "name": "Último backup",
                 "state_attributes": {
                     "status": {
                         "name": "Status"
                     },
                     "guests": {
-                        "name": "Guests"
+                        "name": "Convidados"
                     },
                     "user": {
-                        "name": "User"
+                        "name": "Usuário"
                     }
                 }
             },
@@ -760,13 +760,13 @@
                 "state": {
                     "online": "Online",
                     "offline": "Offline",
-                    "unknown": "Unknown"
+                    "unknown": "Desconhecido"
                 }
             }
         },
         "update": {
             "node_update": {
-                "name": "Software update"
+                "name": "Atualização de software"
             }
         }
     },
@@ -780,17 +780,17 @@
         "backup_mode": {
             "options": {
                 "snapshot": "Snapshot",
-                "suspend": "Suspend",
-                "stop": "Stop"
+                "suspend": "Suspender",
+                "stop": "Parar"
             }
         },
         "update_interval": {
             "options": {
-                "30": "30 seconds",
-                "45": "45 seconds",
-                "60": "60 seconds (default)",
-                "90": "90 seconds",
-                "120": "2 minutes"
+                "30": "30 segundos",
+                "45": "45 segundos",
+                "60": "60 segundos (padrão)",
+                "90": "90 segundos",
+                "120": "2 minutos"
             }
         },
         "entity_id_scheme": {
@@ -804,7 +804,7 @@
                 "zstd": "zstd",
                 "gzip": "gzip",
                 "lzo": "lzo",
-                "0": "None"
+                "0": "Nenhum"
             }
         }
     },
@@ -814,23 +814,23 @@
             "description": "Starts backup runs (vzdump) for the targeted guests, nodes or cluster - or for the node and guest ids named. One run per node; returns their task ids.",
             "fields": {
                 "node": {
-                    "name": "Node",
+                    "name": "Nó",
                     "description": "A node to back up on, by name. Not needed when devices are targeted or guests are named: their node is looked up."
                 },
                 "vmid": {
-                    "name": "Guests",
+                    "name": "Convidados",
                     "description": "IDs of VMs and containers to back up, wherever in the cluster they live."
                 },
                 "all": {
-                    "name": "All",
+                    "name": "Todos",
                     "description": "Back up every guest the node hosts - on the named node, or on every tracked node when none is named or targeted."
                 },
                 "storage": {
-                    "name": "Storage",
+                    "name": "Armazenamento",
                     "description": "Where to store the backup. Defaults to the storage picked for the backup buttons in the integration options, or to the node's own default."
                 },
                 "mode": {
-                    "name": "Mode",
+                    "name": "Modo",
                     "description": "How to freeze the guest: snapshot (no downtime), suspend, or stop."
                 },
                 "compress": {
@@ -838,7 +838,7 @@
                     "description": "zstd, gzip, lzo, or none. Defaults to the node's setting."
                 },
                 "notes": {
-                    "name": "Notes",
+                    "name": "Anotações",
                     "description": "Notes template for the backup, for example {{guestname}}."
                 },
                 "skip_if_running": {
