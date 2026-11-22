@@ -17,7 +17,6 @@ from custom_components.proxmoxve.const import (
     CONF_DISKS_ENABLE,
     CONF_ENTITY_ID_SCHEME,
     CONF_LXC,
-    CONF_NODE,
     CONF_NODES,
     CONF_QEMU,
     CONF_REALM,

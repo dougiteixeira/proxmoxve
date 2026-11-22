@@ -7,7 +7,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -130,6 +129,7 @@ from .storage import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
+    from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import Event, HomeAssistant
     from proxmoxer import ProxmoxAPI
 
