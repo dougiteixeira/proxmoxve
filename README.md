@@ -15,7 +15,7 @@ It began as [@dougiteixeira](https://github.com/dougiteixeira)'s custom integrat
 - **Nodes** — status, CPU, memory, swap, disk, IO delay, load average, version; package updates as a Home Assistant update entity; last backup and failed tasks; replication, subscription and certificate expiry; hardware temperatures, fans and voltages via PVE-mods; physical disks with SMART; ZFS pools.
 - **Virtual machines and containers** — status with QEMU's finer run states, CPU (own and as a share of the host), memory, disk from the guest agent, network, uptime, a file read from inside the guest.
 - **Storage** — capacity and the active/enabled/shared flags, per node for local storage and once for shared.
-- **Actions** — start, stop, shutdown, reboot, suspend, resume, hibernate, reset, unlock, snapshot and backup buttons; bulk start/stop/suspend/backup per node; Wake on LAN; arm/disarm HA; and a `proxmoxve.backup` action with all of vzdump's options.
+- **Actions** — start, stop, shutdown, reboot, suspend, resume, hibernate, reset, unlock, snapshot and backup buttons; bulk start/stop/suspend/backup per node; Wake on LAN; arm/disarm HA; and a `proxmoxve_custom.backup` action with all of vzdump's options.
 - **Behaviour** — optional automatic discovery of everything the credentials can see, failover to another cluster node when the configured one goes down, no re-authentication after a node was off overnight, repairs that name the missing privilege, and buttons only where the privilege exists.
 
 Many entities are created **disabled by default** — the buttons that change things, and sensors most setups never need — and are enabled per entity, see [Disabled entities](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md#disabled-entities).
@@ -23,7 +23,7 @@ Many entities are created **disabled by default** — the buttons that change th
 ## Documentation
 
 - [Entities](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md) — every sensor, by cluster, node, guest and storage
-- [Actions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/actions.md) — buttons and the `proxmoxve.backup` action
+- [Actions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/actions.md) — buttons and the `proxmoxve_custom.backup` action
 - [Hardware sensors and physical disks](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/hardware-sensors.md) — PVE-mods, SMART, when readings come and go
 - [Proxmox permissions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/permissions.md) — roles, group, user and token, step by step
 - [How it behaves](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md) — discovery, failover, nodes that are off, disabled entities, what I cannot test
@@ -117,9 +117,10 @@ the Marketplace.
 
 The new entry receives a new entry ID. Its settings, options, devices, device
 IDs and entity IDs are transferred, and entity unique IDs are adjusted to
-match the new entry. The `proxmoxve.backup` action remains available as an
-alias for `proxmoxve_custom.backup`. A detected registry conflict stops the
-transfer; check the Home Assistant logs before retrying.
+match the new entry. Update existing automations, scripts and blueprints
+manually, replacing `proxmoxve.backup` with `proxmoxve_custom.backup`; the old
+action is no longer provided. A detected registry conflict stops the transfer;
+check the Home Assistant logs before retrying.
 
 After the new integration starts successfully and all legacy entries have
 been removed, it removes the recognized legacy `custom_components/proxmoxve`

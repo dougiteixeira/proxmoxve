@@ -18,14 +18,16 @@ All of them are **disabled by default** — a dashboard should not offer a stop 
 
 For a dashboard there are buttons as well: **`Back up now`** on every VM and container, **`Back up all`** on every node. A button cannot ask where to write, so they need the option **Backup storage for the backup buttons** in the integration options — a pick-list of the storages that accept backups, any other name can be typed in. Without a storage picked there are no buttons at all, since `vzdump` would otherwise dump into the node's local directory; and like every other button they exist only where the credentials hold the privilege, `VM.Backup` here. Both run in snapshot mode. Off by default like the other buttons that change things.
 
-## The `proxmoxve.backup` action
+## The `proxmoxve_custom.backup` action
 
-The action **`proxmoxve.backup`** starts backup runs the way *Backup now* in the Proxmox interface does. Say what to back up the Home Assistant way, as the action's **target**: a VM or container device backs up that guest, a node device everything the node hosts, the `Proxmox Cluster` device everything on every node — any mix, across nodes. The node each guest lives on is looked up, and one `vzdump` run is started per node. Guests can also be named by id (`vmid`), again from anywhere in the cluster; `node` names a node outright, and `all` on its own means every tracked node.
+The action **`proxmoxve_custom.backup`** starts backup runs the way *Backup now* in the Proxmox interface does. Say what to back up the Home Assistant way, as the action's **target**: a VM or container device backs up that guest, a node device everything the node hosts, the `Proxmox Cluster` device everything on every node — any mix, across nodes. The node each guest lives on is looked up, and one `vzdump` run is started per node. Guests can also be named by id (`vmid`), again from anywhere in the cluster; `node` names a node outright, and `all` on its own means every tracked node.
+
+Existing automations, scripts and blueprints using `proxmoxve.backup` must be updated manually to `proxmoxve_custom.backup`.
 
 The `storage` falls back to the one picked as **Backup storage for the backup buttons** in the integration options, so a call need not repeat it; without either, the node's own default applies. `mode` (`snapshot`, `suspend`, `stop`) and `compress`ion are the node's defaults unless set; `notes` sets the backup's notes template (`{{guestname}}`, `{{vmid}}`, `{{node}}`, `{{cluster}}`) and needs a storage alongside it, as vzdump does. `skip_if_running` leaves a node out while a backup is already running on it — vzdump runs one at a time per node, and a second run would otherwise queue behind the first for as long as it takes.
 
 ```yaml
-action: proxmoxve.backup
+action: proxmoxve_custom.backup
 target:
   device_id:
     - 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d  # a VM
@@ -36,7 +38,7 @@ data:
 ```
 
 ```yaml
-action: proxmoxve.backup
+action: proxmoxve_custom.backup
 data:
   vmid: [100, 101]
   storage: backups

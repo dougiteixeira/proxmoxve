@@ -4,7 +4,7 @@ Ready-made automations for the integration. Import one, fill in the fields, done
 
 ## Scheduled backup
 
-Backs up the Proxmox devices you pick at a set time on the days you choose, through the [`proxmoxve.backup` action](../docs/actions.md#the-proxmoxvebackup-action) - the way *Backup now* in the Proxmox interface does, but on a schedule kept in Home Assistant. A VM or container device backs up that guest, a node device everything it hosts, the `Proxmox Cluster` device everything on every node; the node each guest lives on is looked up, so one automation can cover the whole cluster. Nodes with a backup already running are left out rather than queued behind it, and a notification says what started.
+Backs up the Proxmox devices you pick at a set time on the days you choose, through the [`proxmoxve_custom.backup` action](../docs/actions.md#the-proxmoxve_custombackup-action) - the way *Backup now* in the Proxmox interface does, but on a schedule kept in Home Assistant. A VM or container device backs up that guest, a node device everything it hosts, the `Proxmox Cluster` device everything on every node; the node each guest lives on is looked up, so one automation can cover the whole cluster. Nodes with a backup already running are left out rather than queued behind it, and a notification says what started.
 
 The credentials need `VM.Backup` on the guests and `Datastore.AllocateSpace` on the storage, see [Proxmox permissions](../docs/permissions.md).
 

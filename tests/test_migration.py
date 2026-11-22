@@ -513,7 +513,7 @@ async def test_legacy_entry_is_replaced_automatically(
     assert migrated.config_entry_id == new_entry.entry_id
     assert migrated.device_id == device.id
     assert hass.states.get(entity.entity_id) is not None
-    assert hass.services.has_service("proxmoxve", "backup")
+    assert not hass.services.has_service("proxmoxve", "backup")
     assert hass.services.has_service("proxmoxve_custom", "backup")
     assert not legacy.exists()
     issue = ir.async_get(hass).async_get_issue(

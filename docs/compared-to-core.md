@@ -88,7 +88,7 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | VM: start, stop, shutdown, reboot, pause, hibernate, resume, reset, snapshot | ✅ | ✅ |
 | Container: start, stop, reboot, snapshot | ✅ | ✅ — plus shutdown and unlock |
 | Back up now, per guest | ➖ | ✅ with a [backup storage picked](actions.md#backup-buttons) |
-| `proxmoxve.backup` action — guests, nodes or the cluster as target, vzdump's options | ➖ | ✅ |
+| `proxmoxve_custom.backup` action — guests, nodes or the cluster as target, vzdump's options | ➖ | ✅ |
 | Blueprint for a scheduled backup | ➖ | ✅ ([blueprints](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md)) |
 
 ## Where the core integration is the better fit
