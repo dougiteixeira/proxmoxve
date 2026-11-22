@@ -311,7 +311,7 @@ async def test_domain_migration_preserves_registry_ids(hass: HomeAssistant) -> N
     assert ("proxmoxve_custom", f"{new_entry.entry_id}_NODE_pve") in (
         updated_device.identifiers
     )
-    assert new_entry.entry_id in updated_device.config_entries
+    assert updated_device.config_entry_id == new_entry.entry_id
     await async_migrate_registry(hass, old_entry, new_entry)
     assert entities.async_get(entity.entity_id) == migrated
 

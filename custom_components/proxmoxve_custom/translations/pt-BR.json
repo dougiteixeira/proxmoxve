@@ -73,12 +73,11 @@
     "issues": {
         "domain_migration_restart": {
             "title": "Reinicie o Home Assistant após a migração do Proxmox VE",
-            "description": "O Proxmox VE foi migrado de `proxmoxve` para `proxmoxve_custom`. Reinicie o Home Assistant para concluir a migração.",
             "fix_flow": {
                 "step": {
                     "confirm_restart": {
                         "title": "Reiniciar o Home Assistant",
-                        "description": "Reinicie o Home Assistant para concluir a migração do domínio do Proxmox VE.",
+                        "description": "O Proxmox VE foi migrado de `proxmoxve` para `proxmoxve_custom`. Reinicie o Home Assistant para concluir a migração.",
                         "submit": "Reiniciar"
                     }
                 }
