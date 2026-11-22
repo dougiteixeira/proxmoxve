@@ -77,7 +77,7 @@
           "step": {
             "confirm_restart": {
               "title": "Restart Home Assistant",
-              "description": "Proxmox VE has migrated from `proxmoxve` to `proxmoxve_custom`. Restart Home Assistant to complete the migration.",
+              "description": "A Proxmox VE configuration entry has migrated from `proxmoxve` to `proxmoxve_custom`. Restart Home Assistant, then verify the migrated entries, devices, entities and automations.\n\nThe legacy `custom_components/proxmoxve` directory is removed automatically when no legacy entries or migrations remain. Do not remove it while any legacy entry, including a disabled one, is still pending.\n\nAfter verifying the migration, uninstall the old repository from the Marketplace, not from Devices & Services. Install the repository again and select version `6.0.0` once it is published.",
               "submit": "Restart"
             }
           }
