@@ -19,20 +19,8 @@ jobs:
         - name: "Checkout the repository"
           uses: "actions/checkout@v7"
 
-        - name: "Move HACS manifest out of the Hassfest workspace"
-          shell: bash
-          run: mv manifest.json "$RUNNER_TEMP/proxmoxve-hacs-manifest.json"
-
         - name: "Run hassfest validation"
           uses: "home-assistant/actions/hassfest@master"
-
-        - name: "Restore HACS manifest"
-          if: always()
-          shell: bash
-          run: |
-            if [[ -f "$RUNNER_TEMP/proxmoxve-hacs-manifest.json" ]]; then
-              mv "$RUNNER_TEMP/proxmoxve-hacs-manifest.json" manifest.json
-            fi
 
   # hacs: # https://github.com/hacs/action
   #   name: "HACS Validation"
