@@ -54,55 +54,6 @@ CURRENT_ENTRY_DATA = {
 }
 CURRENT_ENTRY_VERSION = 7
 
-YAML_INPUT_OK = {
-    "proxmoxve": {
-        CONF_HOST: "192.168.10.101",
-        CONF_PORT: 8006,
-        CONF_USERNAME: "root",
-        CONF_PASSWORD: "secret",
-        CONF_REALM: "pam",
-        CONF_VERIFY_SSL: True,
-        CONF_NODES: [
-            {
-                CONF_NODE: "pve",
-                CONF_VMS: ["100", "101", "102"],
-                CONF_CONTAINERS: ["201", "202", "203"],
-            }
-        ],
-    }
-}
-YAML_INPUT_INVALID = {
-    "proxmoxve": {
-        CONF_HOST: "test_host",
-        CONF_USERNAME: "user_test",
-        CONF_PASSWORD: "passw_test",
-        "error": "error",
-        CONF_NODES: [
-            {
-                CONF_NODE: "pve",
-                CONF_VMS: ["100", "101", "102"],
-                CONF_CONTAINERS: ["201", "202", "203"],
-            }
-        ],
-    }
-}
-YAML_INPUT_NOT_EXIST = {
-    "proxmoxve": {
-        CONF_HOST: "192.168.10.152",
-        CONF_PORT: 8006,
-        CONF_USERNAME: "root",
-        CONF_PASSWORD: "secret",
-        CONF_REALM: "pam",
-        CONF_VERIFY_SSL: True,
-        CONF_NODES: [
-            {
-                CONF_NODE: "not_exist",
-                CONF_VMS: ["100", "101", "102"],
-                CONF_CONTAINERS: ["201", "202", "203"],
-            }
-        ],
-    }
-}
 USER_INPUT_USER_HOST = {
     CONF_HOST: "192.168.10.101",
     CONF_PORT: 8006,

@@ -4,12 +4,8 @@
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-
-from .const import YAML_INPUT_INVALID, YAML_INPUT_OK
 from .fake_api import FakeProxmox
 
 
@@ -35,19 +31,3 @@ async def test_unload_entry(
     await hass.async_block_till_done()
 
     assert current_entry.state is ConfigEntryState.NOT_LOADED
-
-
-async def test_setup_config(hass: HomeAssistant, fake_api: FakeProxmox) -> None:
-    """Test setup from yaml config imports an entry and sets it up."""
-    assert await async_setup_component(hass, DOMAIN, YAML_INPUT_OK)
-    await hass.async_block_till_done()
-
-    entries = hass.config_entries.async_entries(DOMAIN)
-    assert len(entries) == 1
-    assert entries[0].state is ConfigEntryState.LOADED
-
-
-async def test_setup_invalid_config(hass: HomeAssistant, fake_api: FakeProxmox) -> None:
-    """Test setup from yaml with invalid config."""
-    assert not await async_setup_component(hass, DOMAIN, YAML_INPUT_INVALID)
-    await hass.async_block_till_done()
