@@ -10,10 +10,13 @@ from homeassistant.helpers import entity_registry as er
 from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import CONF_BACKUP_STORAGE
-from custom_components.proxmoxve.coordinator import parse_backup, parse_running_backup
-from custom_components.proxmoxve.services import (
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import CONF_BACKUP_STORAGE
+from custom_components.proxmoxve_custom.coordinator import (
+    parse_backup,
+    parse_running_backup,
+)
+from custom_components.proxmoxve_custom.services import (
     SERVICE_BACKUP,
     BackupPlan,
     vzdump_parameters,
@@ -117,14 +120,18 @@ def test_the_backup_data_carries_the_run_in_progress() -> None:
     assert data.running_guests == "101"
 
 
+@pytest.mark.parametrize("service_domain", [DOMAIN, "proxmoxve"])
 async def test_the_service_starts_a_backup_and_returns_the_task(
-    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+    hass: HomeAssistant,
+    fake_api: FakeProxmox,
+    current_entry: MockConfigEntry,
+    service_domain: str,
 ) -> None:
     """Test the call posts to vzdump with the parameters and hands back the UPID."""
     await _setup(hass, current_entry)
 
     response = await hass.services.async_call(
-        DOMAIN,
+        service_domain,
         SERVICE_BACKUP,
         {"node": NODE, "vmid": [101], "storage": "local", "mode": "snapshot"},
         blocking=True,

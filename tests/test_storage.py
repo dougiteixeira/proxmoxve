@@ -10,16 +10,16 @@ from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import UNDEFINED
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.proxmoxve.binary_sensor import (
+from custom_components.proxmoxve_custom.binary_sensor import (
     PROXMOX_BINARYSENSOR_STORAGE,
     ProxmoxBinarySensorEntity,
 )
-from custom_components.proxmoxve.coordinator import (
+from custom_components.proxmoxve_custom.coordinator import (
     ProxmoxStorageCoordinator,
     ProxmoxZFSCoordinator,
     _flag_or_undefined,
 )
-from custom_components.proxmoxve.models import ProxmoxStorageData
+from custom_components.proxmoxve_custom.models import ProxmoxStorageData
 
 # The storage as the cluster's resource list (`GET /cluster/resources`) lists it.
 CLUSTER_VIEW = [
@@ -92,7 +92,7 @@ async def _update(responses: dict[str, object]) -> ProxmoxStorageData:
     """Run one coordinator update against the given API answers."""
     coordinator = _storage_coordinator(responses)
     with patch(
-        "custom_components.proxmoxve.coordinator.poll_api",
+        "custom_components.proxmoxve_custom.coordinator.poll_api",
         side_effect=coordinator._poll,  # noqa: SLF001
     ):
         return await coordinator._async_update_data()  # noqa: SLF001

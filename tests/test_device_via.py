@@ -7,8 +7,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN, device_info
-from custom_components.proxmoxve.const import COORDINATORS, ProxmoxType
+from custom_components.proxmoxve_custom import DOMAIN, device_info
+from custom_components.proxmoxve_custom.const import COORDINATORS, ProxmoxType
 
 from .fake_api import NODE, FakeProxmox
 

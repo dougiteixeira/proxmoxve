@@ -5,13 +5,13 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from custom_components.proxmoxve.binary_sensor import (
+from custom_components.proxmoxve_custom.binary_sensor import (
     PROXMOX_BINARYSENSOR_VM,
     ProxmoxBinarySensorEntity,
     ProxmoxBinarySensorEntityDescription,
 )
-from custom_components.proxmoxve.button import PROXMOX_BUTTON_VM
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom.button import PROXMOX_BUTTON_VM
+from custom_components.proxmoxve_custom.const import (
     ProxmoxCommand,
     ProxmoxKeyAPIParse,
     ProxmoxType,

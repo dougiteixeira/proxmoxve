@@ -6,12 +6,12 @@ import dataclasses
 
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.coordinator import (
+from custom_components.proxmoxve_custom.coordinator import (
     SUBSCRIPTION_STATES,
     parse_subscription,
 )
-from custom_components.proxmoxve.models import ProxmoxSubscriptionData
-from custom_components.proxmoxve.sensor import PROXMOX_SENSOR_SUBSCRIPTION
+from custom_components.proxmoxve_custom.models import ProxmoxSubscriptionData
+from custom_components.proxmoxve_custom.sensor import PROXMOX_SENSOR_SUBSCRIPTION
 
 # Shaped like `GET /nodes/<node>/subscription` on a node without one. The real
 # response also carries `serverid`; with a subscription it adds `key`,

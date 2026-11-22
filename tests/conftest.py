@@ -25,7 +25,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
+from custom_components.proxmoxve_custom import DOMAIN
 
 from . import async_init_integration
 from .const import CURRENT_ENTRY_DATA, CURRENT_ENTRY_VERSION
@@ -67,14 +67,7 @@ def fake_api() -> Iterator[FakeProxmox]:
 
 @pytest.fixture
 def current_entry(hass: HomeAssistant) -> MockConfigEntry:
-    """
-    Return a config entry in the current format, added to Home Assistant.
-
-    `MockConfigEntry` defaults to version 1, which sends setup through every
-    migration first - and the first of those loses the node name, because
-    version-1 data kept it under a different key. That is why tests without
-    an explicit version never exercised a real node.
-    """
+    """Return a config entry in the current format, added to Home Assistant."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="Test",

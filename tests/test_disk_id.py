@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Tests for disk identifier resolution."""
 
-from custom_components.proxmoxve.disk import (
+from custom_components.proxmoxve_custom.disk import (
     colliding_disk_wwns,
     disk_matches_id,
     resolve_disk_id,

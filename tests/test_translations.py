@@ -10,7 +10,10 @@ from pathlib import Path
 import pytest
 
 TRANSLATIONS_DIR = (
-    Path(__file__).parent.parent / "custom_components" / "proxmoxve" / "translations"
+    Path(__file__).parent.parent
+    / "custom_components"
+    / "proxmoxve_custom"
+    / "translations"
 )
 PLACEHOLDER = re.compile(r"{([a-zA-Z0-9_]+)}")
 

@@ -10,8 +10,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import (
     CONF_AUTO_DISCOVERY,
     CONF_LXC,
     CONF_NODES,
@@ -21,8 +21,8 @@ from custom_components.proxmoxve.const import (
     TRACKED,
     ProxmoxType,
 )
-from custom_components.proxmoxve.coordinator import ProxmoxDiscoveryCoordinator
-from custom_components.proxmoxve.discovery import (
+from custom_components.proxmoxve_custom.coordinator import ProxmoxDiscoveryCoordinator
+from custom_components.proxmoxve_custom.discovery import (
     discovered_resources,
     remember_resources,
     remove_stale_devices,
@@ -185,7 +185,7 @@ async def test_coordinator_adds_what_is_new(hass: HomeAssistant) -> None:
     coordinator, add, remove = _discovery_coordinator(hass, entry)
 
     with patch(
-        "custom_components.proxmoxve.coordinator.poll_api",
+        "custom_components.proxmoxve_custom.coordinator.poll_api",
         return_value=MOCK_GET_RESPONSE,
     ):
         found = await coordinator._async_update_data()  # noqa: SLF001
@@ -216,7 +216,7 @@ async def test_coordinator_removes_what_is_gone(hass: HomeAssistant) -> None:
     coordinator, add, remove = _discovery_coordinator(hass, entry)
 
     with patch(
-        "custom_components.proxmoxve.coordinator.poll_api",
+        "custom_components.proxmoxve_custom.coordinator.poll_api",
         return_value=MOCK_GET_RESPONSE,
     ):
         await coordinator._async_update_data()  # noqa: SLF001
@@ -234,7 +234,7 @@ async def test_coordinator_stays_quiet_without_a_change(hass: HomeAssistant) -> 
     coordinator, add, remove = _discovery_coordinator(hass, entry)
 
     with patch(
-        "custom_components.proxmoxve.coordinator.poll_api",
+        "custom_components.proxmoxve_custom.coordinator.poll_api",
         return_value=MOCK_GET_RESPONSE,
     ):
         await coordinator._async_update_data()  # noqa: SLF001

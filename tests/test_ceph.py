@@ -4,8 +4,11 @@
 
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.coordinator import CEPH_HEALTH_STATES, parse_ceph
-from custom_components.proxmoxve.sensor import PROXMOX_SENSOR_CEPH
+from custom_components.proxmoxve_custom.coordinator import (
+    CEPH_HEALTH_STATES,
+    parse_ceph,
+)
+from custom_components.proxmoxve_custom.sensor import PROXMOX_SENSOR_CEPH
 
 # `GET /cluster/ceph/status` hands through what `ceph -s` reports, so the
 # shape comes from Ceph rather than a Proxmox schema. The real response also

@@ -4,7 +4,7 @@
 
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.coordinator import parse_replication
+from custom_components.proxmoxve_custom.coordinator import parse_replication
 
 # Shaped like `GET /nodes/<node>/replication`. The real entries also carry
 # `schedule`, `type`, `source`, `last_try`, `duration`, `pid` and `next_sync`.

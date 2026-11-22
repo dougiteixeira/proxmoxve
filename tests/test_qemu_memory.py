@@ -4,7 +4,7 @@
 
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.coordinator import qemu_memory_used
+from custom_components.proxmoxve_custom.coordinator import qemu_memory_used
 
 # Trimmed from `pvesh get /nodes/<node>/qemu/118/status/current` on a Linux
 # guest whose balloon driver reports statistics. Note that total_mem minus

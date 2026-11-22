@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Tests for reporting which guests no backup job covers."""
 
-from custom_components.proxmoxve.const import ProxmoxType
-from custom_components.proxmoxve.coordinator import parse_backup_info
+from custom_components.proxmoxve_custom.const import ProxmoxType
+from custom_components.proxmoxve_custom.coordinator import parse_backup_info
 
 # `GET /cluster/backup-info/not-backed-up` returns one entry per guest that no
 # backup job covers, with `vmid`, `name` and `type`. Values here are invented.

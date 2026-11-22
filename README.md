@@ -34,6 +34,41 @@ Many entities are created **disabled by default** — the buttons that change th
 
 ## Install
 
+### Migrating to `proxmoxve_custom`
+
+Back up Home Assistant before migrating from the `proxmoxve` domain. Only
+legacy configuration entries at version **7** are eligible. The replacement
+entry uses version **1** under the new domain. Entries at any other version
+are not transferred; historical upgrades can remove devices, so plan those
+upgrades separately and keep a backup.
+
+1. Install the transition release's legacy `proxmoxve` component from
+  `proxmoxve.zip` if it is not already installed.
+2. Install `proxmoxve_custom` through HACS, copy its directory from this
+  repository, or extract `proxmoxve_custom.zip` from the release into that
+  directory alongside `proxmoxve` in Home Assistant's `custom_components`.
+3. Restart Home Assistant. Each enabled, eligible legacy entry is migrated
+  automatically; disabled entries must be enabled to start migration.
+4. Verify the new entry, devices, entities and automations. Restore the backup
+  if the migration does not succeed.
+
+The new entry receives a new entry ID. Its settings, options, devices, device
+IDs and entity IDs are transferred, and entity unique IDs are adjusted to
+match the new entry. The `proxmoxve.backup` action remains available as an
+alias for `proxmoxve_custom.backup`. A detected registry conflict stops the
+transfer; check the Home Assistant logs before retrying.
+
+After the new integration starts successfully and all legacy entries have
+been removed, it removes the recognized legacy `custom_components/proxmoxve`
+directory. It leaves the directory in place while disabled, incompatible or
+incomplete legacy entries remain, or if it is a symbolic link or does not
+match this integration's manifest. Cleanup is retried on subsequent starts;
+check the logs if file permissions prevent removal.
+
+HACS installs release packages for `proxmoxve_custom` only, so subsequent
+updates do not reinstall the legacy component. The legacy ZIP remains
+available separately for existing installations that need the transition.
+
 ### Installation via the Marketplace (Home Assistant 2026.11 and newer)
 
 HACS is built into Home Assistant as the Marketplace. Proxmox VE is not in its catalog, so it is added as a custom repository - this button does that:
@@ -57,14 +92,14 @@ Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
 
 **Manual installation**
 
-* Copy the `proxmoxve` folder from [latest release](https://github.com/dougiteixeira/proxmoxve/releases/latest) to [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations) in your config directory.
+* Copy the `proxmoxve_custom` folder from the repository to the [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations) in your config directory. For an existing installation, also install the transition release's `proxmoxve` component as described under Migrating to `proxmoxve_custom`.
 * Restart the Home Assistant.
 
 ## Configuration
 
 Adding Proxmox VE to your Home Assistant instance can be done via the UI using this button:
 
-[![image](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=proxmoxve)
+[![image](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=proxmoxve_custom)
 
 **Tip:** It is recommended to use token-based authentication for greater integration stability.
 

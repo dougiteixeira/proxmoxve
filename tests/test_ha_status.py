@@ -9,14 +9,17 @@ from unittest.mock import MagicMock
 import homeassistant.util.dt as dt_util
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.binary_sensor import (
+from custom_components.proxmoxve_custom.binary_sensor import (
     PROXMOX_BINARYSENSOR_HA_STATUS,
     ProxmoxBinarySensorEntity,
 )
-from custom_components.proxmoxve.const import ProxmoxType
-from custom_components.proxmoxve.coordinator import HA_ARMED_STATES, parse_ha_status
-from custom_components.proxmoxve.models import ProxmoxHAStatusData
-from custom_components.proxmoxve.sensor import (
+from custom_components.proxmoxve_custom.const import ProxmoxType
+from custom_components.proxmoxve_custom.coordinator import (
+    HA_ARMED_STATES,
+    parse_ha_status,
+)
+from custom_components.proxmoxve_custom.models import ProxmoxHAStatusData
+from custom_components.proxmoxve_custom.sensor import (
     PROXMOX_SENSOR_HA_STATUS,
     ProxmoxSensorEntity,
     ProxmoxSensorEntityDescription,

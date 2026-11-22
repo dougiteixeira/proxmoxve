@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import UNDEFINED
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve.coordinator import parse_cluster_summary
+from custom_components.proxmoxve_custom.coordinator import parse_cluster_summary
 
 from .fake_api import FakeProxmox
 from .test_setup_full import _setup, _state

@@ -17,8 +17,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve.const import COORDINATORS
-from custom_components.proxmoxve.coordinator import (
+from custom_components.proxmoxve_custom.const import COORDINATORS
+from custom_components.proxmoxve_custom.coordinator import (
     RESOURCES_TTL,
     SharedResources,
     shared_resources,
@@ -73,7 +73,9 @@ async def test_the_next_burst_reads_afresh(hass: HomeAssistant) -> None:
         calls += 1
         return [{"type": "node", "node": "pve"}]
 
-    with patch("custom_components.proxmoxve.coordinator.poll_api", side_effect=_poll):
+    with patch(
+        "custom_components.proxmoxve_custom.coordinator.poll_api", side_effect=_poll
+    ):
         entry = MockConfigEntry(domain="proxmoxve")
         assert await shared.get(hass, entry, object()) == [
             {"type": "node", "node": "pve"}
@@ -96,7 +98,9 @@ async def test_a_failed_read_is_shared_too(hass: HomeAssistant) -> None:
         msg = "host gone"
         raise UpdateFailed(msg)
 
-    with patch("custom_components.proxmoxve.coordinator.poll_api", side_effect=_poll):
+    with patch(
+        "custom_components.proxmoxve_custom.coordinator.poll_api", side_effect=_poll
+    ):
         entry = MockConfigEntry(domain="proxmoxve")
         for _ in range(3):
             with pytest.raises(UpdateFailed, match="host gone"):
@@ -108,7 +112,9 @@ async def test_the_type_filter_is_applied_locally(hass: HomeAssistant) -> None:
     """Test `?type=storage` is a local filter over the one read."""
     shared = SharedResources()
     rows = [{"type": "node", "node": "pve"}, {"type": "storage", "storage": "local"}]
-    with patch("custom_components.proxmoxve.coordinator.poll_api", return_value=rows):
+    with patch(
+        "custom_components.proxmoxve_custom.coordinator.poll_api", return_value=rows
+    ):
         entry = MockConfigEntry(domain="proxmoxve")
         assert await shared.get(hass, entry, object(), resource_type="storage") == [
             {"type": "storage", "storage": "local"}

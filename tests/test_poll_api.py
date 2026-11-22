@@ -16,13 +16,13 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import MaxRetryError, NewConnectionError, ProtocolError
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import (
     COORDINATORS,
     PROXMOX_CLIENT,
     ProxmoxType,
 )
-from custom_components.proxmoxve.coordinator import poll_api
+from custom_components.proxmoxve_custom.coordinator import poll_api
 
 from .const import USER_INPUT_OK
 from .fake_api import NODE, Answers, FakeProxmox

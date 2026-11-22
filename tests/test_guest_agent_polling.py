@@ -11,7 +11,7 @@ only fills the Proxmox access log with failed requests.
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve.const import COORDINATORS
+from custom_components.proxmoxve_custom.const import COORDINATORS
 
 from .fake_api import NODE, FakeProxmox, qemu_status
 from .test_setup_full import _setup

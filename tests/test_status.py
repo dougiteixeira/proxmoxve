@@ -11,7 +11,7 @@ import pytest
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.sensor import (
+from custom_components.proxmoxve_custom.sensor import (
     LXC_STATES,
     NODE_STATES,
     PROXMOX_SENSOR_LXC,
@@ -27,7 +27,7 @@ ENGLISH = json.loads(
     (
         Path(__file__).parent.parent
         / "custom_components"
-        / "proxmoxve"
+        / "proxmoxve_custom"
         / "translations"
         / "en.json"
     ).read_text(encoding="utf-8")

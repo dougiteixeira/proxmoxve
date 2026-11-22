@@ -7,8 +7,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import CONF_QEMU
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import CONF_QEMU
 
 from .fake_api import FakeProxmox
 
