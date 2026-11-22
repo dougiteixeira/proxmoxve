@@ -34,22 +34,13 @@ Many entities are created **disabled by default** — the buttons that change th
 
 ## Install
 
-### Upgrading from `proxmoxve`
+### Updating the domain from `proxmoxve` to `proxmox_custom`
 
-Back up Home Assistant before upgrading. This release does not automatically
-transfer configuration entries, devices or entities from `proxmoxve` to
-`proxmoxve_custom`; configure the new integration and review affected entity
-IDs and automations manually. Do not remove the old entry until you have
-verified the new configuration and your backup.
+The integration was originally created using the `proxmoxve` domain—the same one used by the official integration—which means both cannot be used simultaneously.
 
-The Marketplace does not update an installed repository when its domain
-changes. Uninstall the old repository from the Marketplace, not from Devices &
-Services, then install it again and restart Home Assistant. The integration uses
-the `proxmoxve_custom` domain; the built-in `proxmoxve` integration is separate.
+Version [6.0.0b0](https://github.com/dougiteixeira/proxmoxve/releases/tag/6.0.0b0) introduces an automatic domain migration, ensuring that your existing configuration entries, devices, and entities are preserved.
 
-Update existing automations, scripts and blueprints manually, replacing
-`proxmoxve.backup` with `proxmoxve_custom.backup`; the old action is no longer
-provided by this integration.
+Please follow the instructions provided in the [6.0.0b0 release notes](https://github.com/dougiteixeira/proxmoxve/releases/tag/6.0.0b0) to perform the update. This update must be carried out manually due to Marketplace restrictions.
 
 ### Installation via the Marketplace (Home Assistant 2026.11 and newer)
 
@@ -59,7 +50,7 @@ HACS is built into Home Assistant as the Marketplace. Proxmox VE is not in its c
 
 The Marketplace asks before it adds the repository, and it needs a connected GitHub account for it. Without the button: Settings > Marketplace > Custom repositories, add `https://github.com/dougiteixeira/proxmoxve` as type Integration.
 
-* Click Install on `Proxmox VE`.
+* Click Install on `Proxmox VE Custom`.
 * Restart Home Assistant if the Marketplace asks for it.
 
 An installation from HACS moves to the Marketplace by itself when Home Assistant is updated to 2026.11.
@@ -69,7 +60,7 @@ An installation from HACS moves to the Marketplace by itself when Home Assistant
 Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
 
 * Add Proxmox VE to HACS with the same button as above. If it does not work, add `https://github.com/dougiteixeira/proxmoxve` as a custom repository of type Integration in HACS.
-* Click Install on the `Proxmox VE` integration.
+* Click Install on the `Proxmox VE Custom` integration.
 * Restart Home Assistant.
 
 **Manual installation**
