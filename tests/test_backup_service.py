@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.service import async_get_cached_service_description
 from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -118,6 +119,22 @@ def test_the_backup_data_carries_the_run_in_progress() -> None:
     assert data.runs == 0
     assert data.running is True
     assert data.running_guests == "101"
+
+
+async def test_the_legacy_alias_has_a_description(
+    hass: HomeAssistant,
+    fake_api: FakeProxmox,
+    current_entry: MockConfigEntry,
+) -> None:
+    """Test the legacy alias is described without a legacy services.yaml."""
+    await _setup(hass, current_entry)
+
+    description = async_get_cached_service_description(
+        hass, "proxmoxve", SERVICE_BACKUP
+    )
+
+    assert description is not None
+    assert description["name"]
 
 
 @pytest.mark.parametrize("service_domain", [DOMAIN, "proxmoxve"])
