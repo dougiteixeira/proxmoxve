@@ -50,8 +50,6 @@ from .const import (
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
-    DOMAIN_OLD,
-    LEGACY_ENTRY_VERSION,
     LOGGER,
     SCHEME_EXTENDED,
     SCHEME_STANDARD,
@@ -60,6 +58,7 @@ from .const import (
     ProxmoxType,
 )
 from .issues import NONEXISTENT, note_resource
+from .migration import is_legacy_custom_entry
 from .storage import backup_storage_options, storage_choices
 
 if TYPE_CHECKING:
@@ -769,11 +768,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Create a replacement for a legacy config entry."""
         old_entry = self.hass.config_entries.async_get_entry(user_input["entry_id"])
-        if (
-            old_entry is None
-            or old_entry.domain != DOMAIN_OLD
-            or old_entry.version != LEGACY_ENTRY_VERSION
-        ):
+        if old_entry is None or not is_legacy_custom_entry(old_entry):
             return self.async_abort(reason="unknown")
         for entry in self._async_current_entries():
             if entry.data.get("_legacy_entry_id") == old_entry.entry_id:

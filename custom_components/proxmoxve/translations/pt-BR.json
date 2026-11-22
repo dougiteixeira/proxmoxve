@@ -71,6 +71,10 @@
         }
     },
     "issues": {
+        "legacy_upgrade_required": {
+            "title": "Atualize o Proxmox VE em {host} antes da migração",
+            "description": "A entrada de configuração de {host} está na versão {version} e permanece na integração antiga. Faça um backup do Home Assistant, instale a versão 5.3.5 do Proxmox VE e reinicie o Home Assistant. Verifique a entrada e os dispositivos antes de atualizar para a nova integração. Migrações antigas podem remover dispositivos."
+        },
         "import_success": {
             "title": "A instância {host}:{port} foi importado da configuração YAML",
             "description": "A configuração YAML da instância {host}:{port} de {integration} (`{platform}`) foi importada para a IU automaticamente.\n\nPode ser removido com segurança de seu `configuration.yaml` arquivo."

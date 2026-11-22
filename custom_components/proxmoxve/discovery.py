@@ -27,6 +27,7 @@ from homeassistant.helpers import device_registry as dr
 
 from .const import (
     CONF_LXC,
+    CONF_NODE,
     CONF_NODES,
     CONF_QEMU,
     CONF_STORAGE,
@@ -92,10 +93,17 @@ def discovered_resources(resources: list[dict[str, Any]]) -> dict[str, list[str]
 
 def selected_resources(config_entry: ConfigEntry) -> dict[str, list[str]]:
     """Return what was picked in the config entry, as strings like the discovery."""
-    return {
+    selection = {
         key: [str(value) for value in config_entry.data.get(key, [])]
         for key in RESOURCE_KEYS.values()
     }
+    if (
+        config_entry.version == 1
+        and CONF_NODES not in config_entry.data
+        and (node := config_entry.data.get(CONF_NODE))
+    ):
+        selection[CONF_NODES] = [str(node)]
+    return selection
 
 
 def tracked_resources(config_entry: ConfigEntry) -> dict[str, list[str]]:

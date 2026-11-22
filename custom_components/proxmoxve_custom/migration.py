@@ -13,11 +13,21 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import entity_sources
 
-from .const import DOMAIN, DOMAIN_OLD, LEGACY_ENTRY_VERSION, LOGGER
+from .const import CONF_LXC, CONF_QEMU, DOMAIN, DOMAIN_OLD, LEGACY_ENTRY_VERSION, LOGGER
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
+
+
+def is_legacy_custom_entry(entry: ConfigEntry) -> bool:
+    """Identify a version 7 entry created by the legacy custom integration."""
+    return (
+        entry.domain == DOMAIN_OLD
+        and entry.version == LEGACY_ENTRY_VERSION
+        and CONF_QEMU in entry.data
+        and CONF_LXC in entry.data
+    )
 
 
 def _remove_legacy_component(path: Path) -> None:
@@ -57,8 +67,8 @@ async def async_migrate_registry(
     hass: HomeAssistant, old_entry: ConfigEntry, new_entry: ConfigEntry
 ) -> None:
     """Transfer unloaded entities and devices to the replacement entry."""
-    if old_entry.domain != DOMAIN_OLD or old_entry.version != LEGACY_ENTRY_VERSION:
-        message = "Only legacy version 7 entries can be migrated"
+    if not is_legacy_custom_entry(old_entry):
+        message = "Only legacy custom integration version 7 entries can be migrated"
         raise HomeAssistantError(message)
     entities = er.async_get(hass)
     old_entities = er.async_entries_for_config_entry(entities, old_entry.entry_id)

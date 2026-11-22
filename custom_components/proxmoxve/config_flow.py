@@ -57,6 +57,7 @@ from .const import (
     UPDATE_INTERVAL_CHOICES,
     ProxmoxType,
 )
+from .discovery import selected_resources
 from .issues import NONEXISTENT, note_resource
 from .storage import backup_storage_options, storage_choices
 
@@ -308,21 +309,22 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is None:
             old_nodes = []
             resource_nodes = []
+            selection = selected_resources(self.config_entry)
 
-            for node in self.config_entry.data[CONF_NODES]:
+            for node in selection[CONF_NODES]:
                 old_nodes.append(node)
                 resource_nodes.append(node)
 
             old_qemu = []
-            for qemu in self.config_entry.data[CONF_QEMU]:
+            for qemu in selection[CONF_QEMU]:
                 old_qemu.append(str(qemu))
 
             old_lxc = []
-            for lxc in self.config_entry.data[CONF_LXC]:
+            for lxc in selection[CONF_LXC]:
                 old_lxc.append(str(lxc))
 
             old_storage = []
-            for storage in self.config_entry.data[CONF_STORAGE]:
+            for storage in selection[CONF_STORAGE]:
                 # Prevents old selections (from when you used just the name instead of the id)
                 # from being loaded into the options config flow
                 if storage[:8] == "storage/":
@@ -331,7 +333,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             host = self.config_entry.data[CONF_HOST]
             port = self.config_entry.data[CONF_PORT]
             user = self.config_entry.data[CONF_USERNAME]
-            token_name = self.config_entry.data[CONF_TOKEN_NAME]
+            token_name = self.config_entry.data.get(CONF_TOKEN_NAME, "")
             realm = self.config_entry.data[CONF_REALM]
             password = self.config_entry.data[CONF_PASSWORD]
             verify_ssl = self.config_entry.data[CONF_VERIFY_SSL]
@@ -602,6 +604,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
         user_input: dict[str, Any],
     ) -> dict[str, Any]:
         """Process resource selection changes."""
+        selection = selected_resources(self.config_entry)
         node_selecition = []
         if (
             CONF_NODES in user_input
@@ -610,7 +613,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             for node in node_user:
                 node_selecition.append(node)
 
-        for node in self.config_entry.data[CONF_NODES]:
+        for node in selection[CONF_NODES]:
             if node not in node_selecition:
                 # Remove device node
                 identifier = (
@@ -673,7 +676,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             for qemu in qemu_user:
                 qemu_selecition.append(qemu)
 
-        for qemu_id in self.config_entry.data[CONF_QEMU]:
+        for qemu_id in selection[CONF_QEMU]:
             if qemu_id not in qemu_selecition:
                 # Remove device
                 identifier = (
@@ -699,7 +702,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             for lxc in lxc_user:
                 lxc_selecition.append(lxc)
 
-        for lxc_id in self.config_entry.data[CONF_LXC]:
+        for lxc_id in selection[CONF_LXC]:
             if lxc_id not in lxc_selecition:
                 # Remove device
                 identifier = (
@@ -721,7 +724,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             for storage in storage_user:
                 storage_selecition.append(storage)
 
-        for storage_id in self.config_entry.data[CONF_STORAGE]:
+        for storage_id in selection[CONF_STORAGE]:
             if storage_id not in storage_selecition:
                 # Remove device
                 identifier = f"{self.config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage_id.replace('storage/', '')}"

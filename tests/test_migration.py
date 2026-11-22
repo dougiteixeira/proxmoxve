@@ -55,6 +55,17 @@ VERSION_1_DATA = {
     CONF_LXC: ["100"],
 }
 
+CORE_ENTRY_DATA = {
+    CONF_HOST: "192.168.10.101",
+    CONF_PORT: 8006,
+    CONF_USERNAME: "root",
+    CONF_PASSWORD: "secret",
+    CONF_REALM: "pam",
+    CONF_VERIFY_SSL: True,
+    "auth_method": "pam",
+    "nodes": [{"node": "pve", "vms": [101], "containers": [100]}],
+}
+
 
 @pytest.fixture
 def legacy_path(
@@ -105,6 +116,21 @@ def test_hacs_uses_the_new_component_release() -> None:
     assert hacs["filename"] == "proxmoxve_custom.zip"
     assert hacs["zip_release"] is True
     assert manifest == component_manifest
+
+
+@pytest.mark.parametrize("language", ["en", "pt", "pt-BR"])
+def test_legacy_upgrade_repair_has_translations(language: str) -> None:
+    """The legacy upgrade repair names the required integration release."""
+    root = Path(__file__).resolve().parent.parent
+    path = (
+        root / "custom_components" / "proxmoxve" / "translations" / f"{language}.json"
+    )
+    issue = json.loads(path.read_text(encoding="utf-8"))["issues"][
+        "legacy_upgrade_required"
+    ]
+    assert "5.3.5" in issue["description"]
+    assert "{version}" in issue["description"]
+    assert "{host}" in issue["title"]
 
 
 async def test_removes_legacy_directory_when_no_entries_remain(
@@ -220,10 +246,10 @@ async def test_keeps_legacy_directory_if_new_setup_fails(
     assert legacy.exists()
 
 
-async def test_a_version_1_entry_reaches_the_current_version(
+async def test_a_version_1_entry_keeps_its_resources_without_migration(
     hass: HomeAssistant, fake_api: FakeProxmox
 ) -> None:
-    """Test the whole chain of migrations keeps the node, guests and storages."""
+    """Keep the old entry while loading its node and guest selection."""
     entry = MockConfigEntry(
         domain="proxmoxve", title="Test", data=VERSION_1_DATA, version=1
     )
@@ -237,25 +263,18 @@ async def test_a_version_1_entry_reaches_the_current_version(
         await hass.async_block_till_done()
 
     assert entry.state is ConfigEntryState.LOADED
-    assert entry.version == 7
-    assert entry.data[CONF_NODES] == ["pve"]
-    assert entry.data[CONF_QEMU] == ["101"]
-    assert entry.data[CONF_LXC] == ["100"]
-    assert entry.data[CONF_STORAGE] == []
+    assert entry.version == 1
+    assert entry.runtime_data["tracked"][CONF_NODES] == ["pve"]
+    assert entry.runtime_data["tracked"][CONF_QEMU] == ["101"]
+    assert entry.runtime_data["tracked"][CONF_LXC] == ["100"]
+    assert entry.runtime_data["tracked"][CONF_STORAGE] == []
     assert entry.data[CONF_HOST] == "192.168.10.101"
 
 
-async def test_migration_resets_the_options(
+async def test_legacy_fallback_preserves_options(
     hass: HomeAssistant, fake_api: FakeProxmox
 ) -> None:
-    """
-    Test - and document - that the early migrations drop the options.
-
-    Every migration up to version 4 writes `options={}`. Entries that old
-    predate every option this integration has, so nothing is lost; but a
-    test that gives a version-1 entry options and expects them to survive
-    setup will be surprised, which is why the setup tests use a current one.
-    """
+    """Do not reset options while the entry waits for an upgrade."""
     entry = MockConfigEntry(
         domain="proxmoxve",
         title="Test",
@@ -273,12 +292,46 @@ async def test_migration_resets_the_options(
         await hass.async_block_till_done()
 
     assert entry.state is ConfigEntryState.LOADED
-    assert entry.options == {}
+    assert entry.options == {"disks_enable": False}
+
+
+async def test_version_1_legacy_options_can_show_resource_selection(
+    hass: HomeAssistant, fake_api: FakeProxmox
+) -> None:
+    """The original entry format can still open the resource selection."""
+    entry = MockConfigEntry(domain="proxmoxve", data=VERSION_1_DATA, version=1)
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "change_expose"}
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "change_expose"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_NODES: ["pve"],
+            CONF_QEMU: ["101"],
+            CONF_LXC: ["100"],
+            CONF_STORAGE: [],
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "changes_successful"
+    assert entry.version == 1
+    assert entry.state is ConfigEntryState.LOADED
+    assert entry.runtime_data["tracked"][CONF_NODES] == ["pve"]
 
 
 async def test_domain_migration_preserves_registry_ids(hass: HomeAssistant) -> None:
     """Move an unloaded entry's devices and entities to the new domain."""
-    old_entry = MockConfigEntry(domain="proxmoxve", data={}, version=7)
+    old_entry = MockConfigEntry(domain="proxmoxve", data=CURRENT_ENTRY_DATA, version=7)
     new_entry = MockConfigEntry(domain="proxmoxve_custom", data={}, version=1)
     old_entry.add_to_hass(hass)
     new_entry.add_to_hass(hass)
@@ -343,7 +396,9 @@ async def test_registry_migration_rejects_other_legacy_versions(
     hass: HomeAssistant, version: int
 ) -> None:
     """Registry migration cannot bypass the legacy version check."""
-    old_entry = MockConfigEntry(domain="proxmoxve", data={}, version=version)
+    old_entry = MockConfigEntry(
+        domain="proxmoxve", data=CURRENT_ENTRY_DATA, version=version
+    )
     new_entry = MockConfigEntry(domain="proxmoxve_custom", data={}, version=1)
     old_entry.add_to_hass(hass)
     new_entry.add_to_hass(hass)
@@ -360,7 +415,7 @@ async def test_registry_migration_rejects_other_legacy_versions(
 
 async def test_domain_migration_rejects_entity_collisions(hass: HomeAssistant) -> None:
     """Leave the legacy registries untouched when a unique ID is already in use."""
-    old_entry = MockConfigEntry(domain="proxmoxve", data={}, version=7)
+    old_entry = MockConfigEntry(domain="proxmoxve", data=CURRENT_ENTRY_DATA, version=7)
     new_entry = MockConfigEntry(domain="proxmoxve_custom", data={}, version=1)
     old_entry.add_to_hass(hass)
     new_entry.add_to_hass(hass)
@@ -385,7 +440,7 @@ async def test_domain_migration_rejects_loaded_entities_before_moving_anything(
     hass: HomeAssistant,
 ) -> None:
     """A loaded entity must not leave the entry only partly migrated."""
-    old_entry = MockConfigEntry(domain="proxmoxve", data={}, version=7)
+    old_entry = MockConfigEntry(domain="proxmoxve", data=CURRENT_ENTRY_DATA, version=7)
     new_entry = MockConfigEntry(domain="proxmoxve_custom", data={}, version=1)
     old_entry.add_to_hass(hass)
     new_entry.add_to_hass(hass)
@@ -504,11 +559,91 @@ async def test_core_entry_is_not_migrated(hass: HomeAssistant) -> None:
     assert not hass.config_entries.async_entries("proxmoxve_custom")
 
 
-async def test_old_legacy_version_is_not_migrated_destructively(
+@pytest.mark.parametrize("version", [3, 7])
+async def test_core_entry_cannot_start_domain_migration(
+    hass: HomeAssistant, fake_api: FakeProxmox, version: int
+) -> None:
+    """Reject the native format even when its version matches the custom one."""
+    entry = MockConfigEntry(domain="proxmoxve", data=CORE_ENTRY_DATA, version=version)
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        "proxmoxve_custom",
+        context={"source": "proxmoxve_migration"},
+        data={"entry_id": entry.entry_id},
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.ABORT
+    assert hass.config_entries.async_get_entry(entry.entry_id) is entry
+    assert not hass.config_entries.async_entries("proxmoxve_custom")
+
+
+@pytest.mark.parametrize("version", [3, 7])
+async def test_core_entry_registry_cannot_be_migrated(
+    hass: HomeAssistant, version: int
+) -> None:
+    """Protect a native entry's entities when registry migration is called directly."""
+    old_entry = MockConfigEntry(
+        domain="proxmoxve", data=CORE_ENTRY_DATA, version=version
+    )
+    new_entry = MockConfigEntry(domain="proxmoxve_custom", data={}, version=1)
+    old_entry.add_to_hass(hass)
+    new_entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    entity = registry.async_get_or_create(
+        "sensor", "proxmoxve", "core-cpu", config_entry=old_entry
+    )
+
+    with pytest.raises(HomeAssistantError):
+        await async_migrate_registry(hass, old_entry, new_entry)
+
+    assert registry.async_get(entity.entity_id) == entity
+
+
+async def test_core_entry_is_not_removed_by_pending_migration(
     hass: HomeAssistant,
 ) -> None:
-    """Keep old version entries and devices intact during the domain change."""
-    entry = MockConfigEntry(domain="proxmoxve", data=VERSION_1_DATA, version=1)
+    """An invalid pending migration must not delete or transfer a native entry."""
+    old_entry = MockConfigEntry(
+        domain="proxmoxve",
+        data=CORE_ENTRY_DATA,
+        version=7,
+        pref_disable_new_entities=True,
+    )
+    new_entry = MockConfigEntry(
+        domain="proxmoxve_custom",
+        data={**CORE_ENTRY_DATA, "_legacy_entry_id": old_entry.entry_id},
+        version=1,
+    )
+    old_entry.add_to_hass(hass)
+    new_entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    entity = registry.async_get_or_create(
+        "sensor", "proxmoxve", "core-cpu", config_entry=old_entry
+    )
+
+    await hass.config_entries.async_setup(new_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.config_entries.async_get_entry(old_entry.entry_id) is old_entry
+    assert registry.async_get(entity.entity_id) == entity
+    assert new_entry.data["_legacy_entry_id"] == old_entry.entry_id
+    assert not new_entry.pref_disable_new_entities
+
+
+@pytest.mark.parametrize("version", [1, 2, 3, 4, 5, 6])
+@pytest.mark.parametrize("new_component_installed", [True, False])
+async def test_old_legacy_version_loads_and_requests_upgrade(
+    hass: HomeAssistant,
+    fake_api: FakeProxmox,
+    version: int,
+    *,
+    new_component_installed: bool,
+) -> None:
+    """Load legacy entries without domain migration and request version 5.3.5."""
+    data = VERSION_1_DATA if version == 1 else CURRENT_ENTRY_DATA
+    entry = MockConfigEntry(domain="proxmoxve", data=data, version=version)
     entry.add_to_hass(hass)
     registry = dr.async_get(hass)
     device = registry.async_get_or_create(
@@ -516,9 +651,27 @@ async def test_old_legacy_version_is_not_migrated_destructively(
         identifiers={("proxmoxve", "192.168.10.101_8006_pve")},
     )
 
-    await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    with patch(
+        "custom_components.proxmoxve.async_get_integration",
+        side_effect=None
+        if new_component_installed
+        else IntegrationNotFound("proxmoxve_custom"),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
 
-    assert entry.version == 1
+    assert entry.state is ConfigEntryState.LOADED
+    assert entry.version == version
+    assert entry.runtime_data["tracked"][CONF_NODES] == ["pve"]
     assert registry.async_get(device.id) is not None
     assert not hass.config_entries.async_entries("proxmoxve_custom")
+    issue = ir.async_get(hass).async_get_issue(
+        "proxmoxve", f"{entry.entry_id}_legacy_upgrade_required"
+    )
+    assert issue is not None
+    assert issue.translation_key == "legacy_upgrade_required"
+    assert issue.translation_placeholders == {
+        "host": "192.168.10.101",
+        "version": str(version),
+    }
+    assert not issue.is_fixable

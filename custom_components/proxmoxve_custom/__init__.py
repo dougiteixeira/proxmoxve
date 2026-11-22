@@ -648,12 +648,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     if legacy_id := config_entry.data.get("_legacy_entry_id"):
         old_entry = hass.config_entries.async_get_entry(legacy_id)
         if old_entry is not None:
+            await async_migrate_registry(hass, old_entry, config_entry)
             hass.config_entries.async_update_entry(
                 config_entry,
                 pref_disable_new_entities=old_entry.pref_disable_new_entities,
                 pref_disable_polling=old_entry.pref_disable_polling,
             )
-            await async_migrate_registry(hass, old_entry, config_entry)
             await hass.config_entries.async_remove(old_entry.entry_id)
             ir.async_create_issue(
                 hass,
