@@ -2,7 +2,7 @@ blueprint:
   name: Proxmox - Scheduled backup
   description: >-
     Backs up the Proxmox guests, nodes or cluster you pick at a set time on
-    the chosen days, through the `proxmoxve.backup` action - the way *Backup
+    the chosen days, through the `proxmoxve_custom.backup` action - the way *Backup
     now* in the Proxmox interface does, but on a schedule you keep in Home
     Assistant. A guest device backs up that guest, a node device everything
     on the node, the cluster device everything on every node; the node each
@@ -132,7 +132,7 @@ conditions:
     weekday: !input weekdays
 
 actions:
-  - action: proxmoxve.backup
+  - action: proxmoxve_custom.backup
     target:
       device_id: !input targets
     data: >-

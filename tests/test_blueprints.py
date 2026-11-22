@@ -64,7 +64,7 @@ async def test_the_scheduled_backup_fills_in_with_the_targets_alone(
         "sun",
     ]
     action = config["actions"][0]
-    assert action["action"] == "proxmoxve.backup"
+    assert action["action"] == "proxmoxve_custom.backup"
     assert action["target"] == {"device_id": ["device-a", "device-b"]}
     assert action["response_variable"] == "run"
 
