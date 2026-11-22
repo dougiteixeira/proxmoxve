@@ -7,7 +7,7 @@
 
 [Proxmox VE](https://www.proxmox.com/en/) is an open-source server virtualization environment. This integration reads its state into Home Assistant and lets you act on it — for a single node as much as for a cluster.
 
-It began as [@dougiteixeira](https://github.com/dougiteixeira)'s custom integration, built on the [Home Assistant core integration](https://www.home-assistant.io/integrations/proxmoxve/) and grown well beyond it; it replaces the core one when installed ([what differs](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/compared-to-core.md)). Everything goes through the Proxmox API with the credentials you give it — nothing is installed on the nodes, except [PVE-mods](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/hardware-sensors.md) if you want hardware temperatures.
+It began as [@dougiteixeira](https://github.com/dougiteixeira)'s custom integration, built on the [Home Assistant core integration](https://www.home-assistant.io/integrations/proxmoxve/) and grown well beyond it; it can run alongside the core one ([what differs](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/compared-to-core.md)). Everything goes through the Proxmox API with the credentials you give it — nothing is installed on the nodes, except [PVE-mods](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/hardware-sensors.md) if you want hardware temperatures.
 
 ## What you get
 
@@ -34,106 +34,22 @@ Many entities are created **disabled by default** — the buttons that change th
 
 ## Install
 
-### Migrating to `proxmoxve_custom`
+### Upgrading from `proxmoxve`
 
-Back up Home Assistant before migrating from the `proxmoxve` domain. Only
-legacy configuration entries at version **7** are eligible. The replacement
-entry uses version **1** under the new domain. Entries at any other version
-are not transferred; historical upgrades can remove devices, so plan those
-upgrades separately and keep a backup.
+Back up Home Assistant before upgrading. This release does not automatically
+transfer configuration entries, devices or entities from `proxmoxve` to
+`proxmoxve_custom`; configure the new integration and review affected entity
+IDs and automations manually. Do not remove the old entry until you have
+verified the new configuration and your backup.
 
-Legacy entries at versions 1 to 6 remain on `proxmoxve` and raise a repair
-requesting version 5.3.5. Back up Home Assistant, install that version and
-restart; verify the entry and devices before attempting the domain migration.
-Home Assistant rejects entry versions higher than 7 before the integration can
-load them; do not downgrade such entries without a compatible backup.
+The Marketplace does not update an installed repository when its domain
+changes. Uninstall the old repository from the Marketplace, not from Devices &
+Services, then install it again and restart Home Assistant. The integration uses
+the `proxmoxve_custom` domain; the built-in `proxmoxve` integration is separate.
 
-> [!WARNING]
-> Do not install the legacy transition component if this Home Assistant instance
-> has entries from the built-in Proxmox VE integration. Both use the `proxmoxve`
-> domain, so the transition component overrides the built-in integration and
-> can prevent its entries from loading. The transition does not migrate native
-> entries and cannot keep them working while the legacy component is installed.
-
-The commands below require release `6.0.0b0` and the ZIP assets named below.
-The final Marketplace step requires version `6.0.0` to be published. The
-commands require shell access to the Home Assistant configuration directory,
-`curl` and `unzip`. Replace `/config` if your configuration directory is
-elsewhere.
-
-#### 1. Install version 6.0.0b0
-
-This transition release installs both components and migrates eligible legacy
-entries. Do not remove the integration from Devices & Services.
-
-```bash
-cd /config &&
-  mkdir -p custom_components/proxmoxve custom_components/proxmoxve_custom &&
-  curl -fL -o /tmp/proxmoxve-6.0.0b0.zip \
-    https://github.com/dougiteixeira/proxmoxve/releases/download/6.0.0b0/proxmoxve.zip &&
-  curl -fL -o /tmp/proxmoxve-custom-6.0.0b0.zip \
-    https://github.com/dougiteixeira/proxmoxve/releases/download/6.0.0b0/proxmoxve_custom.zip &&
-  unzip -o /tmp/proxmoxve-6.0.0b0.zip -d custom_components/proxmoxve &&
-  unzip -o /tmp/proxmoxve-custom-6.0.0b0.zip -d custom_components/proxmoxve_custom
-```
-
-Restart Home Assistant. Each enabled, eligible legacy entry is migrated
-automatically; disabled entries must be enabled to start migration. Use the
-restart button in the repair that appears, then verify the new entry, devices,
-entities and automations. Restore the backup if the migration does not succeed.
-
-#### 2. Check the legacy component
-
-The new integration removes the recognized legacy directory automatically
-once no legacy entries or incomplete migrations remain. If the directory is
-already absent, continue to the next step.
-
-If the directory remains, first verify that **all** legacy entries, including
-disabled entries, have migrated and that the directory belongs to this legacy
-integration. Do not remove it while any legacy entry or migration is pending.
-Once verified, you can remove a regular directory manually:
-
-```bash
-cd /config &&
-  if [[ -L custom_components/proxmoxve ]]; then
-    printf 'Legacy path is a symbolic link; inspect it before removing it.\n'
-  elif [[ -d custom_components/proxmoxve ]]; then
-    rm -r -- custom_components/proxmoxve
-  else
-    printf 'Legacy directory is already absent.\n'
-  fi
-```
-
-Restart Home Assistant if you removed the directory manually.
-
-#### 3. Install version 6.0.0 through the Marketplace
-
-After verifying the migration, uninstall the old repository **from the
-Marketplace**, not from Devices & Services. Install the repository again through
-the Marketplace and select version `6.0.0`. This resets the Marketplace's
-recorded domain without deleting the migrated configuration entry. Restart if
-the Marketplace requests it. Subsequent updates can then be installed through
-the Marketplace.
-
-The new entry receives a new entry ID. Its settings, options, devices, device
-IDs and entity IDs are transferred, and entity unique IDs are adjusted to
-match the new entry. Update existing automations, scripts and blueprints
-manually, replacing `proxmoxve.backup` with `proxmoxve_custom.backup`; the old
-action is no longer provided. A detected registry conflict stops the transfer;
-check the Home Assistant logs before retrying.
-
-After the new integration starts successfully and all legacy entries have
-been removed, it removes the recognized legacy `custom_components/proxmoxve`
-directory. It leaves the directory in place while disabled, incompatible or
-incomplete legacy entries remain, or if it is a symbolic link or does not
-match this integration's manifest. Cleanup is retried on subsequent starts;
-check the logs if file permissions prevent removal.
-
-The Marketplace does not update an installed repository when its domain changes;
-the manual transition and Marketplace reinstallation above are required for
-existing installations. The new release must advertise `proxmoxve_custom` in
-its root manifest and in the `proxmoxve_custom.zip` manifest. Once reinstalled,
-subsequent Marketplace updates install only `proxmoxve_custom`.
+Update existing automations, scripts and blueprints manually, replacing
+`proxmoxve.backup` with `proxmoxve_custom.backup`; the old action is no longer
+provided by this integration.
 
 ### Installation via the Marketplace (Home Assistant 2026.11 and newer)
 
@@ -158,7 +74,7 @@ Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
 
 **Manual installation**
 
-* Copy the `proxmoxve_custom` folder from the repository to the [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations) in your config directory. For an existing installation, also install the transition release's `proxmoxve` component as described under Migrating to `proxmoxve_custom`.
+* Copy the `proxmoxve_custom` folder from the repository to the [`custom_components` folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations) in your config directory. For an existing installation, see [Upgrading from `proxmoxve`](#upgrading-from-proxmoxve).
 * Restart the Home Assistant.
 
 ## Configuration

@@ -71,18 +71,6 @@
         }
     },
     "issues": {
-        "domain_migration_restart": {
-            "title": "Reinicie o Home Assistant após a migração do Proxmox VE",
-            "fix_flow": {
-                "step": {
-                    "confirm_restart": {
-                        "title": "Reiniciar o Home Assistant",
-                        "description": "Uma entrada de configuração do Proxmox VE foi migrada de `proxmoxve` para `proxmoxve_custom`. Reinicie o Home Assistant e verifique as entradas migradas, os dispositivos, as entidades e as automações.\n\nA pasta antiga `custom_components/proxmoxve` é removida automaticamente quando não houver entradas antigas ou migrações pendentes. Não a remova enquanto houver qualquer entrada antiga pendente, inclusive desabilitada.\n\nApós verificar a migração, desinstale o repositório antigo pelo Marketplace, não por Dispositivos e Serviços. Instale o repositório novamente e selecione a versão `6.0.0` quando ela estiver publicada.",
-                        "submit": "Reiniciar"
-                    }
-                }
-            }
-        },
         "import_success": {
             "title": "A instância {host}:{port} foi importado da configuração YAML",
             "description": "A configuração YAML da instância {host}:{port} de {integration} (`{platform}`) foi importada para a IU automaticamente.\n\nPode ser removido com segurança de seu `configuration.yaml` arquivo."

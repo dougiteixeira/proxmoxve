@@ -6,9 +6,6 @@ import logging
 from enum import StrEnum
 
 DOMAIN = "proxmoxve_custom"
-DOMAIN_OLD = "proxmoxve"
-LEGACY_ENTRY_VERSION = 7
-ISSUE_DOMAIN_MIGRATION_RESTART = "domain_migration_restart"
 PROXMOX_CLIENTS = "proxmox_clients"
 CONF_TOKEN_NAME = "token_name"
 CONF_REALM = "realm"

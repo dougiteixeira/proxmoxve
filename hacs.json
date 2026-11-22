@@ -1,9 +1,9 @@
 {
-  "name": "Proxmox VE",
-  "hide_default_branch": true,
+  "name": "Proxmox VE Custom",
+  "hide_default_branch": false,
   "homeassistant": "2026.8.0",
   "render_readme": true,
-  "content_in_root": true,
+  "content_in_root": false,
   "zip_release": true,
   "filename": "proxmoxve_custom.zip"
 }
