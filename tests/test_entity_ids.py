@@ -16,13 +16,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import (
     CONF_ENTITY_ID_PREFIX,
     CONF_ENTITY_ID_SCHEME,
     SCHEME_EXTENDED,
 )
-from custom_components.proxmoxve.entity import scheme_object_id
+from custom_components.proxmoxve_custom.entity import scheme_object_id
 
 from .fake_api import NODE, FakeProxmox
 from .test_setup_full import _setup

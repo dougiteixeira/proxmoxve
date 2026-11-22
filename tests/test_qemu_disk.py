@@ -4,8 +4,8 @@
 
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.coordinator import _positive_or_undefined
-from custom_components.proxmoxve.sensor import percentage_or_unknown
+from custom_components.proxmoxve_custom.coordinator import _positive_or_undefined
+from custom_components.proxmoxve_custom.sensor import percentage_or_unknown
 
 
 def test_zero_from_the_api_is_not_a_measurement() -> None:

@@ -6,7 +6,7 @@ from datetime import timedelta
 
 import homeassistant.util.dt as dt_util
 
-from custom_components.proxmoxve.coordinator import (
+from custom_components.proxmoxve_custom.coordinator import (
     SENSORS_HOLD_FOR,
     ProxmoxNodeCoordinator,
 )

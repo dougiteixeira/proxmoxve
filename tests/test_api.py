@@ -13,7 +13,7 @@ from homeassistant.exceptions import HomeAssistantError
 from proxmoxer import AuthenticationError
 from proxmoxer.core import ResourceException
 
-from custom_components.proxmoxve.api import (
+from custom_components.proxmoxve_custom.api import (
     SNAPSHOT_NAME_MAX_LENGTH,
     ProxmoxClient,
     auth_error_status,
@@ -21,7 +21,7 @@ from custom_components.proxmoxve.api import (
     snapshot_name,
     token_name_only,
 )
-from custom_components.proxmoxve.const import ProxmoxCommand, ProxmoxType
+from custom_components.proxmoxve_custom.const import ProxmoxCommand, ProxmoxType
 
 from .const import mock_config_entry
 

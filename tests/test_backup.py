@@ -9,13 +9,13 @@ import homeassistant.util.dt as dt_util
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.binary_sensor import (
+from custom_components.proxmoxve_custom.binary_sensor import (
     PROXMOX_BINARYSENSOR_BACKUP,
     ProxmoxBinarySensorEntity,
 )
-from custom_components.proxmoxve.const import ProxmoxType
-from custom_components.proxmoxve.coordinator import parse_backup
-from custom_components.proxmoxve.sensor import (
+from custom_components.proxmoxve_custom.const import ProxmoxType
+from custom_components.proxmoxve_custom.coordinator import parse_backup
+from custom_components.proxmoxve_custom.sensor import (
     PROXMOX_SENSOR_BACKUP,
     ProxmoxSensorEntity,
 )

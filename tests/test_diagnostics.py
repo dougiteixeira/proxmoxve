@@ -6,14 +6,14 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom.const import (
     CONF_CLUSTER_HOSTS,
     CONF_HA_ADMIN_PASSWORD,
     CONF_HA_ADMIN_REALM,
     CONF_HA_ADMIN_TOKEN_NAME,
     CONF_HA_ADMIN_USERNAME,
 )
-from custom_components.proxmoxve.diagnostics import (
+from custom_components.proxmoxve_custom.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 

@@ -11,8 +11,8 @@ from homeassistant.const import (
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import (
     CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_ENTITY_ID_SCHEME,
@@ -36,7 +36,7 @@ USER_INPUT_OK = {
     CONF_QEMU: ["101"],
     CONF_LXC: ["100"],
 }
-# A config entry in the current format (version 7): what the config flow
+# A config entry in the current format: what the config flow
 # stores today, tracking the node, the VM, the container and one storage.
 CURRENT_ENTRY_DATA = {
     CONF_HOST: "192.168.10.101",
@@ -51,7 +51,7 @@ CURRENT_ENTRY_DATA = {
     CONF_LXC: ["100"],
     CONF_STORAGE: ["storage/pve/local"],
 }
-CURRENT_ENTRY_VERSION = 7
+CURRENT_ENTRY_VERSION = 1
 
 USER_INPUT_USER_HOST = {
     CONF_HOST: "192.168.10.101",

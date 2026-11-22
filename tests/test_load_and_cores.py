@@ -7,8 +7,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import UNDEFINED
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve.const import COORDINATORS, ProxmoxType
-from custom_components.proxmoxve.coordinator import (
+from custom_components.proxmoxve_custom.const import COORDINATORS, ProxmoxType
+from custom_components.proxmoxve_custom.coordinator import (
     cpu_share_of_host,
     parse_load_average,
 )

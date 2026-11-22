@@ -22,7 +22,7 @@ from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.coordinator import parse_pressure
+from custom_components.proxmoxve_custom.coordinator import parse_pressure
 
 from .test_setup_full import _setup
 

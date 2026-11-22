@@ -9,9 +9,13 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import CONF_STORAGE, COORDINATORS, ProxmoxType
-from custom_components.proxmoxve.storage import (
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import (
+    CONF_STORAGE,
+    COORDINATORS,
+    ProxmoxType,
+)
+from custom_components.proxmoxve_custom.storage import (
     is_shared_storage_id,
     merge_shared_selection,
     shared_storage_names,

@@ -11,14 +11,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.api import post_api_command
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.api import post_api_command
+from custom_components.proxmoxve_custom.const import (
     CONF_BACKUP_STORAGE,
     ProxmoxCommand,
     ProxmoxType,
 )
-from custom_components.proxmoxve.storage import backup_storage_options
+from custom_components.proxmoxve_custom.storage import backup_storage_options
 
 from .fake_api import NODE, FakeProxmox
 from .test_setup_full import _setup

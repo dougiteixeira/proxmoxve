@@ -8,8 +8,11 @@ from unittest.mock import MagicMock
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.coordinator import is_proxmox_package, parse_updates
-from custom_components.proxmoxve.update import (
+from custom_components.proxmoxve_custom.coordinator import (
+    is_proxmox_package,
+    parse_updates,
+)
+from custom_components.proxmoxve_custom.update import (
     PROXMOX_UPDATE_NODE,
     ProxmoxUpdateEntity,
     latest_version,

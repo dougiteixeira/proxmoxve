@@ -27,6 +27,7 @@ from homeassistant.helpers import (
     issue_registry as ir,
 )
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.loader import IntegrationNotFound, async_get_integration
 from proxmoxer import AuthenticationError
 from proxmoxer.core import ResourceException
 from requests.exceptions import (
@@ -148,6 +149,21 @@ warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Migrate old entry."""
+    if CONF_QEMU not in config_entry.data or CONF_LXC not in config_entry.data:
+        LOGGER.error("Cannot migrate an entry that is not from Proxmox VE Custom")
+        return False
+    if config_entry.version < 7:
+        try:
+            await async_get_integration(hass, "proxmoxve_custom")
+        except IntegrationNotFound:
+            pass
+        else:
+            LOGGER.error(
+                "Cannot safely migrate entry version %s to proxmoxve_custom; "
+                "the legacy version migrations may remove devices",
+                config_entry.version,
+            )
+            return False
     LOGGER.debug("Migrating from version %s", config_entry.version)
 
     if config_entry.version == 1:
@@ -888,6 +904,30 @@ def async_merge_shared_storages(
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Schedule migration to the replacement integration."""
+    if CONF_QEMU not in config_entry.data or CONF_LXC not in config_entry.data:
+        LOGGER.error("Cannot migrate an entry that is not from Proxmox VE Custom")
+        return False
+    try:
+        await async_get_integration(hass, "proxmoxve_custom")
+    except IntegrationNotFound:
+        return await _async_setup_legacy_entry(hass, config_entry)
+    if config_entry.version != 7:
+        LOGGER.error("Cannot migrate legacy entry version %s", config_entry.version)
+        return False
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            "proxmoxve_custom",
+            context={"source": "proxmoxve_migration"},
+            data={"entry_id": config_entry.entry_id},
+        )
+    )
+    return True
+
+
+async def _async_setup_legacy_entry(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> bool:
     """Set up the platform."""
     hass.data.setdefault(DOMAIN, {})
     entry_data = config_entry.data
@@ -1274,6 +1314,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    if isinstance(getattr(entry, "runtime_data", None), dict):
+        return await _async_unload_legacy_entry(hass, entry)
+    return True
+
+
+async def _async_unload_legacy_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a legacy config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     hass.data.get(DOMAIN, {}).get(GUEST_AGENT_REFUSALS, {}).pop(entry.entry_id, None)
     for feature in GUEST_AGENT_PRIVILEGES:

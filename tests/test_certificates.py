@@ -6,8 +6,8 @@ import dataclasses
 
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.coordinator import parse_certificates
-from custom_components.proxmoxve.models import ProxmoxCertificateData
+from custom_components.proxmoxve_custom.coordinator import parse_certificates
+from custom_components.proxmoxve_custom.models import ProxmoxCertificateData
 
 # Shaped like `GET /nodes/<node>/certificates/info`, with invented values. The
 # real response also carries the whole certificate in a `pem` field, plus

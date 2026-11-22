@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from custom_components.proxmoxve.coordinator import (
+from custom_components.proxmoxve_custom.coordinator import (
     SENSOR_FIELDS,
     _parse_sensors_dict,
     _readings_of,

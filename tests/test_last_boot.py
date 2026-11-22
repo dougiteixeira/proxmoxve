@@ -5,7 +5,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from custom_components.proxmoxve.sensor import (
+from custom_components.proxmoxve_custom.sensor import (
     PROXMOX_SENSOR_UPTIME,
     ProxmoxSensorEntity,
 )

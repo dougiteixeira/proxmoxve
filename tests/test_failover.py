@@ -13,14 +13,14 @@ from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from custom_components.proxmoxve.api import ProxmoxClient
-from custom_components.proxmoxve.const import (
+from custom_components.proxmoxve_custom.api import ProxmoxClient
+from custom_components.proxmoxve_custom.const import (
     CONF_CLUSTER_HOSTS,
     COORDINATORS,
     PROXMOX_CLIENT,
     ProxmoxType,
 )
-from custom_components.proxmoxve.coordinator import shared_resources
+from custom_components.proxmoxve_custom.coordinator import shared_resources
 
 from .fake_api import NODE, FakeProxmox
 

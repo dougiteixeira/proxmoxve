@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Tests for reading a disk's SMART attributes."""
 
-from custom_components.proxmoxve.coordinator import (
+from custom_components.proxmoxve_custom.coordinator import (
     _leading_int,
     parse_smart_attributes,
     parse_smart_text,

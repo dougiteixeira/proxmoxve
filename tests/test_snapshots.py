@@ -14,9 +14,9 @@ from homeassistant.helpers.typing import UNDEFINED
 from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve import DOMAIN
-from custom_components.proxmoxve.const import COORDINATORS
-from custom_components.proxmoxve.coordinator import parse_snapshots
+from custom_components.proxmoxve_custom import DOMAIN
+from custom_components.proxmoxve_custom.const import COORDINATORS
+from custom_components.proxmoxve_custom.coordinator import parse_snapshots
 
 from .fake_api import NODE, FakeProxmox
 from .test_setup_full import _setup

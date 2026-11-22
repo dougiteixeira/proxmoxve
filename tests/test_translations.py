@@ -10,7 +10,10 @@ from pathlib import Path
 import pytest
 
 TRANSLATIONS_DIR = (
-    Path(__file__).parent.parent / "custom_components" / "proxmoxve" / "translations"
+    Path(__file__).parent.parent
+    / "custom_components"
+    / "proxmoxve_custom"
+    / "translations"
 )
 PLACEHOLDER = re.compile(r"{([a-zA-Z0-9_]+)}")
 
@@ -57,3 +60,15 @@ def test_no_unknown_keys(language):
     """A key absent from en.json is a typo: it can never be looked up."""
     english = _load("en")
     assert not [key for key in _load(language) if key not in english]
+
+
+@pytest.mark.parametrize("language", ["en", *LANGUAGES])
+def test_fixable_issues_do_not_have_a_top_level_description(language):
+    """Hassfest requires fixable issue descriptions inside their flow steps."""
+    path = TRANSLATIONS_DIR / f"{language}.json"
+    issues = json.loads(path.read_text(encoding="utf-8")).get("issues", {})
+    assert not [
+        issue_id
+        for issue_id, issue in issues.items()
+        if "fix_flow" in issue and "description" in issue
+    ]

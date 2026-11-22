@@ -6,7 +6,7 @@ from typing import Any
 
 from homeassistant.helpers.typing import UNDEFINED
 
-from custom_components.proxmoxve.sensor import (
+from custom_components.proxmoxve_custom.sensor import (
     PROXMOX_SENSOR_MEMORY,
     ProxmoxSensorEntityDescription,
     percentage_or_unknown,
