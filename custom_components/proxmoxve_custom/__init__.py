@@ -62,6 +62,7 @@ from .const import (
     DOMAIN,
     GUEST_AGENT_REFUSALS,
     INTEGRATION_TITLE,
+    ISSUE_DOMAIN_MIGRATION_RESTART,
     LOGGER,
     PROXMOX_CLIENT,
     PROXMOX_HA_ADMIN_CLIENT,
@@ -654,6 +655,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             )
             await async_migrate_registry(hass, old_entry, config_entry)
             await hass.config_entries.async_remove(old_entry.entry_id)
+            ir.async_create_issue(
+                hass,
+                DOMAIN,
+                ISSUE_DOMAIN_MIGRATION_RESTART,
+                is_fixable=True,
+                is_persistent=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key=ISSUE_DOMAIN_MIGRATION_RESTART,
+            )
         data = dict(config_entry.data)
         data.pop("_legacy_entry_id")
         hass.config_entries.async_update_entry(config_entry, data=data)

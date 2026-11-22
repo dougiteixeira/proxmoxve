@@ -48,9 +48,10 @@ upgrades separately and keep a backup.
   repository, or extract `proxmoxve_custom.zip` from the release into that
   directory alongside `proxmoxve` in Home Assistant's `custom_components`.
 3. Restart Home Assistant. Each enabled, eligible legacy entry is migrated
-  automatically; disabled entries must be enabled to start migration.
-4. Verify the new entry, devices, entities and automations. Restore the backup
-  if the migration does not succeed.
+  automatically; disabled entries must be enabled to start migration. Once an
+  entry has migrated, a repair offers a button to restart Home Assistant.
+4. Use the repair to restart, then verify the new entry, devices, entities and
+  automations. Restore the backup if the migration does not succeed.
 
 The new entry receives a new entry ID. Its settings, options, devices, device
 IDs and entity IDs are transferred, and entity unique IDs are adjusted to

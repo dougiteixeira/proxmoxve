@@ -20,6 +20,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.loader import IntegrationNotFound
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -460,6 +461,12 @@ async def test_legacy_entry_is_replaced_automatically(
     assert hass.services.has_service("proxmoxve", "backup")
     assert hass.services.has_service("proxmoxve_custom", "backup")
     assert not legacy.exists()
+    issue = ir.async_get(hass).async_get_issue(
+        "proxmoxve_custom", "domain_migration_restart"
+    )
+    assert issue is not None
+    assert issue.is_fixable
+    assert not issue.is_persistent
 
 
 async def test_legacy_entry_stays_available_without_new_component(

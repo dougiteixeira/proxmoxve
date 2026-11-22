@@ -71,6 +71,19 @@
       }
     },
     "issues": {
+      "domain_migration_restart": {
+        "title": "Restart Home Assistant after the Proxmox VE migration",
+        "description": "Proxmox VE has migrated from `proxmoxve` to `proxmoxve_custom`. Restart Home Assistant to complete the migration.",
+        "fix_flow": {
+          "step": {
+            "confirm_restart": {
+              "title": "Restart Home Assistant",
+              "description": "Restart Home Assistant to complete the Proxmox VE domain migration.",
+              "submit": "Restart"
+            }
+          }
+        }
+      },
       "import_success": {
         "title": "{host}:{port} was imported from YAML configuration",
         "description": "The YAML configuration of {host}:{port} instance of {integration} (`{platform}`) has been imported into the UI automatically.\n\nCan be safely removed from your `configuration.yaml` file."
