@@ -2,95 +2,15 @@
 # SPDX-License-Identifier: MIT
 """Tests for the repairs setup raises and, just as important, clears again."""
 
-from unittest.mock import AsyncMock, patch
-
-import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
-from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.proxmoxve_custom import DOMAIN
 from custom_components.proxmoxve_custom.const import CONF_QEMU
 
 from .fake_api import FakeProxmox
-
-
-async def test_migration_repair_restarts_home_assistant(hass: HomeAssistant) -> None:
-    """The repair asks for confirmation before requesting a restart."""
-    assert await async_setup_component(hass, "repairs", {})
-    assert await async_setup_component(hass, DOMAIN, {})
-    ir.async_create_issue(
-        hass,
-        DOMAIN,
-        "domain_migration_restart",
-        is_fixable=True,
-        is_persistent=False,
-        severity=ir.IssueSeverity.WARNING,
-        translation_key="domain_migration_restart",
-    )
-    manager = hass.data["repairs"]["flow_manager"]
-    result = await manager.async_init(
-        DOMAIN, data={"issue_id": "domain_migration_restart"}
-    )
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "confirm_restart"
-
-    with patch(
-        "homeassistant.core.ServiceRegistry.async_call", new_callable=AsyncMock
-    ) as call:
-        result = await manager.async_configure(result["flow_id"], {})
-
-    call.assert_awaited_once_with("homeassistant", "restart", blocking=True)
-    assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert (
-        ir.async_get(hass).async_get_issue(DOMAIN, "domain_migration_restart") is None
-    )
-
-
-async def test_migration_repair_remains_if_restart_fails(hass: HomeAssistant) -> None:
-    """Keep the repair when Home Assistant refuses the restart."""
-    assert await async_setup_component(hass, "repairs", {})
-    assert await async_setup_component(hass, DOMAIN, {})
-    ir.async_create_issue(
-        hass,
-        DOMAIN,
-        "domain_migration_restart",
-        is_fixable=True,
-        is_persistent=False,
-        severity=ir.IssueSeverity.WARNING,
-        translation_key="domain_migration_restart",
-    )
-    manager = hass.data["repairs"]["flow_manager"]
-    result = await manager.async_init(
-        DOMAIN, data={"issue_id": "domain_migration_restart"}
-    )
-    with (
-        patch(
-            "homeassistant.core.ServiceRegistry.async_call",
-            new_callable=AsyncMock,
-            side_effect=HomeAssistantError("restart refused"),
-        ),
-        pytest.raises(HomeAssistantError, match="restart refused"),
-    ):
-        await manager.async_configure(result["flow_id"], {})
-
-    assert ir.async_get(hass).async_get_issue(DOMAIN, "domain_migration_restart")
-
-
-async def test_normal_setup_does_not_create_migration_repair(
-    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
-) -> None:
-    """A regular setup does not ask for a migration restart."""
-    await hass.config_entries.async_setup(current_entry.entry_id)
-    await hass.async_block_till_done()
-
-    assert (
-        ir.async_get(hass).async_get_issue(DOMAIN, "domain_migration_restart") is None
-    )
 
 
 def _listed(hass: HomeAssistant, entry: MockConfigEntry) -> str:

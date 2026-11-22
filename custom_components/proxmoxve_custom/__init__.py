@@ -62,7 +62,6 @@ from .const import (
     DOMAIN,
     GUEST_AGENT_REFUSALS,
     INTEGRATION_TITLE,
-    ISSUE_DOMAIN_MIGRATION_RESTART,
     LOGGER,
     PROXMOX_CLIENT,
     PROXMOX_HA_ADMIN_CLIENT,
@@ -110,7 +109,6 @@ from .issues import (
     note_resource,
     sweep_legacy_issues,
 )
-from .migration import async_cleanup_legacy_component, async_migrate_registry
 from .permissions import (
     Permissions,
     ProxmoxPrivilege,
@@ -645,28 +643,6 @@ def async_merge_shared_storages(
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up the platform."""
-    if legacy_id := config_entry.data.get("_legacy_entry_id"):
-        old_entry = hass.config_entries.async_get_entry(legacy_id)
-        if old_entry is not None:
-            await async_migrate_registry(hass, old_entry, config_entry)
-            hass.config_entries.async_update_entry(
-                config_entry,
-                pref_disable_new_entities=old_entry.pref_disable_new_entities,
-                pref_disable_polling=old_entry.pref_disable_polling,
-            )
-            await hass.config_entries.async_remove(old_entry.entry_id)
-            ir.async_create_issue(
-                hass,
-                DOMAIN,
-                ISSUE_DOMAIN_MIGRATION_RESTART,
-                is_fixable=True,
-                is_persistent=False,
-                severity=ir.IssueSeverity.WARNING,
-                translation_key=ISSUE_DOMAIN_MIGRATION_RESTART,
-            )
-        data = dict(config_entry.data)
-        data.pop("_legacy_entry_id")
-        hass.config_entries.async_update_entry(config_entry, data=data)
     hass.data.setdefault(DOMAIN, {})
     entry_data = config_entry.data
 
@@ -1046,8 +1022,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         )
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
-
-    await async_cleanup_legacy_component(hass)
 
     return True
 
