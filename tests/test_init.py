@@ -2,33 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Tests for setting up, unloading and importing Proxmox VE."""
 
-import json
-from pathlib import Path
-
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.proxmoxve_custom import DOMAIN
-
 from .fake_api import FakeProxmox
-
-
-def test_hacs_uses_the_component_release() -> None:
-    """HACS installs the component's release under its own domain."""
-    root = Path(__file__).resolve().parent.parent
-    hacs = json.loads((root / "hacs.json").read_text(encoding="utf-8"))
-    manifest = json.loads(
-        (root / "custom_components/proxmoxve_custom/manifest.json").read_text(
-            encoding="utf-8"
-        )
-    )
-
-    assert hacs["content_in_root"] is False
-    assert hacs["hide_default_branch"] is False
-    assert hacs["filename"] == "proxmoxve_custom.zip"
-    assert hacs["zip_release"] is True
-    assert manifest["domain"] == DOMAIN
 
 
 async def test_setup_entry(

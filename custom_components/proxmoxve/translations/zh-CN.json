@@ -1,0 +1,877 @@
+{
+    "config": {
+        "step": {
+            "host": {
+                "description": "请输入 Proxmox 主机连接信息",
+                "data": {
+                    "host": "主机地址",
+                    "password": "密码或令牌值",
+                    "token_name": "API 令牌名称",
+                    "port": "端口号",
+                    "realm": "认证域",
+                    "username": "用户名",
+                    "verify_ssl": "验证 SSL 证书"
+                }
+            },
+            "expose": {
+                "description": "选择要接入 Home Assistant 的节点、虚拟机、容器及存储",
+                "data": {
+                    "nodes": "节点",
+                    "qemu": "虚拟机 (QEMU)",
+                    "lxc": "Linux 容器 (LXC)",
+                    "storage": "存储",
+                    "disks_enable": "启用物理磁盘监控",
+                    "auto_discovery": "Track everything automatically",
+                    "entity_id_scheme": "Entity id scheme",
+                    "entity_id_prefix": "Prefix for the extended scheme"
+                },
+                "data_description": {
+                    "disks_enable": "若使用磁盘休眠功能，请禁用此选项以避免意外唤醒磁盘。",
+                    "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked.",
+                    "entity_id_scheme": "Standard: Home Assistant's device then name, `qemu_win11_108_cpu_used`. Extended: prefix, kind, id, name, item - `pve_qemu_108_win11_cpu_used` - so a search or a recorder filter catches everything by the prefix and a list sorts by id. Applies to entities created from now on; ids that exist keep them.",
+                    "entity_id_prefix": "The first part of every entity id under the extended scheme; `pve` unless you choose otherwise. Not used by the standard scheme."
+                }
+            },
+            "reauth_confirm": {
+                "description": "用户名或密码不正确，请重新验证",
+                "title": "重新认证集成",
+                "data": {
+                    "password": "密码或令牌值",
+                    "username": "用户名",
+                    "token_name": "API 令牌名称",
+                    "realm": "认证域"
+                }
+            },
+            "reconfigure": {
+                "description": "更新 Proxmox 主机连接配置",
+                "data": {
+                    "host": "主机地址",
+                    "password": "密码或令牌值",
+                    "token_name": "API 令牌名称",
+                    "port": "端口号",
+                    "realm": "认证域",
+                    "username": "用户名",
+                    "verify_ssl": "验证 SSL 证书"
+                }
+            }
+        },
+        "error": {
+            "auth_error": "身份验证失败，请检查用户名/密码或 API 令牌",
+            "cant_connect": "无法连接到 Proxmox 主机，请检查网络连接",
+            "general_error": "发生未知错误，请查看日志或稍后重试",
+            "invalid_port": "端口号无效，请输入 1-65535 之间的数字",
+            "nodes_required": "Pick at least one node, or turn on Track everything automatically.",
+            "ssl_rejection": "SSL 证书验证失败，请确保证书有效或禁用验证"
+        },
+        "abort": {
+            "already_configured": "此设备已配置完成",
+            "no_resources": "此实例未返回任何资源",
+            "reauth_successful": "重新认证成功",
+            "reconfigure_successful": "重新配置完成"
+        }
+    },
+    "issues": {
+        "import_success": {
+            "title": "成功导入 {host}:{port} 的 YAML 配置",
+            "description": "{host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置已成功导入到 UI 中。\n\n现在可以安全地从 `configuration.yaml` 文件中删除相应配置。"
+        },
+        "import_invalid_port": {
+            "title": "YAML 配置导入失败：{host}:{port}",
+            "description": "因端口号无效，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+        },
+        "import_auth_error": {
+            "title": "YAML 配置导入失败：{host}:{port}",
+            "description": "因身份验证错误，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+        },
+        "import_ssl_rejection": {
+            "title": "YAML 配置导入失败：{host}:{port}",
+            "description": "因 SSL 证书验证失败，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+        },
+        "import_cant_connect": {
+            "title": "YAML 配置导入失败：{host}:{port}",
+            "description": "因连接失败，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+        },
+        "import_general_error": {
+            "title": "YAML 配置导入失败：{host}:{port}",
+            "description": "因未知错误，无法导入 {host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置。\n\n请从 `configuration.yaml` 中删除此配置，重启 Home Assistant 后手动配置。"
+        },
+        "import_already_configured": {
+            "title": "实例 {host}:{port} 已在 UI 中配置完成",
+            "description": "{host}:{port} 实例的 {integration} 集成 (`{platform}`) 配置已存在于 UI 中，导入时已跳过。\n\n请从 `configuration.yaml` 中删除此配置并重启 Home Assistant。"
+        },
+        "import_node_not_exist": {
+            "title": "节点 {node} 在 {host}:{port} 中不存在",
+            "description": "YAML 配置中指定的节点 {node} 在 {integration}（`{platform}`）的 {host}:{port} 实例中不存在，导入时已忽略。\n\n请从 `configuration.yaml` 中删除此配置并重启 Home Assistant。"
+        },
+        "yaml_deprecated": {
+            "title": "{integration} 的 YAML 配置方式已弃用",
+            "description": "{platform} 的 {integration} 集成 YAML 配置方式已弃用，将在 {version} 版本中移除。\n\n请解决导入问题并从 `configuration.yaml` 中删除 YAML 配置。"
+        },
+        "resources_nonexistent": {
+            "description": "These resources are tracked, but the cluster at `{host}:{port}` does not list them. Remove them in the integration options - or, if they do exist, user `{user}` may lack the privilege to see them, noted after each one:\n\n{items}",
+            "title": "{count} tracked resource(s) not found on {host}"
+        },
+        "no_permissions": {
+            "description": "用户 `{user}` 缺少访问所有功能所需的权限。\n\n以下功能无法访问：\n`{errors}`\n\n请参考文档检查用户权限设置。",
+            "title": "用户 `{user}` 权限不足"
+        },
+        "resources_forbidden": {
+            "description": "User `{user}` may not read these resources. Grant the privilege noted after each one, on the path shown or one above it, and reload the integration:\n\n{items}\n\nThe permissions documentation lists the roles the integration needs.",
+            "title": "{count} resource(s) not readable by `{user}`"
+        },
+        "guest_agent_fsinfo_forbidden": {
+            "description": "User `{user}` may not query the QEMU guest agent of these VMs: {vms}.\n\nTheir disk usage falls back to what the host sees - for most VMs that is nothing. Reading it needs, on the VMs or on a path above them:\n* `{permission}`\n\nOn Proxmox VE 8 the privilege is `VM.Monitor` instead. The built-in `PVEAuditor` role carries it. Grant it and reload the integration.",
+            "title": "Guest agent not readable"
+        },
+        "guest_agent_file_forbidden": {
+            "description": "User `{user}` may not read files through the QEMU guest agent of these VMs: {vms}.\n\nTheir guest file sensor cannot be created. Reading it needs, on the VMs or on a path above them:\n* `{permission}`\n\nOn Proxmox VE 8 the privilege is `VM.Monitor` instead. Grant it and reload the integration, or clear the file path in the integration options.",
+            "title": "Guest file not readable"
+        },
+        "resource_command_forbiden": {
+            "description": "用户 `{user}` 没有足够权限对资源 `{resource}` 执行命令 `{command}`。\n\n所需权限提示：\n* `{permission}`\n\n请检查文档中的权限要求并调整用户权限。",
+            "title": "执行 `{resource}` 命令的权限错误"
+        }
+    },
+    "options": {
+        "step": {
+            "menu": {
+                "menu_options": {
+                    "host_auth": "修改主机认证信息",
+                    "change_expose": "管理接入的资源",
+                    "advanced": "Advanced configuration: polling, physical disks, tasks, updates, backups, entity ids",
+                    "cluster_ha_auth": "Optional: cluster HA administration (advanced)"
+                }
+            },
+            "host_auth": {
+                "data": {
+                    "password": "密码或令牌值",
+                    "token_name": "API 令牌名称",
+                    "realm": "认证域",
+                    "username": "用户名",
+                    "verify_ssl": "验证 SSL 证书"
+                },
+                "description": "更新 Proxmox 主机认证信息"
+            },
+            "cluster_ha_auth": {
+                "description": "Optional and separate from the main credentials above. Enables the Arm HA / Disarm HA buttons and a per-VM/CT \"HA managed\" sensor. These require Sys.Console and Sys.Audit permissions on the Proxmox root path ('/') — significantly broader than anything else this integration needs, and enough to affect the whole cluster's HA fencing behavior. Only fill this in if you understand and accept that risk; leave every field empty to leave these features disabled.",
+                "data": {
+                    "ha_admin_username": "Username",
+                    "ha_admin_token_name": "Token name",
+                    "ha_admin_password": "Password or token value",
+                    "ha_admin_realm": "Realm"
+                },
+                "data_description": {
+                    "ha_admin_username": "Leave empty (along with the fields below) to disable the Arm/Disarm HA buttons and the HA managed sensor.",
+                    "ha_admin_password": "Needs Sys.Console (arm/disarm) and Sys.Audit (HA resource list) on '/' — not the scoped permissions recommended for the main integration user."
+                }
+            },
+            "change_expose": {
+                "description": "选择要接入的节点、虚拟机、容器及存储",
+                "data": {
+                    "lxc": "Linux 容器 (LXC)",
+                    "nodes": "节点",
+                    "qemu": "虚拟机 (QEMU)",
+                    "storage": "存储",
+                    "auto_discovery": "Track everything automatically"
+                },
+                "data_description": {
+                    "auto_discovery": "Track every node, virtual machine, container and storage the credentials can see, and follow the cluster from then on: whatever is added is picked up, whatever is removed is dropped. The selection above is ignored while this is on. Templates are never tracked."
+                }
+            },
+            "advanced": {
+                "title": "Advanced configuration",
+                "description": "What is read besides the basics, how often, and how entities are named. Every field has a default a setup runs fine on.",
+                "data": {
+                    "disks_enable": "启用物理磁盘监控",
+                    "tasks_enable": "监控任务失败",
+                    "updates_enable": "Monitor package updates",
+                    "update_interval": "Polling interval",
+                    "guest_file_path": "Guest file path to monitor (QEMU, requires guest agent)",
+                    "backup_storage": "Backup storage for the backup buttons",
+                    "entity_id_scheme": "Entity id scheme",
+                    "entity_id_prefix": "Prefix for the extended scheme"
+                },
+                "data_description": {
+                    "disks_enable": "若使用磁盘休眠功能，请禁用此选项以避免意外唤醒磁盘。",
+                    "tasks_enable": "监测并报告过去 24 小时内选定节点的失败任务。",
+                    "updates_enable": "Read the pending package upgrades of each node into an update entity and a count sensor. Needs Sys.Modify on the node; switch this off to run without that privilege - or without the entities.",
+                    "update_interval": "How often nodes, guests, storage and backups are read. 60 seconds unless changed; Proxmox itself refreshes guest figures about every 10 seconds. Certificates, subscriptions and Ceph are read hourly, failed tasks every five minutes, whatever is set here.",
+                    "guest_file_path": "Absolute path of a file inside each tracked QEMU guest to read via the guest agent and expose as a sensor. Leave empty to disable. Requires the QEMU guest agent to be running in the guest.",
+                    "backup_storage": "Where the \"Back up now\" and \"Back up all\" buttons write their backups (snapshot mode). The buttons exist only while a storage is picked here and the credentials hold VM.Backup. Storages that accept backups are listed; any other name can be typed in.",
+                    "entity_id_scheme": "Standard: Home Assistant's device then name, `qemu_win11_108_cpu_used`. Extended: prefix, kind, id, name, item - `pve_qemu_108_win11_cpu_used` - so a search or a recorder filter catches everything by the prefix and a list sorts by id. Applies to entities created from now on; ids that exist keep them.",
+                    "entity_id_prefix": "The first part of every entity id under the extended scheme; `pve` unless you choose otherwise. Not used by the standard scheme."
+                }
+            }
+        },
+        "error": {
+            "auth_error": "身份验证失败，请检查用户名/密码或 API 令牌",
+            "cant_connect": "无法连接到 Proxmox 主机，请检查网络连接",
+            "general_error": "发生未知错误，请查看日志或稍后重试",
+            "invalid_port": "端口号无效，请输入 1-65535 之间的数字",
+            "ssl_rejection": "SSL 证书验证失败，请确保证书有效或禁用验证"
+        },
+        "abort": {
+            "no_nodes": "主机未返回任何节点",
+            "no_vms": "此节点没有虚拟机或容器，配置条目将为节点创建",
+            "changes_successful": "更改已成功保存",
+            "no_nodes_to_add": "没有可添加的节点",
+            "node_already_exists": "所选节点已存在",
+            "auth_error": "身份验证失败",
+            "cant_connect": "连接失败",
+            "general_error": "未知错误",
+            "invalid_port": "无效的端口号",
+            "ssl_rejection": "SSL 证书验证失败"
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "status": {
+                "name": "状态"
+            },
+            "backup_running": {
+                "name": "Backup running",
+                "state_attributes": {
+                    "running_since": {
+                        "name": "Started"
+                    },
+                    "running_guests": {
+                        "name": "Guests"
+                    }
+                }
+            },
+            "health": {
+                "name": "健康状态"
+            },
+            "locked": {
+                "name": "Locked"
+            },
+            "guest_agent": {
+                "name": "Guest agent"
+            },
+            "update_avail": {
+                "name": "可用更新"
+            },
+            "ha_managed": {
+                "name": "HA managed"
+            },
+            "replication_failing": {
+                "name": "Replication failing"
+            },
+            "cluster_quorate": {
+                "name": "Quorate"
+            },
+            "ha_crm_master_stale": {
+                "name": "CRM master stale"
+            },
+            "storage_active": {
+                "name": "Storage active",
+                "state": {
+                    "on": "Active",
+                    "off": "Inactive"
+                }
+            },
+            "storage_enabled": {
+                "name": "Storage enabled",
+                "state": {
+                    "on": "Enabled",
+                    "off": "Disabled"
+                }
+            },
+            "storage_shared": {
+                "name": "Storage shared",
+                "state": {
+                    "on": "Shared",
+                    "off": "Not shared"
+                }
+            },
+            "backup_status": {
+                "name": "Backup status",
+                "state_attributes": {
+                    "status": {
+                        "name": "Status"
+                    },
+                    "guests": {
+                        "name": "Guests"
+                    },
+                    "user": {
+                        "name": "User"
+                    }
+                }
+            }
+        },
+        "button": {
+            "start_all": {
+                "name": "批量启动"
+            },
+            "stop_all": {
+                "name": "批量停止"
+            },
+            "shutdown": {
+                "name": "关机"
+            },
+            "reboot": {
+                "name": "重启"
+            },
+            "start": {
+                "name": "启动"
+            },
+            "stop": {
+                "name": "停止"
+            },
+            "unlock": {
+                "name": "Unlock"
+            },
+            "resume": {
+                "name": "恢复"
+            },
+            "suspend": {
+                "name": "挂起"
+            },
+            "reset": {
+                "name": "重置"
+            },
+            "wakeonlan": {
+                "name": "网络唤醒"
+            },
+            "arm_ha": {
+                "name": "Arm HA"
+            },
+            "disarm_ha": {
+                "name": "Disarm HA"
+            },
+            "suspend_all": {
+                "name": "Suspend all"
+            },
+            "snapshot": {
+                "name": "Create snapshot"
+            },
+            "backup": {
+                "name": "Back up now"
+            },
+            "backup_all": {
+                "name": "Back up all"
+            }
+        },
+        "sensor": {
+            "cpu_used": {
+                "name": "CPU 使用率",
+                "state_attributes": {
+                    "cpus": {
+                        "name": "Cores"
+                    }
+                }
+            },
+            "cpu_of_host": {
+                "name": "CPU used of host"
+            },
+            "pressure_cpu_some": {
+                "name": "CPU pressure"
+            },
+            "pressure_cpu_full": {
+                "name": "CPU pressure stalled"
+            },
+            "pressure_io_some": {
+                "name": "IO pressure"
+            },
+            "pressure_io_full": {
+                "name": "IO pressure stalled"
+            },
+            "pressure_memory_some": {
+                "name": "Memory pressure"
+            },
+            "pressure_memory_full": {
+                "name": "Memory pressure stalled"
+            },
+            "memory_of_host": {
+                "name": "Memory used on host"
+            },
+            "ip_address": {
+                "name": "IP address",
+                "state_attributes": {
+                    "ip_addresses": {
+                        "name": "IP addresses"
+                    },
+                    "interfaces": {
+                        "name": "Interfaces"
+                    }
+                }
+            },
+            "snapshots": {
+                "name": "Snapshots",
+                "state_attributes": {
+                    "snapshot_names": {
+                        "name": "Snapshot names"
+                    },
+                    "snapshot_latest": {
+                        "name": "Latest snapshot"
+                    }
+                }
+            },
+            "cpus": {
+                "name": "CPUs"
+            },
+            "load_1m": {
+                "name": "Load average 1 min"
+            },
+            "load_5m": {
+                "name": "Load average 5 min"
+            },
+            "load_15m": {
+                "name": "Load average 15 min"
+            },
+            "io_wait": {
+                "name": "IO delay"
+            },
+            "version": {
+                "name": "Version"
+            },
+            "disk_free": {
+                "name": "可用磁盘空间"
+            },
+            "disk_free_perc": {
+                "name": "磁盘可用百分比"
+            },
+            "disk_rpm": {
+                "name": "磁盘转速"
+            },
+            "disk_size": {
+                "name": "磁盘容量"
+            },
+            "disk_total": {
+                "name": "磁盘总空间"
+            },
+            "disk_used": {
+                "name": "已用磁盘空间"
+            },
+            "disk_used_perc": {
+                "name": "磁盘使用百分比"
+            },
+            "disk_wearout": {
+                "name": "磁盘损耗度"
+            },
+            "failed_tasks_count": {
+                "name": "失败任务数",
+                "state_attributes": {
+                    "recent_failures": {
+                        "name": "近期失败"
+                    },
+                    "last_failure_time": {
+                        "name": "最后失败时间"
+                    }
+                }
+            },
+            "guest_file_content": {
+                "name": "Guest file content",
+                "state_attributes": {
+                    "guest_file_path": {
+                        "name": "Guest file path"
+                    },
+                    "guest_file_content": {
+                        "name": "Guest file content"
+                    }
+                }
+            },
+            "ceph_health": {
+                "name": "Ceph health",
+                "state": {
+                    "ok": "OK",
+                    "warning": "Warning",
+                    "error": "Error"
+                },
+                "state_attributes": {
+                    "checks": {
+                        "name": "Checks"
+                    }
+                }
+            },
+            "ceph_used": {
+                "name": "Ceph used"
+            },
+            "ceph_total": {
+                "name": "Ceph total"
+            },
+            "ceph_used_perc": {
+                "name": "Ceph used percentage"
+            },
+            "cluster_nodes_online": {
+                "name": "Nodes online",
+                "state_attributes": {
+                    "nodes_total": {
+                        "name": "Nodes"
+                    },
+                    "nodes_offline": {
+                        "name": "Nodes offline"
+                    }
+                }
+            },
+            "cluster_qemu_running": {
+                "name": "Virtual machines running",
+                "state_attributes": {
+                    "qemu_total": {
+                        "name": "Virtual machines"
+                    }
+                }
+            },
+            "cluster_lxc_running": {
+                "name": "Containers running",
+                "state_attributes": {
+                    "lxc_total": {
+                        "name": "Containers"
+                    }
+                }
+            },
+            "cluster_cpu_used": {
+                "name": "CPU used"
+            },
+            "cluster_memory_used_perc": {
+                "name": "Memory used percentage"
+            },
+            "cluster_memory_used": {
+                "name": "Memory used"
+            },
+            "cluster_memory_total": {
+                "name": "Memory total"
+            },
+            "certificate_expires": {
+                "name": "Certificate expires",
+                "state_attributes": {
+                    "filename": {
+                        "name": "File"
+                    },
+                    "subject": {
+                        "name": "Subject"
+                    },
+                    "issuer": {
+                        "name": "Issuer"
+                    }
+                }
+            },
+            "guests_without_backup": {
+                "name": "Guests without backup",
+                "state_attributes": {
+                    "guests": {
+                        "name": "Guests"
+                    }
+                }
+            },
+            "replication_last_sync": {
+                "name": "Replication last sync",
+                "state_attributes": {
+                    "jobs": {
+                        "name": "Jobs"
+                    }
+                }
+            },
+            "subscription_status": {
+                "name": "Subscription",
+                "state": {
+                    "new": "New",
+                    "notfound": "None",
+                    "active": "Active",
+                    "invalid": "Invalid",
+                    "expired": "Expired",
+                    "suspended": "Suspended"
+                },
+                "state_attributes": {
+                    "level": {
+                        "name": "Level"
+                    },
+                    "product": {
+                        "name": "Product"
+                    },
+                    "next_due": {
+                        "name": "Next due"
+                    }
+                }
+            },
+            "ha_armed_state": {
+                "name": "HA armed state",
+                "state": {
+                    "armed": "Armed",
+                    "standby": "Standby",
+                    "disarming": "Disarming",
+                    "disarmed": "Disarmed"
+                },
+                "state_attributes": {
+                    "resource_mode": {
+                        "name": "Resource mode"
+                    }
+                }
+            },
+            "ha_crm_master": {
+                "name": "CRM master"
+            },
+            "ha_crm_master_last_seen": {
+                "name": "CRM master last seen"
+            },
+            "ha_resources_error": {
+                "name": "HA resources in error",
+                "state_attributes": {
+                    "ha_resources_error_list": {
+                        "name": "Resources in error"
+                    }
+                }
+            },
+            "ha_resources_total": {
+                "name": "HA resources"
+            },
+            "life_left": {
+                "name": "剩余寿命"
+            },
+            "zfs_health": {
+                "name": "ZFS 健康状态"
+            },
+            "zfs_free_perc": {
+                "name": "ZFS 可用百分比"
+            },
+            "zfs_total": {
+                "name": "ZFS 总空间"
+            },
+            "zfs_used": {
+                "name": "ZFS 已用空间"
+            },
+            "zfs_used_perc": {
+                "name": "ZFS 使用百分比"
+            },
+            "lxc_on": {
+                "name": "运行中的容器",
+                "state_attributes": {
+                    "lxc_on_list": {
+                        "name": "容器列表"
+                    }
+                }
+            },
+            "memory_free": {
+                "name": "可用内存"
+            },
+            "memory_free_perc": {
+                "name": "内存可用百分比"
+            },
+            "memory_total": {
+                "name": "内存总量"
+            },
+            "memory_used": {
+                "name": "已用内存"
+            },
+            "memory_used_perc": {
+                "name": "内存使用率"
+            },
+            "network_in": {
+                "name": "网络下载"
+            },
+            "network_out": {
+                "name": "网络上传"
+            },
+            "node": {
+                "name": "节点",
+                "state_attributes": {
+                    "nodes": {
+                        "name": "Nodes"
+                    }
+                }
+            },
+            "power_cycles": {
+                "name": "电源循环次数"
+            },
+            "power_loss": {
+                "name": "意外断电次数"
+            },
+            "power_hours": {
+                "name": "通电时长"
+            },
+            "qemu_on": {
+                "name": "运行中的虚拟机",
+                "state_attributes": {
+                    "qemu_on_list": {
+                        "name": "虚拟机列表"
+                    }
+                }
+            },
+            "status_raw": {
+                "name": "运行状态",
+                "state": {
+                    "internal-error": "内部错误",
+                    "prelaunch": "预启动",
+                    "paused": "已暂停",
+                    "stopped": "已停止",
+                    "suspended": "已挂起",
+                    "running": "运行中",
+                    "shutdown": "Shutting down",
+                    "io-error": "I/O error",
+                    "guest-panicked": "Guest panicked",
+                    "watchdog": "Watchdog",
+                    "inmigrate": "Incoming migration",
+                    "postmigrate": "Migrated away",
+                    "finish-migrate": "Finishing migration",
+                    "restore-vm": "Restoring",
+                    "save-vm": "Saving state",
+                    "debug": "Debug",
+                    "colo": "COLO"
+                }
+            },
+            "swap_free": {
+                "name": "可用交换空间"
+            },
+            "swap_free_perc": {
+                "name": "交换空间可用百分比"
+            },
+            "swap_total": {
+                "name": "交换空间总量"
+            },
+            "swap_used": {
+                "name": "已用交换空间"
+            },
+            "swap_used_perc": {
+                "name": "交换空间使用率"
+            },
+            "temperature": {
+                "name": "温度"
+            },
+            "updates_total": {
+                "name": "可用更新总数",
+                "state_attributes": {
+                    "updates_list": {
+                        "name": "更新列表"
+                    }
+                }
+            },
+            "uptime": {
+                "name": "运行时长"
+            },
+            "backup_last": {
+                "name": "Last backup",
+                "state_attributes": {
+                    "status": {
+                        "name": "Status"
+                    },
+                    "guests": {
+                        "name": "Guests"
+                    },
+                    "user": {
+                        "name": "User"
+                    }
+                }
+            },
+            "backup_duration": {
+                "name": "Backup duration"
+            },
+            "node_status": {
+                "name": "Status",
+                "state": {
+                    "online": "Online",
+                    "offline": "Offline",
+                    "unknown": "Unknown"
+                }
+            }
+        },
+        "update": {
+            "node_update": {
+                "name": "Software update"
+            }
+        }
+    },
+    "selector": {
+        "realm": {
+            "options": {
+                "pam": "pam - Linux PAM standard authentication",
+                "pve": "pve - Proxmox VE authentication server"
+            }
+        },
+        "backup_mode": {
+            "options": {
+                "snapshot": "Snapshot",
+                "suspend": "Suspend",
+                "stop": "Stop"
+            }
+        },
+        "update_interval": {
+            "options": {
+                "30": "30 seconds",
+                "45": "45 seconds",
+                "60": "60 seconds (default)",
+                "90": "90 seconds",
+                "120": "2 minutes"
+            }
+        },
+        "entity_id_scheme": {
+            "options": {
+                "standard": "Standard - device then name (Home Assistant default)",
+                "extended": "Extended - prefix, kind, id, name, item"
+            }
+        },
+        "backup_compress": {
+            "options": {
+                "zstd": "zstd",
+                "gzip": "gzip",
+                "lzo": "lzo",
+                "0": "None"
+            }
+        }
+    },
+    "services": {
+        "backup": {
+            "name": "Back up guests",
+            "description": "Starts backup runs (vzdump) for the targeted guests, nodes or cluster - or for the node and guest ids named. One run per node; returns their task ids.",
+            "fields": {
+                "node": {
+                    "name": "Node",
+                    "description": "A node to back up on, by name. Not needed when devices are targeted or guests are named: their node is looked up."
+                },
+                "vmid": {
+                    "name": "Guests",
+                    "description": "IDs of VMs and containers to back up, wherever in the cluster they live."
+                },
+                "all": {
+                    "name": "All",
+                    "description": "Back up every guest the node hosts - on the named node, or on every tracked node when none is named or targeted."
+                },
+                "storage": {
+                    "name": "Storage",
+                    "description": "Where to store the backup. Defaults to the storage picked for the backup buttons in the integration options, or to the node's own default."
+                },
+                "mode": {
+                    "name": "Mode",
+                    "description": "How to freeze the guest: snapshot (no downtime), suspend, or stop."
+                },
+                "compress": {
+                    "name": "Compression",
+                    "description": "zstd, gzip, lzo, or none. Defaults to the node's setting."
+                },
+                "notes": {
+                    "name": "Notes",
+                    "description": "Notes template for the backup, for example {{guestname}}."
+                },
+                "skip_if_running": {
+                    "name": "Skip if running",
+                    "description": "Leave a node out while a backup is already running on it, instead of queuing behind it."
+                }
+            }
+        }
+    },
+    "exceptions": {
+        "backup_nothing_selected": {
+            "message": "Target a guest, node or cluster device, name a guest or node, or turn on 'All'."
+        },
+        "backup_target_not_supported": {
+            "message": "{device} cannot be backed up; target a guest, a node or the cluster."
+        },
+        "backup_target_unknown": {
+            "message": "Device {device} does not exist."
+        },
+        "backup_unknown_guest": {
+            "message": "No configured Proxmox VE integration tracks guest {vmid}."
+        },
+        "backup_notes_need_storage": {
+            "message": "Notes can only be set together with a storage; Proxmox refuses the template without one."
+        },
+        "backup_unknown_node": {
+            "message": "No configured Proxmox VE integration tracks node {node}."
+        },
+        "backup_refused": {
+            "message": "Proxmox refused to start the backup on {node}: {error}"
+        },
+        "backup_unreachable": {
+            "message": "Node {node} could not be reached to start the backup: {error}"
+        }
+    }
+}

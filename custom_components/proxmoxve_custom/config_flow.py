@@ -50,6 +50,8 @@ from .const import (
     DEFAULT_REALM,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
+    DOMAIN_OLD,
+    LEGACY_ENTRY_VERSION,
     LOGGER,
     SCHEME_EXTENDED,
     SCHEME_STANDARD,
@@ -761,6 +763,29 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._expose_schema: vol.Schema | None = None
         self._host: str
         self._proxmox_client: ProxmoxClient | None = None
+
+    async def async_step_proxmoxve_migration(
+        self, user_input: dict[str, Any]
+    ) -> FlowResult:
+        """Create a replacement for a legacy config entry."""
+        old_entry = self.hass.config_entries.async_get_entry(user_input["entry_id"])
+        if (
+            old_entry is None
+            or old_entry.domain != DOMAIN_OLD
+            or old_entry.version != LEGACY_ENTRY_VERSION
+        ):
+            return self.async_abort(reason="unknown")
+        for entry in self._async_current_entries():
+            if entry.data.get("_legacy_entry_id") == old_entry.entry_id:
+                return self.async_abort(reason="already_configured")
+        if old_entry.unique_id is not None:
+            await self.async_set_unique_id(old_entry.unique_id)
+            self._abort_if_unique_id_configured()
+        return self.async_create_entry(
+            title=old_entry.title,
+            data={**old_entry.data, "_legacy_entry_id": old_entry.entry_id},
+            options=old_entry.options,
+        )
 
     async def async_step_reauth(self, data: Mapping[str, Any]) -> FlowResult:
         """Handle a reauthorization flow request."""
