@@ -77,7 +77,7 @@
                 "step": {
                     "confirm_restart": {
                         "title": "Reiniciar o Home Assistant",
-                        "description": "O Proxmox VE foi migrado de `proxmoxve` para `proxmoxve_custom`. Reinicie o Home Assistant para concluir a migração.",
+                        "description": "Uma entrada de configuração do Proxmox VE foi migrada de `proxmoxve` para `proxmoxve_custom`. Reinicie o Home Assistant e verifique as entradas migradas, os dispositivos, as entidades e as automações.\n\nA pasta antiga `custom_components/proxmoxve` é removida automaticamente quando não existirem entradas antigas ou migrações pendentes. Não a remova enquanto existir qualquer entrada antiga pendente, incluindo uma desativada.\n\nApós verificar a migração, desinstale o repositório antigo no Marketplace, não em Dispositivos e Serviços. Instale novamente o repositório e selecione a versão `6.0.0` quando estiver publicada.",
                         "submit": "Reiniciar"
                     }
                 }

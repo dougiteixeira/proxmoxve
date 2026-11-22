@@ -42,16 +42,65 @@ entry uses version **1** under the new domain. Entries at any other version
 are not transferred; historical upgrades can remove devices, so plan those
 upgrades separately and keep a backup.
 
-1. Install the transition release's legacy `proxmoxve` component from
-  `proxmoxve.zip` if it is not already installed.
-2. Install `proxmoxve_custom` through HACS, copy its directory from this
-  repository, or extract `proxmoxve_custom.zip` from the release into that
-  directory alongside `proxmoxve` in Home Assistant's `custom_components`.
-3. Restart Home Assistant. Each enabled, eligible legacy entry is migrated
-  automatically; disabled entries must be enabled to start migration. Once an
-  entry has migrated, a repair offers a button to restart Home Assistant.
-4. Use the repair to restart, then verify the new entry, devices, entities and
-  automations. Restore the backup if the migration does not succeed.
+The commands below require release `6.0.0b0` and the ZIP assets named below.
+The final Marketplace step requires version `6.0.0` to be published. The
+commands require shell access to the Home Assistant configuration directory,
+`curl` and `unzip`. Replace `/config` if your configuration directory is
+elsewhere.
+
+#### 1. Install version 6.0.0b0
+
+This transition release installs both components and migrates eligible legacy
+entries. Do not remove the integration from Devices & Services.
+
+```bash
+cd /config &&
+  mkdir -p custom_components/proxmoxve custom_components/proxmoxve_custom &&
+  curl -fL -o /tmp/proxmoxve-6.0.0b0.zip \
+    https://github.com/dougiteixeira/proxmoxve/releases/download/6.0.0b0/proxmoxve.zip &&
+  curl -fL -o /tmp/proxmoxve-custom-6.0.0b0.zip \
+    https://github.com/dougiteixeira/proxmoxve/releases/download/6.0.0b0/proxmoxve_custom.zip &&
+  unzip -o /tmp/proxmoxve-6.0.0b0.zip -d custom_components/proxmoxve &&
+  unzip -o /tmp/proxmoxve-custom-6.0.0b0.zip -d custom_components/proxmoxve_custom
+```
+
+Restart Home Assistant. Each enabled, eligible legacy entry is migrated
+automatically; disabled entries must be enabled to start migration. Use the
+restart button in the repair that appears, then verify the new entry, devices,
+entities and automations. Restore the backup if the migration does not succeed.
+
+#### 2. Check the legacy component
+
+The new integration removes the recognized legacy directory automatically
+once no legacy entries or incomplete migrations remain. If the directory is
+already absent, continue to the next step.
+
+If the directory remains, first verify that **all** legacy entries, including
+disabled entries, have migrated and that the directory belongs to this legacy
+integration. Do not remove it while any legacy entry or migration is pending.
+Once verified, you can remove a regular directory manually:
+
+```bash
+cd /config &&
+  if [[ -L custom_components/proxmoxve ]]; then
+    printf 'Legacy path is a symbolic link; inspect it before removing it.\n'
+  elif [[ -d custom_components/proxmoxve ]]; then
+    rm -r -- custom_components/proxmoxve
+  else
+    printf 'Legacy directory is already absent.\n'
+  fi
+```
+
+Restart Home Assistant if you removed the directory manually.
+
+#### 3. Install version 6.0.0 through the Marketplace
+
+After verifying the migration, uninstall the old repository **from the
+Marketplace**, not from Devices & Services. Install the repository again through
+the Marketplace and select version `6.0.0`. This resets the Marketplace's
+recorded domain without deleting the migrated configuration entry. Restart if
+the Marketplace requests it. Subsequent updates can then be installed through
+the Marketplace.
 
 The new entry receives a new entry ID. Its settings, options, devices, device
 IDs and entity IDs are transferred, and entity unique IDs are adjusted to
@@ -66,9 +115,11 @@ incomplete legacy entries remain, or if it is a symbolic link or does not
 match this integration's manifest. Cleanup is retried on subsequent starts;
 check the logs if file permissions prevent removal.
 
-HACS installs release packages for `proxmoxve_custom` only, so subsequent
-updates do not reinstall the legacy component. The legacy ZIP remains
-available separately for existing installations that need the transition.
+The Marketplace does not update an installed repository when its domain changes;
+the manual transition and Marketplace reinstallation above are required for
+existing installations. The new release must advertise `proxmoxve_custom` in
+its root manifest and in the `proxmoxve_custom.zip` manifest. Once reinstalled,
+subsequent Marketplace updates install only `proxmoxve_custom`.
 
 ### Installation via the Marketplace (Home Assistant 2026.11 and newer)
 
