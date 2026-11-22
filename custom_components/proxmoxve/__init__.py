@@ -7,9 +7,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any
 
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
-from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -47,7 +44,6 @@ from .api import ProxmoxClient, auth_error_status, get_api
 from .const import (
     CONF_AUTO_DISCOVERY,
     CONF_CLUSTER_HOSTS,
-    CONF_CONTAINERS,
     CONF_DISKS_ENABLE,
     CONF_HA_ADMIN_PASSWORD,
     CONF_HA_ADMIN_REALM,
@@ -62,11 +58,8 @@ from .const import (
     CONF_TASKS_ENABLE,
     CONF_TOKEN_NAME,
     CONF_UPDATES_ENABLE,
-    CONF_VMS,
     COORDINATORS,
-    DEFAULT_PORT,
     DEFAULT_REALM,
-    DEFAULT_VERIFY_SSL,
     DOMAIN,
     GUEST_AGENT_REFUSALS,
     INTEGRATION_TITLE,
@@ -77,7 +70,6 @@ from .const import (
     PROXMOX_PERMISSIONS,
     RESOURCE_CALLBACKS,
     TRACKED,
-    VERSION_REMOVE_YAML,
     ProxmoxType,
 )
 from .coordinator import (
@@ -137,8 +129,8 @@ from .storage import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
+    from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import Event, HomeAssistant
-    from homeassistant.helpers.typing import ConfigType
     from proxmoxer import ProxmoxAPI
 
     from .models import ProxmoxDiskData, ProxmoxStorageData
@@ -150,100 +142,8 @@ PLATFORMS = [
     Platform.UPDATE,
 ]
 
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.All(
-            cv.ensure_list,
-            [
-                vol.Schema(
-                    {
-                        vol.Required(CONF_HOST): cv.string,
-                        vol.Required(CONF_USERNAME): cv.string,
-                        vol.Required(CONF_PASSWORD): cv.string,
-                        vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-                        vol.Optional(CONF_REALM, default=DEFAULT_REALM): cv.string,
-                        vol.Optional(
-                            CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL
-                        ): cv.boolean,
-                        vol.Required(CONF_NODES): vol.All(
-                            cv.ensure_list,
-                            [
-                                vol.Schema(
-                                    {
-                                        vol.Required(CONF_NODE): cv.string,
-                                        vol.Optional(CONF_VMS, default=[]): [
-                                            cv.positive_int
-                                        ],
-                                        vol.Optional(CONF_CONTAINERS, default=[]): [
-                                            cv.positive_int
-                                        ],
-                                    }
-                                )
-                            ],
-                        ),
-                    }
-                )
-            ],
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
-)
 
 warnings.filterwarnings("ignore", category=InsecureRequestWarning)
-
-
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the platform."""
-    async_register_services(hass)
-    # import to config flow
-    if DOMAIN in config:
-        LOGGER.warning(
-            # Proxmox VE config flow added and should be removed.
-            "Configuration of the Proxmox in YAML is deprecated and should "
-            "be removed in %s. Resolve the import issues and remove the "
-            "YAML configuration from your configuration.yaml file",
-            VERSION_REMOVE_YAML,
-        )
-        ir.async_create_issue(
-            hass,
-            DOMAIN,
-            "yaml_deprecated",
-            breaks_in_ha_version=VERSION_REMOVE_YAML,
-            is_fixable=False,
-            severity=ir.IssueSeverity.WARNING,
-            translation_key="yaml_deprecated",
-            translation_placeholders={
-                "integration": INTEGRATION_TITLE,
-                "platform": DOMAIN,
-                "version": VERSION_REMOVE_YAML,
-            },
-        )
-        for conf in config[DOMAIN]:
-            if conf.get(CONF_PORT) > 65535 or conf.get(CONF_PORT) <= 0:
-                ir.async_create_issue(
-                    hass,
-                    DOMAIN,
-                    f"{conf.get[CONF_HOST]}_{conf.get[CONF_PORT]}_import_invalid_port",
-                    is_fixable=False,
-                    severity=ir.IssueSeverity.ERROR,
-                    translation_key="import_invalid_port",
-                    translation_placeholders={
-                        "integration": INTEGRATION_TITLE,
-                        "platform": DOMAIN,
-                        "host": conf.get[CONF_HOST],
-                        "port": conf.get[CONF_PORT],
-                    },
-                )
-            else:
-                conf[CONF_STORAGE] = []
-                hass.async_create_task(
-                    hass.config_entries.flow.async_init(
-                        DOMAIN,
-                        context={"source": SOURCE_IMPORT},
-                        data=conf,
-                    )
-                )
-    return True
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
@@ -991,6 +891,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     """Set up the platform."""
     hass.data.setdefault(DOMAIN, {})
     entry_data = config_entry.data
+
+    async_register_services(hass)
 
     host = entry_data[CONF_HOST]
     port = entry_data[CONF_PORT]
