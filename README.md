@@ -42,6 +42,19 @@ entry uses version **1** under the new domain. Entries at any other version
 are not transferred; historical upgrades can remove devices, so plan those
 upgrades separately and keep a backup.
 
+Legacy entries at versions 1 to 6 remain on `proxmoxve` and raise a repair
+requesting version 5.3.5. Back up Home Assistant, install that version and
+restart; verify the entry and devices before attempting the domain migration.
+Home Assistant rejects entry versions higher than 7 before the integration can
+load them; do not downgrade such entries without a compatible backup.
+
+> [!WARNING]
+> Do not install the legacy transition component if this Home Assistant instance
+> has entries from the built-in Proxmox VE integration. Both use the `proxmoxve`
+> domain, so the transition component overrides the built-in integration and
+> can prevent its entries from loading. The transition does not migrate native
+> entries and cannot keep them working while the legacy component is installed.
+
 The commands below require release `6.0.0b0` and the ZIP assets named below.
 The final Marketplace step requires version `6.0.0` to be published. The
 commands require shell access to the Home Assistant configuration directory,

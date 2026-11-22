@@ -51,7 +51,6 @@ from .const import (
     CONF_HA_ADMIN_TOKEN_NAME,
     CONF_HA_ADMIN_USERNAME,
     CONF_LXC,
-    CONF_NODE,
     CONF_NODES,
     CONF_QEMU,
     CONF_REALM,
@@ -128,7 +127,7 @@ from .storage import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
 
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import Event, HomeAssistant
@@ -148,263 +147,11 @@ warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Migrate old entry."""
+    """Keep legacy entries unchanged until they are upgraded separately."""
     if CONF_QEMU not in config_entry.data or CONF_LXC not in config_entry.data:
         LOGGER.error("Cannot migrate an entry that is not from Proxmox VE Custom")
         return False
-    if config_entry.version < 7:
-        try:
-            await async_get_integration(hass, "proxmoxve_custom")
-        except IntegrationNotFound:
-            pass
-        else:
-            LOGGER.error(
-                "Cannot safely migrate entry version %s to proxmoxve_custom; "
-                "the legacy version migrations may remove devices",
-                config_entry.version,
-            )
-            return False
-    LOGGER.debug("Migrating from version %s", config_entry.version)
-
-    if config_entry.version == 1:
-        device_identifiers = []
-        device_identifiers.append(
-            f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}"
-        )
-        device_identifiers.append(
-            f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data.get(CONF_NODE)}"
-        )
-        for resource in config_entry.data[CONF_QEMU]:
-            device_identifiers.append(
-                f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data.get(CONF_NODE)}_{resource}"
-            )
-        for resource in config_entry.data[CONF_LXC]:
-            device_identifiers.append(
-                f"{config_entry.data[CONF_HOST]}_{config_entry.data[CONF_PORT]}_{config_entry.data.get(CONF_NODE)}_{resource}"
-            )
-
-        node = []
-        node.append(config_entry.data.get(CONF_NODE))
-        data_new = {
-            CONF_HOST: config_entry.data.get(CONF_HOST),
-            CONF_PORT: config_entry.data.get(CONF_PORT),
-            CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
-            CONF_TOKEN_NAME: config_entry.data.get(CONF_TOKEN_NAME),
-            CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
-            CONF_REALM: config_entry.data.get(CONF_REALM),
-            CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
-            CONF_NODES: node,
-            CONF_QEMU: config_entry.data.get(CONF_QEMU),
-            CONF_LXC: config_entry.data.get(CONF_LXC),
-        }
-
-        hass.config_entries.async_update_entry(
-            config_entry,
-            data=data_new,
-            options={},
-            version=2,
-            minor_version=1,
-        )
-
-        LOGGER.debug("Migration - remove devices: %s", device_identifiers)
-        for device_identifier in device_identifiers:
-            device_identifier_migrate = {
-                (
-                    DOMAIN,
-                    device_identifier,
-                )
-            }
-            dev_reg = dr.async_get(hass)
-            device = dev_reg.async_get_or_create(
-                config_entry_id=config_entry.entry_id,
-                identifiers=device_identifier_migrate,
-            )
-
-            dev_reg.async_remove_device(device.id)
-
-    if config_entry.version == 2:
-        device_identifiers = []
-        for resource in config_entry.data[CONF_NODES]:
-            device_identifiers.append(f"{ProxmoxType.Node.upper()}_{resource}")
-        for resource in config_entry.data[CONF_QEMU]:
-            device_identifiers.append(f"{ProxmoxType.QEMU.upper()}_{resource}")
-        for resource in config_entry.data[CONF_LXC]:
-            device_identifiers.append(f"{ProxmoxType.LXC.upper()}_{resource}")
-
-        hass.config_entries.async_update_entry(
-            config_entry,
-            data=config_entry.data,
-            options={},
-            version=3,
-            minor_version=1,
-        )
-
-        LOGGER.debug("Migration - remove devices: %s", device_identifiers)
-        for device_identifier in device_identifiers:
-            device_identifier_migrate = {
-                (
-                    DOMAIN,
-                    device_identifier,
-                )
-            }
-            dev_reg = dr.async_get(hass)
-            device = dev_reg.async_get_or_create(
-                config_entry_id=config_entry.entry_id,
-                identifiers=device_identifier_migrate,
-            )
-
-            dev_reg.async_remove_device(device.id)
-
-    if config_entry.version == 3:
-        data_new = {
-            CONF_HOST: config_entry.data.get(CONF_HOST),
-            CONF_PORT: config_entry.data.get(CONF_PORT),
-            CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
-            CONF_TOKEN_NAME: config_entry.data.get(CONF_TOKEN_NAME),
-            CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
-            CONF_REALM: config_entry.data.get(CONF_REALM),
-            CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
-            CONF_NODES: config_entry.data.get(CONF_NODES),
-            CONF_QEMU: config_entry.data.get(CONF_QEMU),
-            CONF_LXC: config_entry.data.get(CONF_LXC),
-            CONF_STORAGE: [],
-        }
-        hass.config_entries.async_update_entry(
-            config_entry,
-            data=data_new,
-            options={},
-            version=4,
-            minor_version=1,
-        )
-
-    if config_entry.version == 4:
-        # Storage devices used to be keyed by name; they are recreated under
-        # the storage id by the next setup, so the old ones go.
-        dev_reg = dr.async_get(hass)
-        for storage in config_entry.data.get(CONF_STORAGE, []):
-            device = dev_reg.async_get_device_by_identifier(
-                (
-                    DOMAIN,
-                    f"{config_entry.entry_id}_{ProxmoxType.Storage.upper()}_{storage}",
-                ),
-                config_entry.entry_id,
-            )
-            if device is not None:
-                dev_reg.async_remove_device(device.id)
-        # This step never advanced the version, so entries created before
-        # the storage id change ran it again on every start and never
-        # reached the disk identifier migrations below.
-        hass.config_entries.async_update_entry(config_entry, version=5, minor_version=1)
-
-    if config_entry.version == 5:
-        # Disk devices move from the device path to a stable disk id.
-        await _async_rename_disk_devices(
-            hass, config_entry, lambda disk: disk["devpath"]
-        )
-        hass.config_entries.async_update_entry(config_entry, version=6, minor_version=1)
-
-    if config_entry.version == 6:
-        # Disk devices move from the by-id link or serial to the disk id.
-        await _async_rename_disk_devices(
-            hass,
-            config_entry,
-            lambda disk: disk["by_id_link"] if "by_id_link" in disk else disk["serial"],
-        )
-        data_new = {
-            CONF_HOST: config_entry.data.get(CONF_HOST),
-            CONF_PORT: config_entry.data.get(CONF_PORT),
-            CONF_USERNAME: config_entry.data.get(CONF_USERNAME),
-            CONF_TOKEN_NAME: config_entry.data.get(CONF_TOKEN_NAME, ""),
-            CONF_PASSWORD: config_entry.data.get(CONF_PASSWORD),
-            CONF_REALM: config_entry.data.get(CONF_REALM),
-            CONF_VERIFY_SSL: config_entry.data.get(CONF_VERIFY_SSL),
-            CONF_NODES: config_entry.data.get(CONF_NODES),
-            CONF_QEMU: config_entry.data.get(CONF_QEMU),
-            CONF_LXC: config_entry.data.get(CONF_LXC),
-            CONF_STORAGE: [],
-        }
-        hass.config_entries.async_update_entry(
-            config_entry,
-            data=data_new,
-            options={},
-            version=7,
-            minor_version=1,
-        )
-
-    LOGGER.info("Migration to version %s successful", config_entry.version)
-
     return True
-
-
-async def _async_rename_disk_devices(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry,
-    old_id: Callable[[dict[str, Any]], str],
-) -> None:
-    """
-    Move each node's disk devices from an older identifier to the disk id.
-
-    Only devices that actually carry the old identifier are touched. The
-    earlier form of this used `async_get_or_create`, which invented a device
-    under the old identifier and then renamed it onto an identifier the
-    real disk device already had - a duplicate on every start for entries
-    whose migration never advanced.
-    """
-    entry_data = config_entry.data
-    proxmox_client = ProxmoxClient(
-        host=entry_data[CONF_HOST],
-        port=entry_data[CONF_PORT],
-        user=entry_data[CONF_USERNAME],
-        token_name=entry_data.get(CONF_TOKEN_NAME, ""),
-        realm=entry_data[CONF_REALM],
-        password=entry_data[CONF_PASSWORD],
-        verify_ssl=entry_data[CONF_VERIFY_SSL],
-    )
-    try:
-        await hass.async_add_executor_job(proxmox_client.build_client)
-    except (AuthenticationError, RequestException, ResourceException):
-        LOGGER.warning("Disk device migration skipped: Proxmox is not reachable")
-        return
-    proxmox = proxmox_client.get_api_client()
-
-    dev_reg = dr.async_get(hass)
-    for node in config_entry.data.get(CONF_NODES, []):
-        try:
-            disks = await hass.async_add_executor_job(
-                get_api, proxmox, f"nodes/{node}/disks/list"
-            )
-        except (ResourceException, RequestException):
-            continue
-
-        disks = disks if isinstance(disks, list) else []
-        colliding_wwns = colliding_disk_wwns(disks)
-        for disk in disks:
-            try:
-                old = old_id(disk)
-            except KeyError:
-                continue
-            prefix = f"{config_entry.entry_id}_{ProxmoxType.Disk.upper()}_{node}_"
-            device = dev_reg.async_get_device_by_identifier(
-                (DOMAIN, f"{prefix}{old}"), config_entry.entry_id
-            )
-            new_identifier = (
-                DOMAIN,
-                f"{prefix}{resolve_disk_id(disk, colliding_wwns=colliding_wwns)}",
-            )
-            if device is None or new_identifier in device.identifiers:
-                continue
-            if (
-                dev_reg.async_get_device_by_identifier(
-                    new_identifier, config_entry.entry_id
-                )
-                is not None
-            ):
-                # The new device already exists; the old one is a leftover.
-                dev_reg.async_remove_device(device.id)
-                continue
-            dev_reg.async_update_device(
-                device_id=device.id, new_identifiers={new_identifier}
-            )
 
 
 async def _get_api_or_retry_setup(
@@ -908,13 +655,25 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     if CONF_QEMU not in config_entry.data or CONF_LXC not in config_entry.data:
         LOGGER.error("Cannot migrate an entry that is not from Proxmox VE Custom")
         return False
+    if config_entry.version != 7:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            f"{config_entry.entry_id}_legacy_upgrade_required",
+            is_fixable=False,
+            is_persistent=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="legacy_upgrade_required",
+            translation_placeholders={
+                "host": str(config_entry.data[CONF_HOST]),
+                "version": str(config_entry.version),
+            },
+        )
+        return await _async_setup_legacy_entry(hass, config_entry)
     try:
         await async_get_integration(hass, "proxmoxve_custom")
     except IntegrationNotFound:
         return await _async_setup_legacy_entry(hass, config_entry)
-    if config_entry.version != 7:
-        LOGGER.error("Cannot migrate legacy entry version %s", config_entry.version)
-        return False
     hass.async_create_task(
         hass.config_entries.flow.async_init(
             "proxmoxve_custom",
