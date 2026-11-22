@@ -1,0 +1,3468 @@
+# Copyright (c) 2019-2026
+# SPDX-License-Identifier: MIT
+"""DataUpdateCoordinators for the Proxmox VE integration."""
+
+from __future__ import annotations
+
+import asyncio
+import ipaddress
+import json
+import re
+import time
+from datetime import datetime, timedelta
+from functools import partial
+from typing import TYPE_CHECKING, Any, Final
+from urllib.parse import quote
+from zoneinfo import ZoneInfo
+
+import homeassistant.util.dt as dt_util
+from homeassistant.const import CONF_HOST, CONF_USERNAME
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.typing import UNDEFINED, UndefinedType
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from proxmoxer import AuthenticationError, ProxmoxAPI
+from proxmoxer.core import ResourceException
+from requests.exceptions import (
+    ConnectionError as connError,
+)
+from requests.exceptions import (
+    ConnectTimeout,
+    HTTPError,
+    RetryError,
+    SSLError,
+)
+from urllib3.exceptions import ProtocolError
+
+from .api import ProxmoxClient, get_api
+from .const import (
+    CONF_GUEST_FILE_PATH,
+    CONF_HA_ADMIN_USERNAME,
+    CONF_NODE,
+    CONF_UPDATE_INTERVAL,
+    DOMAIN,
+    GUEST_AGENT_REFUSALS,
+    GUEST_FILE_READ_MAX_BYTES,
+    LOGGER,
+    PROXMOX_CLIENT,
+    PROXMOX_HA_ADMIN_CLIENT,
+    SLOW_UPDATE_INTERVAL,
+    TASKS_UPDATE_INTERVAL,
+    UPDATE_INTERVAL,
+    UPDATE_INTERVAL_CHOICES,
+    ProxmoxType,
+)
+from .discovery import (
+    RESOURCE_KEYS,
+    discovered_resources,
+    remember_resources,
+    remove_resource_devices,
+    resource_changes,
+)
+from .disk import disk_matches_id
+from .issues import (
+    FORBIDDEN,
+    ResourceLine,
+    note_resource,
+    note_resource_threadsafe,
+)
+from .models import (
+    ProxmoxBackupData,
+    ProxmoxBackupInfoData,
+    ProxmoxCephData,
+    ProxmoxCertificateData,
+    ProxmoxClusterSummaryData,
+    ProxmoxDiskData,
+    ProxmoxHAStatusData,
+    ProxmoxLXCData,
+    ProxmoxNodeData,
+    ProxmoxReplicationData,
+    ProxmoxStorageData,
+    ProxmoxSubscriptionData,
+    ProxmoxTaskData,
+    ProxmoxUpdateData,
+    ProxmoxVMData,
+    ProxmoxZFSData,
+)
+from .storage import is_shared_storage_id, storage_entries, storage_name
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+
+
+def _try_parse_float(raw: object) -> float | None:
+    """Try to parse a float from a value that may contain unit suffix."""
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    if isinstance(raw, str):
+        raw = raw.strip()
+        for suffix in ("°C", "°F", "C", "F", "`C", " "):
+            if raw.endswith(suffix):
+                raw = raw[: -len(suffix)].strip()
+                break
+        try:
+            return float(raw)
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+# Where PVE-mods puts its readings in the node status. It renamed the
+# field twice: `PveMod_JsonSensorInfo` up to v1.0.7, `PveMods_JsonSensorInfo`
+# in v2.0.0 - a pure rename - and `PveMods_SensorInfo` from v2.1.0, which
+# also changed the shape. All three are read, because all three are
+# installed out there and nothing about the payload says which it is.
+SENSOR_FIELDS: Final = (
+    "PveMods_SensorInfo",
+    "PveMods_JsonSensorInfo",
+    "PveMod_JsonSensorInfo",
+)
+# The block the first shape nests its chips in, under `data`.
+SENSORS_BLOCK: Final = "PVE MOD lm-sensors Enhanced"
+
+
+def _readings_of(payload: dict) -> dict:
+    """
+    Return the chips of a PVE-mods payload in the shape `sensors -j` has.
+
+    Two shapes exist. Up to v2.0.0 the chips sit under `data` in a named
+    block, each reading a flat number called `temp1_input` under the label
+    it carries - `coretemp-isa-0000` -> `Package id 0` -> `temp1_input`.
+
+    From v2.1.0 they sit under `enhanced_sensors`, keyed by the raw sensor
+    id, and a reading became an object: `temp1` -> `label` plus
+    `input` -> {quantity, unit, value}. That is turned back into the older
+    shape here, label and all, so the entities a node already has keep
+    their names and their history across a PVE-mods upgrade.
+    """
+    if isinstance(block := payload.get("data"), dict):
+        nested = block.get(SENSORS_BLOCK)
+        return nested if isinstance(nested, dict) else {}
+
+    chips = payload.get("enhanced_sensors")
+    if not isinstance(chips, dict):
+        return {}
+
+    flattened: dict[str, dict[str, Any]] = {}
+    for chip_name, chip in chips.items():
+        if not isinstance(chip, dict):
+            continue
+        readings: dict[str, Any] = {}
+        for sensor_id, sensor in chip.items():
+            if not isinstance(sensor, dict):
+                # `Adapter`, `cpu_model` and the like, as before.
+                continue
+            value = sensor.get("input")
+            if not isinstance(value, dict) or "value" not in value:
+                continue
+            label = sensor.get("label")
+            name = str(label) if isinstance(label, str) and label else str(sensor_id)
+            readings[name] = {f"{sensor_id}_input": value["value"]}
+        if readings:
+            flattened[str(chip_name)] = readings
+    return flattened
+
+
+def _parse_sensors_dict(data: dict) -> dict[str, float]:
+    """Parse raw sensors -j dict format: {chip: {sensor: {_input: value}}}."""
+    result: dict[str, float] = {}
+    for chip_name, chip_data in data.items():
+        if not isinstance(chip_data, dict):
+            continue
+        for sensor_name, sensor_data in chip_data.items():
+            if sensor_name == "adapter" or not isinstance(sensor_data, dict):
+                continue
+            for key, value in sensor_data.items():
+                if key.endswith("_input"):
+                    temp = _try_parse_float(value)
+                    if temp is not None:
+                        entry_name = f"{chip_name} {sensor_name}"
+                        result[entry_name] = temp
+    return result
+
+
+# What the QEMU guest agent endpoints ask for since Proxmox VE 9; before
+# that every agent command took `VM.Monitor`. Reading these is optional -
+# the guest's disk figure and the file sensor - so a refusal is a warning
+# of its own, not the guest's "VM.Audit missing" repair.
+# What Proxmox checks before it answers a guest agent read, as its API
+# schema states it: either privilege of the pair is enough. Naming only
+# the first sends people looking for a privilege their token may already
+# hold under the other name.
+GUEST_AGENT_PRIVILEGES: Final = {
+    "fsinfo": ("VM.GuestAgent.Audit", "VM.GuestAgent.Unrestricted"),
+    "file": ("VM.GuestAgent.FileRead", "VM.GuestAgent.Unrestricted"),
+}
+
+
+def guest_agent_permission(feature: str) -> str:
+    """Return the check for a guest agent read, the way the documentation writes it."""
+    privileges = ",".join(
+        f"'{privilege}'" for privilege in GUEST_AGENT_PRIVILEGES[feature]
+    )
+    return f"['perm','/vms',[{privileges}],'any',1]"
+
+
+def forget_untracked_guest_agents(
+    hass: HomeAssistant, config_entry: ConfigEntry, still_tracked: set[str]
+) -> None:
+    """Take VMs this setup no longer tracks off the guest agent repairs."""
+    refusals: dict[str, set[int]] = (
+        hass.data.get(DOMAIN, {})
+        .get(GUEST_AGENT_REFUSALS, {})
+        .get(config_entry.entry_id, {})
+    )
+    for feature, affected in refusals.items():
+        for vmid in [vmid for vmid in affected if str(vmid) not in still_tracked]:
+            note_guest_agent_refusal(hass, config_entry, feature, vmid, refused=False)
+
+
+def note_guest_agent_refusal(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    feature: str,
+    vmid: int,
+    *,
+    refused: bool,
+) -> None:
+    """
+    Keep the one repair per entry and feature in step with the VMs refused.
+
+    The VMs concerned are kept in `hass.data`, per entry - the runtime
+    data is not there yet while the coordinators take their first refresh
+    during setup. The repair is rewritten with the current list whenever
+    it changes, and removed once no VM is left on it.
+    """
+    refusals: dict[str, set[int]] = (
+        hass.data.setdefault(DOMAIN, {})
+        .setdefault(GUEST_AGENT_REFUSALS, {})
+        .setdefault(config_entry.entry_id, {})
+    )
+    affected = refusals.setdefault(feature, set())
+    if refused == (vmid in affected):
+        return
+    if refused:
+        affected.add(vmid)
+        LOGGER.debug(
+            "Guest agent of QEMU %s not readable (%s): %s missing, see the repair",
+            vmid,
+            feature,
+            GUEST_AGENT_PRIVILEGES[feature],
+        )
+    else:
+        affected.discard(vmid)
+
+    issue_id = f"{config_entry.entry_id}_guest_agent_{feature}"
+    if not affected:
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=False,
+        is_persistent=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=f"guest_agent_{feature}_forbidden",
+        translation_placeholders={
+            "vms": ", ".join(str(affected_vmid) for affected_vmid in sorted(affected)),
+            "user": config_entry.data[CONF_USERNAME],
+            "permission": guest_agent_permission(feature),
+        },
+    )
+
+
+# Values the Proxmox HA API documents for the "fencing" status entry
+# (PVE::API2::HA::Status). Anything else is treated as unknown rather than
+# passed on, so the enum sensor never reports a state outside its options.
+HA_ARMED_STATES: Final[frozenset[str]] = frozenset(
+    {"armed", "standby", "disarming", "disarmed"}
+)
+HA_RESOURCE_MODES: Final[frozenset[str]] = frozenset({"freeze", "ignore"})
+
+# CRM service states that mean an incident is in progress: the guest is
+# fenced, being recovered after a fence, or stuck in error. Read from
+# `crm_state` (the raw CRM state) rather than `state`, which is a verbose
+# display value the API rewrites to "ignore" while HA is disarmed.
+HA_SERVICE_ERROR_STATES: Final[frozenset[str]] = frozenset(
+    {"error", "fence", "recovery"}
+)
+
+# How old the CRM master timestamp may get before the master counts as dead.
+# PVE::API2::HA::Status uses the same 30 s (`$tdiff > 30` -> "old timestamp -
+# dead?"), but only inside its localized display string, so the check is
+# repeated here on the structured timestamp. Proxmox compares against its own
+# clock; here it is the Home Assistant clock, so a host whose time is out of
+# sync with the cluster can report a false positive.
+HA_CRM_MASTER_DEAD_AFTER: Final[timedelta] = timedelta(seconds=30)
+
+# How long a node's last hardware readings stay usable when a poll comes
+# back without any. PVE-mods collects on demand: a worker writes the
+# `sensors` output to a file under /run and removes it again after ten
+# seconds of inactivity, so a poll that arrives cold gets an empty field
+# and the data only lands a second later. A reading a few minutes old is
+# far more useful than a hole in the graph, but past this the data really
+# is gone rather than late.
+SENSORS_HOLD_FOR: Final[timedelta] = timedelta(minutes=10)
+
+# `loadavg` is the 1, 5 and 15 minute average, in that order.
+LOAD_AVERAGE_FIELDS: Final = 3
+
+
+def _parse_ha_enum(
+    entry: dict[str, Any],
+    key: str,
+    allowed: frozenset[str],
+) -> str | UndefinedType:
+    """Return an enum field of an HA status entry, or UNDEFINED if unusable."""
+    value = entry.get(key)
+    if value in allowed:
+        return value
+    if value is not None:
+        LOGGER.warning(
+            "Unknown value '%s' for Proxmox HA status field '%s', ignoring it",
+            value,
+            key,
+        )
+    return UNDEFINED
+
+
+def _flag_or_undefined(value: Any) -> bool | UndefinedType:
+    """
+    Read one of the API's 0/1 flags, keeping an absent one unknown.
+
+    A flag the response did not carry is not the same as a flag that is
+    off: `active` missing means the node's view of the storage could not be
+    read, not that the storage is down.
+    """
+    if value is None:
+        return UNDEFINED
+    return bool(value)
+
+
+def _positive_or_undefined(value: Any) -> Any:
+    """Return a number only when it is above zero, else UNDEFINED."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
+        return value
+    return UNDEFINED
+
+
+def parse_load_average(value: Any) -> tuple[float, float, float] | UndefinedType:
+    """
+    Return the node's load average, which Proxmox reports as three strings.
+
+    Anything not shaped as three numbers is no reading.
+    """
+    if not isinstance(value, list | tuple) or len(value) != LOAD_AVERAGE_FIELDS:
+        return UNDEFINED
+    try:
+        one, five, fifteen = (float(entry) for entry in value)
+    except (TypeError, ValueError):
+        return UNDEFINED
+    return (one, five, fifteen)
+
+
+def cpu_share_of_host(
+    cpu: Any, guest_cpus: Any, node_cpus: Any
+) -> float | UndefinedType:
+    """
+    Return how much of the whole node a guest is using, as a 0..1 ratio.
+
+    A guest's `cpu` is relative to its own cores. Scaled by its core count
+    over the node's, it says what the guest costs the host - the figure the
+    Proxmox summary shows next to each guest.
+    """
+    values = (cpu, guest_cpus, node_cpus)
+    if not all(
+        isinstance(value, int | float) and not isinstance(value, bool)
+        for value in values
+    ):
+        return UNDEFINED
+    if node_cpus <= 0 or guest_cpus <= 0:
+        return UNDEFINED
+    return max(0.0, float(cpu)) * guest_cpus / node_cpus
+
+
+def qemu_memory_used(api_status: dict[str, Any]) -> int | UndefinedType:
+    """
+    Return what a QEMU guest uses, preferring the guest's own figure.
+
+    `mem` only holds the guest's usage while its balloon driver reports
+    statistics. Without them Proxmox falls back to the host-side resident size
+    of the QEMU process, which carries emulator overhead and can exceed the
+    configured memory - that is how a "memory used percentage" above 100%
+    happens. Two responses from the same cluster show both shapes: a Linux
+    guest reports `ballooninfo.total_mem` and `free_mem` whose difference is
+    exactly `mem`, while a guest without a balloon driver reports neither and
+    gets `mem` equal to `memhost`.
+
+    So read the guest's own numbers when they are there, and fall back to
+    `mem` - which is then the only figure Proxmox itself has - when they are
+    not.
+    """
+    balloon = api_status.get("ballooninfo")
+    if isinstance(balloon, dict):
+        total = balloon.get("total_mem")
+        free = balloon.get("free_mem")
+        if (
+            isinstance(total, int)
+            and isinstance(free, int)
+            and not isinstance(total, bool)
+            and not isinstance(free, bool)
+            and total >= free >= 0
+        ):
+            return total - free
+    return api_status.get("mem", UNDEFINED)
+
+
+# The certificate serving the API and web interface. `pveproxy-ssl.pem` is
+# the one an administrator replaces - with an ACME certificate, or their own
+# - and it only exists once that has happened; otherwise the node falls back
+# to `pve-ssl.pem`, issued by the cluster's own CA. `pve-root-ca.pem` is that
+# CA and is deliberately ignored: it is valid for ten years and its expiry is
+# not something anyone acts on.
+CERTIFICATE_PREFERENCE: Final[tuple[str, ...]] = ("pveproxy-ssl.pem", "pve-ssl.pem")
+
+
+def _certificate_timestamp(value: Any) -> datetime | UndefinedType:
+    """Turn a certificate's unix timestamp into an aware datetime."""
+    if value is None:
+        return UNDEFINED
+    try:
+        return dt_util.utc_from_timestamp(float(value))
+    except (TypeError, ValueError, OverflowError, OSError):
+        LOGGER.warning("Unusable timestamp '%s' in Proxmox certificate info", value)
+        return UNDEFINED
+
+
+def parse_certificates(
+    entries: list[dict[str, Any]],
+    node_name: str,
+) -> ProxmoxCertificateData:
+    """
+    Pick the certificate that serves the API out of `certificates/info`.
+
+    The endpoint returns one entry per certificate file that exists, so a node
+    without a replaced certificate reports two and one with a custom or ACME
+    certificate reports three.
+    """
+    by_filename = {
+        entry["filename"]: entry
+        for entry in entries
+        if isinstance(entry, dict) and isinstance(entry.get("filename"), str)
+    }
+
+    chosen: dict[str, Any] = {}
+    for filename in CERTIFICATE_PREFERENCE:
+        if filename in by_filename:
+            chosen = by_filename[filename]
+            break
+
+    return ProxmoxCertificateData(
+        type=ProxmoxType.Certificate,
+        node=node_name,
+        expires=_certificate_timestamp(chosen.get("notafter")),
+        filename=chosen.get("filename"),
+        subject=chosen.get("subject"),
+        issuer=chosen.get("issuer"),
+    )
+
+
+def _task_timestamp(value: Any) -> datetime | UndefinedType:
+    """Turn a task log's epoch seconds into a UTC datetime, or nothing."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return UNDEFINED
+    return dt_util.utc_from_timestamp(value)
+
+
+def _shown_address(address: str) -> bool:
+    """Tell an address worth showing from loopback and link-local noise."""
+    try:
+        parsed = ipaddress.ip_address(address)
+    except ValueError:
+        return False
+    return not (parsed.is_loopback or parsed.is_link_local or parsed.is_unspecified)
+
+
+def parse_guest_addresses(kind: ProxmoxType, payload: Any) -> dict[str, Any]:
+    """
+    Read a guest's addresses from what the agent or the container reports.
+
+    A VM's agent (`agent/network-get-interfaces`) lists interfaces with
+    `ip-addresses` entries; a container (`lxc/{vmid}/interfaces`) lists
+    them with `inet`/`inet6` strings carrying the prefix. Loopback and
+    link-local addresses are left out; the address shown is the first
+    IPv4 in interface order, or the first IPv6 when there is none.
+    """
+    unknown = {"ip_address": UNDEFINED, "ip_addresses": None, "interfaces": None}
+    entries = payload.get("result") if isinstance(payload, dict) else payload
+    if not isinstance(entries, list):
+        return unknown
+    interfaces: dict[str, list[str]] = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or not (name := entry.get("name")):
+            continue
+        if kind is ProxmoxType.QEMU:
+            found = [
+                str(item["ip-address"])
+                for item in entry.get("ip-addresses") or []
+                if isinstance(item, dict) and item.get("ip-address")
+            ]
+        else:
+            found = [
+                str(entry[key]).split("/", 1)[0]
+                for key in ("inet", "inet6")
+                if entry.get(key)
+            ]
+        shown = [address for address in found if _shown_address(address)]
+        if shown:
+            interfaces[str(name)] = shown
+    addresses = [address for shown in interfaces.values() for address in shown]
+    if not addresses:
+        return {"ip_address": UNDEFINED, "ip_addresses": [], "interfaces": interfaces}
+    first = next(
+        (a for a in addresses if ipaddress.ip_address(a).version == 4), addresses[0]
+    )
+    return {"ip_address": first, "ip_addresses": addresses, "interfaces": interfaces}
+
+
+# The pressure stall fields as Proxmox names them, and as the guest data
+# carries them. Containers report them as strings ("0.46"), VMs as
+# numbers, and Proxmox VE 8 does not report them at all - so every one of
+# them is read the same forgiving way and stays unknown when it is absent.
+PRESSURE_FIELDS: Final = {
+    "pressure_cpu_some": "pressurecpusome",
+    "pressure_cpu_full": "pressurecpufull",
+    "pressure_io_some": "pressureiosome",
+    "pressure_io_full": "pressureiofull",
+    "pressure_memory_some": "pressurememorysome",
+    "pressure_memory_full": "pressurememoryfull",
+}
+
+
+def parse_pressure(api_status: dict[str, Any]) -> dict[str, Any]:
+    """Return the guest's pressure stall averages, as far as it reports them."""
+    pressure: dict[str, Any] = {}
+    for field, key in PRESSURE_FIELDS.items():
+        value = _try_parse_float(api_status.get(key))
+        pressure[field] = UNDEFINED if value is None else value
+    return pressure
+
+
+def parse_snapshots(entries: Any) -> dict[str, Any]:
+    """
+    Count a guest's snapshots from `nodes/{node}/{qemu|lxc}/{vmid}/snapshot`.
+
+    The list always ends with a `current` pseudo entry standing for the
+    live state; it is not a snapshot and is left out. Names come newest
+    first; `snapshot_latest` is when the newest was taken.
+    """
+    if not isinstance(entries, list):
+        return {"snapshots": UNDEFINED, "snapshot_names": None, "snapshot_latest": None}
+    taken = [
+        entry
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("name") not in (None, "current")
+    ]
+    taken.sort(key=lambda entry: entry.get("snaptime") or 0, reverse=True)
+    latest = next(
+        (entry.get("snaptime") for entry in taken if entry.get("snaptime")), None
+    )
+    return {
+        "snapshots": len(taken),
+        "snapshot_names": [str(entry["name"]) for entry in taken],
+        "snapshot_latest": dt_util.utc_from_timestamp(latest) if latest else None,
+    }
+
+
+def parse_running_backup(active: Any) -> dict[str, Any]:
+    """Describe the vzdump run in progress, from the active task list."""
+    tasks = [
+        entry
+        for entry in (active if isinstance(active, list) else [])
+        if isinstance(entry, dict) and entry.get("type") == "vzdump"
+    ]
+    if not tasks:
+        return {"running": False, "running_since": None, "running_guests": None}
+    task = tasks[0]
+    since = _task_timestamp(task.get("starttime"))
+    return {
+        "running": True,
+        "running_since": since if since is not UNDEFINED else None,
+        "running_guests": str(task["id"]) if task.get("id") else None,
+    }
+
+
+def parse_backup(
+    entries: list[dict[str, Any]], node_name: str, active: Any = None
+) -> ProxmoxBackupData:
+    """
+    Describe a node's most recent backup run from its task log.
+
+    The caller asks the task log for finished `vzdump` tasks, newest first,
+    so the first entry is the run that matters. A run still in progress is
+    not in that list, which is deliberate: it has no end time and no
+    verdict yet, and reporting it would make every backup look like a
+    failure while it runs.
+    """
+    tasks = [
+        entry
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("type") == "vzdump"
+    ]
+    if not tasks:
+        return ProxmoxBackupData(
+            type=ProxmoxType.Backup,
+            node=node_name,
+            runs=0,
+            finished=UNDEFINED,
+            started=UNDEFINED,
+            duration=UNDEFINED,
+            status=None,
+            guests=None,
+            user=None,
+            **parse_running_backup(active),
+        )
+
+    task = tasks[0]
+    started = _task_timestamp(task.get("starttime"))
+    finished = _task_timestamp(task.get("endtime"))
+    duration: int | UndefinedType = UNDEFINED
+    if UNDEFINED not in (started, finished) and finished >= started:
+        duration = int((finished - started).total_seconds())
+
+    status = task.get("status")
+    # The task's `id` is the guests the run covered - "100" or "100,101" -
+    # and is empty for a job that backs up everything on the node.
+    guests = str(task["id"]) if task.get("id") else None
+
+    return ProxmoxBackupData(
+        type=ProxmoxType.Backup,
+        node=node_name,
+        runs=len(tasks),
+        finished=finished,
+        started=started,
+        duration=duration,
+        status=str(status) if status is not None else None,
+        guests=guests,
+        user=str(task["user"]) if task.get("user") else None,
+        **parse_running_backup(active),
+    )
+
+
+def parse_cluster_summary(resources: Any) -> ProxmoxClusterSummaryData:
+    """Add up what `cluster/resources` says about nodes and guests."""
+    rows = [
+        r
+        for r in (resources if isinstance(resources, list) else [])
+        if isinstance(r, dict)
+    ]
+    nodes = [r for r in rows if r.get("type") == "node"]
+    online = [r for r in nodes if r.get("status") == "online"]
+    qemu = [r for r in rows if r.get("type") == "qemu" and not r.get("template")]
+    lxc = [r for r in rows if r.get("type") == "lxc" and not r.get("template")]
+
+    weighted_cpu = 0.0
+    total_cpus = 0
+    memory_total = 0
+    memory_used = 0
+    for node in online:
+        cpus = node.get("maxcpu")
+        cpu = node.get("cpu")
+        if isinstance(cpus, int | float) and cpus > 0 and isinstance(cpu, int | float):
+            weighted_cpu += float(cpu) * cpus
+            total_cpus += cpus
+        if isinstance(node.get("maxmem"), int) and isinstance(node.get("mem"), int):
+            memory_total += node["maxmem"]
+            memory_used += node["mem"]
+
+    return ProxmoxClusterSummaryData(
+        type=ProxmoxType.Proxmox,
+        nodes_total=len(nodes),
+        nodes_online=len(online),
+        nodes_offline=sorted(str(r.get("node")) for r in nodes if r not in online),
+        qemu_total=len(qemu),
+        qemu_running=sum(1 for r in qemu if r.get("status") == "running"),
+        lxc_total=len(lxc),
+        lxc_running=sum(1 for r in lxc if r.get("status") == "running"),
+        cpu=(weighted_cpu / total_cpus) if total_cpus else UNDEFINED,
+        memory_total=memory_total or UNDEFINED,
+        memory_used=memory_used if memory_total else UNDEFINED,
+    )
+
+
+def parse_backup_info(entries: list[dict[str, Any]]) -> ProxmoxBackupInfoData:
+    """
+    Build backup coverage from `cluster/backup-info/not-backed-up` entries.
+
+    The endpoint lists every guest that no backup job covers, so an empty
+    response is the good case. Proxmox already filters it to guests the
+    credentials may see, which means the count is "not backed up, as far as
+    this user can tell" rather than a cluster-wide truth.
+    """
+    guests: list[dict[str, str | int]] = []
+
+    for entry in entries:
+        if not isinstance(entry, dict) or "vmid" not in entry:
+            continue
+        guest: dict[str, str | int] = {"vmid": entry["vmid"]}
+        if isinstance(entry.get("type"), str):
+            guest["type"] = entry["type"]
+        if isinstance(entry.get("name"), str):
+            guest["name"] = entry["name"]
+        guests.append(guest)
+
+    return ProxmoxBackupInfoData(
+        type=ProxmoxType.BackupInfo,
+        guests_without_backup=len(guests),
+        guests=guests,
+    )
+
+
+# The states Proxmox documents for a node's subscription
+# (PVE::API2::Subscription). Anything else is treated as unknown rather than
+# passed on, so the enum sensor never reports a state outside its options.
+SUBSCRIPTION_STATES: Final[frozenset[str]] = frozenset(
+    {"new", "notfound", "active", "invalid", "expired", "suspended"}
+)
+
+
+# Ceph's own health states, mapped to the values the enum sensor offers.
+# `cluster/ceph/status` hands through what `ceph -s` reports rather than a
+# schema Proxmox defines, so anything outside this set is treated as unknown.
+CEPH_HEALTH_STATES: Final[dict[str, str]] = {
+    "HEALTH_OK": "ok",
+    "HEALTH_WARN": "warning",
+    "HEALTH_ERR": "error",
+}
+
+
+def parse_ceph(api_status: dict[str, Any]) -> ProxmoxCephData:
+    """
+    Build Ceph health from `cluster/ceph/status`.
+
+    The health block is read in full. Of the placement group map only the
+    two totals are taken - bytes used and bytes available across the OSDs -
+    which is what `ceph -s` prints as the cluster's usage. The rest of that
+    map, and the OSD and monitor maps, are a different question and a great
+    deal of data to put behind a sensor.
+    """
+    health_block = api_status.get("health")
+    health_block = health_block if isinstance(health_block, dict) else {}
+
+    raw = health_block.get("status")
+    health: str | UndefinedType = CEPH_HEALTH_STATES.get(raw, UNDEFINED)
+    if health is UNDEFINED and raw is not None:
+        LOGGER.warning("Unknown Ceph health status '%s', ignoring it", raw)
+
+    checks: list[dict[str, str]] = []
+    raw_checks = health_block.get("checks")
+    if isinstance(raw_checks, dict):
+        for name, check in raw_checks.items():
+            if not isinstance(check, dict):
+                continue
+            entry = {"check": str(name)}
+            if isinstance(severity := check.get("severity"), str):
+                entry["severity"] = severity
+            summary = check.get("summary")
+            if isinstance(summary, dict) and isinstance(
+                message := summary.get("message"), str
+            ):
+                entry["message"] = message
+            checks.append(entry)
+
+    pgmap = api_status.get("pgmap")
+    pgmap = pgmap if isinstance(pgmap, dict) else {}
+
+    return ProxmoxCephData(
+        type=ProxmoxType.Ceph,
+        health=health,
+        checks=checks,
+        bytes_used=_positive_or_undefined(pgmap.get("bytes_used")),
+        bytes_total=_positive_or_undefined(pgmap.get("bytes_total")),
+    )
+
+
+def parse_replication(
+    entries: list[dict[str, Any]],
+    node_name: str,
+) -> ProxmoxReplicationData:
+    """
+    Build replication health from `nodes/{node}/replication` entries.
+
+    Disabled jobs are counted but never raise the alarm or hold back the
+    oldest sync: somebody turned them off on purpose.
+
+    The oldest successful sync across the active jobs is the useful one - it
+    says how far behind the furthest-behind target is, where the newest would
+    hide a job that stopped replicating days ago.
+    """
+    jobs = 0
+    failing_jobs: list[dict[str, str | int]] = []
+    sync_times: list[datetime] = []
+
+    for entry in entries:
+        if not isinstance(entry, dict) or "id" not in entry:
+            continue
+        jobs += 1
+        if entry.get("disable"):
+            continue
+
+        if (fail_count := entry.get("fail_count")) and isinstance(fail_count, int):
+            job: dict[str, str | int] = {"id": str(entry["id"]), "failures": fail_count}
+            for key, field in (
+                ("guest", "guest"),
+                ("guest_type", "vmtype"),
+                ("target", "target"),
+            ):
+                if (value := entry.get(field)) is not None:
+                    job[key] = value if isinstance(value, int) else str(value)
+            if isinstance(error := entry.get("error"), str):
+                job["error"] = error
+            failing_jobs.append(job)
+
+        if (last_sync := entry.get("last_sync")) and isinstance(
+            last_sync, (int, float)
+        ):
+            try:
+                sync_times.append(dt_util.utc_from_timestamp(float(last_sync)))
+            except (TypeError, ValueError, OverflowError, OSError):
+                LOGGER.warning(
+                    "Unusable last_sync '%s' in Proxmox replication status", last_sync
+                )
+
+    return ProxmoxReplicationData(
+        type=ProxmoxType.Replication,
+        node=node_name,
+        jobs=jobs,
+        failing=bool(failing_jobs),
+        oldest_sync=min(sync_times) if sync_times else UNDEFINED,
+        failing_jobs=failing_jobs,
+    )
+
+
+def parse_subscription(
+    api_status: dict[str, Any],
+    node_name: str,
+) -> ProxmoxSubscriptionData:
+    """
+    Build a node's subscription state from `nodes/{node}/subscription`.
+
+    `key`, `serverid` and `signature` are read past deliberately: they
+    identify the machine and the subscription, and nothing here needs them.
+    """
+    status = api_status.get("status")
+    if status not in SUBSCRIPTION_STATES:
+        if status is not None:
+            LOGGER.warning(
+                "Unknown Proxmox subscription status '%s', ignoring it", status
+            )
+        status = UNDEFINED
+
+    return ProxmoxSubscriptionData(
+        type=ProxmoxType.Subscription,
+        node=node_name,
+        status=status,
+        level=api_status.get("level"),
+        product=api_status.get("productname"),
+        next_due=api_status.get("nextduedate"),
+    )
+
+
+def parse_ha_status(entries: list[dict[str, Any]]) -> ProxmoxHAStatusData:
+    """
+    Build the cluster HA status from `cluster/ha/status/current` entries.
+
+    Only the structured fields of each entry are read; the `status` field is
+    a localized display string ("node1 (active, watchdog active, <time>)")
+    and must not be parsed.
+    """
+    armed_state: str | UndefinedType = UNDEFINED
+    resource_mode: str | None = None
+    quorate: bool | UndefinedType = UNDEFINED
+    crm_master: str | UndefinedType = UNDEFINED
+    crm_master_last_seen: datetime | UndefinedType = UNDEFINED
+    crm_master_stale: bool | UndefinedType = UNDEFINED
+    resources_total = 0
+    resources_error: list[dict[str, str]] = []
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+
+        match entry.get("type"):
+            case "quorum":
+                # PVE serializes the boolean as 1/0 depending on version.
+                if (value := entry.get("quorate")) is not None:
+                    quorate = value in (True, 1, "1")
+            case "master":
+                if (node := entry.get("node")) is not None:
+                    crm_master = str(node)
+                if (timestamp := entry.get("timestamp")) is not None:
+                    try:
+                        crm_master_last_seen = dt_util.utc_from_timestamp(
+                            float(timestamp)
+                        )
+                    except (TypeError, ValueError, OverflowError, OSError):
+                        LOGGER.warning(
+                            "Unusable timestamp '%s' in Proxmox HA master status",
+                            timestamp,
+                        )
+                    else:
+                        crm_master_stale = (
+                            dt_util.utcnow() - crm_master_last_seen
+                            > HA_CRM_MASTER_DEAD_AFTER
+                        )
+            case "fencing":
+                armed_state = _parse_ha_enum(entry, "armed-state", HA_ARMED_STATES)
+                mode = _parse_ha_enum(entry, "resource_mode", HA_RESOURCE_MODES)
+                resource_mode = None if mode is UNDEFINED else str(mode)
+            case "service":
+                resources_total += 1
+                if (crm_state := entry.get("crm_state")) in HA_SERVICE_ERROR_STATES:
+                    resources_error.append(
+                        {
+                            "sid": str(entry.get("sid", "")),
+                            "node": str(entry.get("node", "")),
+                            "crm_state": str(crm_state),
+                        }
+                    )
+
+    return ProxmoxHAStatusData(
+        type=ProxmoxType.Proxmox,
+        armed_state=armed_state,
+        resource_mode=resource_mode,
+        quorate=quorate,
+        crm_master=crm_master,
+        crm_master_last_seen=crm_master_last_seen,
+        crm_master_stale=crm_master_stale,
+        ha_resources_total=resources_total,
+        ha_resources_error=len(resources_error),
+        ha_resources_error_list=resources_error,
+    )
+
+
+def is_proxmox_package(update: dict[str, Any]) -> bool:
+    """
+    Tell one of Proxmox's own packages from the rest of the upgrade.
+
+    `apt/update` describes every pending package the same way, whether it
+    is pve-manager or a Debian security fix. Proxmox's packages are either
+    named `pve-*`/`libpve-*`, or come from the Proxmox repository, which the
+    `Origin` field records.
+    """
+    package = str(update.get("Package", ""))
+    origin = str(update.get("Origin", ""))
+    title = str(update.get("Title", ""))
+    return (
+        package.startswith(("pve-", "libpve-"))
+        or "proxmox" in origin.lower()
+        or "proxmox" in title.lower()
+    )
+
+
+def parse_updates(api_status: list[dict[str, Any]], node: str) -> ProxmoxUpdateData:
+    """
+    Turn a node's `apt/update` response into update data.
+
+    Besides the count and the flat list the sensors already carried, this
+    keeps enough per package for the update entity to describe the upgrade.
+    """
+    packages: list[dict[str, str | bool]] = []
+    for update in api_status:
+        if not isinstance(update, dict) or "Package" not in update:
+            continue
+        package = str(update["Package"])
+        version = str(update.get("Version", ""))
+        packages.append(
+            {
+                "package": package,
+                "title": str(update.get("Title", package)),
+                "version": version,
+                # What is installed now, so the notes can say what changes.
+                "old": str(update.get("OldVersion", "")),
+                "proxmox": is_proxmox_package(update),
+            }
+        )
+
+    # Proxmox's own packages first, each group alphabetically, so the list
+    # reads as "what changes on the hypervisor, then everything else".
+    packages.sort(key=lambda entry: (not entry["proxmox"], entry["package"]))
+    proxmox_updates = sum(1 for entry in packages if entry["proxmox"])
+
+    # The package, not apt's Title: the attribute of a sensor counting
+    # updates was listing short descriptions - "Linux kernel image for
+    # version ..." - where the name is what you act on. Reported upstream
+    # in #702. The titles are still in the update entity's release notes.
+    updates_list = sorted(
+        f"{entry['package']} - {entry['version']}" for entry in packages
+    )
+    total = len(packages)
+
+    return ProxmoxUpdateData(
+        type=ProxmoxType.Update,
+        node=node,
+        total=total,
+        updates_list=updates_list,
+        update=total > 0,
+        packages=packages,
+        proxmox_updates=proxmox_updates,
+        other_updates=total - proxmox_updates,
+    )
+
+
+class CurrentApiMixin:
+    """
+    Hand a coordinator the API object its client is using *now*.
+
+    A coordinator is built with the ProxmoxAPI object of the moment. When the
+    client later moves to another node of the cluster, that object points at
+    a host that is gone. Resolving through the client on every access means
+    the move reaches every coordinator without any of them being told.
+    Before setup has stored the client, or for an object no client built,
+    the one handed in is used as it is.
+    """
+
+    _proxmox: ProxmoxAPI
+    config_entry: ConfigEntry
+
+    @property
+    def proxmox(self) -> ProxmoxAPI:
+        """Return the API object to use for the next request."""
+        client = _client_for(self.config_entry, self._proxmox)
+        return client.get_api_client() if client is not None else self._proxmox
+
+    @proxmox.setter
+    def proxmox(self, proxmox: ProxmoxAPI) -> None:
+        self._proxmox = proxmox
+
+
+def poll_interval(config_entry: ConfigEntry) -> timedelta:
+    """
+    Return the interval of the coordinators that follow the cluster live.
+
+    Configurable in the options between 30 and 120 seconds, 60 unless
+    changed. The hourly reads (certificate, subscription, Ceph) and the
+    five-minute task scan keep their own pace.
+    """
+    seconds = config_entry.options.get(CONF_UPDATE_INTERVAL, UPDATE_INTERVAL)
+    try:
+        seconds = int(seconds)
+    except (TypeError, ValueError):
+        seconds = UPDATE_INTERVAL
+    if seconds not in UPDATE_INTERVAL_CHOICES:
+        seconds = UPDATE_INTERVAL
+    return timedelta(seconds=seconds)
+
+
+RESOURCES_CACHE = "resources_cache"
+# How long one `cluster/resources` read serves every coordinator of an
+# entry. They all poll on the same 60 s interval and were started within
+# seconds of each other, so one read per burst is enough; well under the
+# interval, so the next burst reads afresh.
+RESOURCES_TTL: Final = 15.0
+# What pveproxy answers when it could not finish passing a request on:
+# the connection to the node stood, the exchange did not complete in
+# time. That is a busy moment, not a refusal and not a node that is
+# gone - 595, which is the connection it could not establish at all,
+# is deliberately not in here: asking again would wait out a second
+# timeout for a node that is down.
+PVEPROXY_BUSY: Final = frozenset({596, 597})
+# The two node reads Proxmox checks against the root rather than against
+# the node, per its own API schema. A Sys.Audit that covers only
+# `/nodes/<name>` lists the disks and is then refused for their SMART
+# data and for the pools - and a repair naming the node would send the
+# user round in circles.
+ROOT_CHECKED_READS: Final = ("/disks/smart", "/disks/zfs")
+
+
+class SharedResources:
+    """
+    One `cluster/resources` read per poll burst, shared by an entry's coordinators.
+
+    Every VM, container and storage coordinator, the cluster summary and
+    discovery used to read the same list themselves - forty identical
+    requests a minute on a modest cluster, the first thing a slow API
+    chokes on. The first caller of a burst reads; the others wait for it
+    and take the result. A failure is shared the same way, so a dead host
+    is hit once per burst, not once per coordinator.
+    """
+
+    def __init__(self) -> None:
+        """Start with nothing read."""
+        self._lock = asyncio.Lock()
+        self._read_at: float = -RESOURCES_TTL
+        self._rows: list[dict[str, Any]] | None = None
+        self._failure: str | None = None
+        # The nodes the cluster last reported as anything but online.
+        # Read from another thread, so it is replaced, never edited.
+        self.nodes_off: frozenset[str] = frozenset()
+
+    async def get(
+        self,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        proxmox: ProxmoxAPI,
+        resource_type: str | None = None,
+        *,
+        fresh: bool = False,
+    ) -> list[dict[str, Any]] | None:
+        """
+        Return the rows, read afresh when the last read is older than the TTL.
+
+        `fresh` reads regardless - for discovery, whose job is to notice
+        what changed; its read then serves the burst that follows.
+        """
+        async with self._lock:
+            if fresh or time.monotonic() - self._read_at >= RESOURCES_TTL:
+                try:
+                    rows = await hass.async_add_executor_job(
+                        poll_api,
+                        hass,
+                        config_entry,
+                        proxmox,
+                        "cluster/resources",
+                        ProxmoxType.Resources,
+                        None,
+                    )
+                except UpdateFailed as error:
+                    self._rows, self._failure = None, str(error)
+                else:
+                    self._rows = rows if isinstance(rows, list) else None
+                    self._failure = (
+                        None if isinstance(rows, list) or rows is None else ""
+                    )
+                    self.nodes_off = nodes_not_online(self._rows)
+                self._read_at = time.monotonic()
+        if self._failure is not None:
+            raise UpdateFailed(self._failure or "Cluster resources are not available")
+        if self._rows is None or resource_type is None:
+            return self._rows
+        return [row for row in self._rows if row.get("type") == resource_type]
+
+    def note_nodes(self, rows: Any) -> None:
+        """
+        Take the offline nodes from a `cluster/resources` read made elsewhere.
+
+        Setup makes that read itself, before any coordinator exists. Without
+        this, the node-scoped coordinators of a node that is off each wait
+        out pveproxy's answer on their first refresh - seconds apiece, and
+        Home Assistant waiting for the entry all the while.
+        """
+        if isinstance(rows, list):
+            self.nodes_off = nodes_not_online(rows)
+
+    def forget(self) -> None:
+        """Make the next caller read again - after something changed the cluster."""
+        self._read_at = -RESOURCES_TTL
+
+
+def nodes_not_online(rows: list[dict[str, Any]] | None) -> frozenset[str]:
+    """
+    Return the nodes `cluster/resources` lists as anything but online.
+
+    A node with no status at all is not counted: unknown is not off, and
+    refusing to read from it would be worse than trying.
+    """
+    return frozenset(
+        str(row.get(CONF_NODE))
+        for row in rows or []
+        if row.get("type") == "node"
+        and row.get(CONF_NODE)
+        and str(row.get("status", "")) not in ("", "online")
+    )
+
+
+def shared_resources(hass: HomeAssistant, config_entry: ConfigEntry) -> SharedResources:
+    """Return the entry's shared resource read, creating it on first use."""
+    store = hass.data.setdefault(DOMAIN, {}).setdefault(RESOURCES_CACHE, {})
+    return store.setdefault(config_entry.entry_id, SharedResources())
+
+
+class ProxmoxCoordinator(
+    CurrentApiMixin,
+    DataUpdateCoordinator[
+        ProxmoxBackupData
+        | ProxmoxBackupInfoData
+        | ProxmoxCephData
+        | ProxmoxCertificateData
+        | ProxmoxDiskData
+        | ProxmoxHAStatusData
+        | ProxmoxLXCData
+        | ProxmoxNodeData
+        | ProxmoxReplicationData
+        | ProxmoxStorageData
+        | ProxmoxSubscriptionData
+        | ProxmoxTaskData
+        | ProxmoxUpdateData
+        | ProxmoxVMData
+        | ProxmoxZFSData
+    ],
+):
+    """Proxmox VE data update coordinator."""
+
+
+class ProxmoxDiscoveryCoordinator(
+    CurrentApiMixin, DataUpdateCoordinator[dict[str, list[str]]]
+):
+    """
+    Watch the cluster for nodes, guests and storages appearing or leaving.
+
+    Only created when automatic discovery is switched on. When the listing
+    differs from what the config entry tracks, the entry is brought in line
+    and the difference acted on the way the Home Assistant core integration
+    does it: what is new gets its coordinators, device and entities right
+    away, what is gone loses them. Nothing is reloaded.
+
+    The callables come from setup, which owns the coordinator map and the
+    per-resource setup helpers; importing them here would be circular.
+    """
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        add_resource: Callable[[ProxmoxType, str], Awaitable[None]],
+        remove_resource: Callable[[ProxmoxType, str], Awaitable[None]],
+    ) -> None:
+        """Initialize the Proxmox discovery coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name="proxmox_coordinator_discovery",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "discovery"
+        self.api_category = ProxmoxType.Proxmox
+        self._add_resource = add_resource
+        self._remove_resource = remove_resource
+
+    async def _async_update_data(self) -> dict[str, list[str]]:
+        """Compare the cluster's resource list with what is tracked."""
+        resources = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox, fresh=True
+        )
+
+        if not isinstance(resources, list):
+            msg = "Cluster resources are not available"
+            raise UpdateFailed(msg)
+
+        found = discovered_resources(resources)
+        added, removed = resource_changes(self.config_entry, found)
+        if not any(added.values()) and not any(removed.values()):
+            return found
+
+        remember_resources(self.config_entry, found)
+
+        # Gone first, so a guest deleted and recreated under the same id in
+        # one interval ends up with fresh coordinators rather than stale ones.
+        for api_category, key in RESOURCE_KEYS.items():
+            for resource_id in removed[key]:
+                await self._remove_resource(api_category, resource_id)
+        remove_resource_devices(self.hass, self.config_entry, removed)
+
+        # Nodes before guests and storages: their devices hang off the node's.
+        for api_category, key in RESOURCE_KEYS.items():
+            for resource_id in added[key]:
+                await self._add_resource(api_category, resource_id)
+        return found
+
+
+class ProxmoxHAResourcesCoordinator(DataUpdateCoordinator[set[str]]):
+    """
+    Track which guests are managed by the Proxmox HA stack.
+
+    Cluster-wide (`Sys.Audit` on `/`), so it uses the optional HA-admin
+    client rather than the primary least-privilege one, and is shared by
+    every guest's "HA managed" binary sensor instead of being polled once
+    per guest.
+    """
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the Proxmox HA resources coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name="proxmox_coordinator_ha_resources",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "ha_resources"
+        self.api_category = ProxmoxType.Proxmox
+
+    async def _async_update_data(self) -> set[str]:
+        """Return the set of HA-managed resource sids (e.g. 'vm:100', 'ct:105')."""
+        resources = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            "cluster/ha/resources",
+            ProxmoxType.Proxmox,
+            self.resource_id,
+        )
+        return {
+            resource["sid"]
+            for resource in (resources or [])
+            if isinstance(resource, dict) and "sid" in resource
+        }
+
+
+class ProxmoxHAStatusCoordinator(ProxmoxCoordinator):
+    """
+    Proxmox VE cluster HA status coordinator.
+
+    Cluster-wide (`Sys.Audit` on `/`), so it uses the optional HA-admin
+    client like ProxmoxHAResourcesCoordinator. It is kept separate from
+    that coordinator on purpose: `cluster/ha/status/current` also reports
+    services the CRM still tracks but that are no longer configured HA
+    resources, so deriving the "HA managed" set from it would keep those
+    sensors on after a resource is removed.
+    """
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the Proxmox cluster HA status coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name="proxmox_coordinator_ha_status",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "ha_status"
+        self.api_category = ProxmoxType.Proxmox
+
+    async def _async_update_data(self) -> ProxmoxHAStatusData:
+        """Update the cluster HA status."""
+        api_status = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            "cluster/ha/status/current",
+            ProxmoxType.Proxmox,
+            self.resource_id,
+        )
+
+        # poll_api returns None when the HA-admin credentials lack Sys.Audit
+        # on `/` (a repair issue is raised there). Failing the update marks
+        # the entities unavailable instead of reporting a made-up status.
+        if api_status is None:
+            msg = "Cluster HA status is not available"
+            raise UpdateFailed(msg)
+
+        return parse_ha_status(api_status)
+
+
+class ProxmoxClusterSummaryCoordinator(ProxmoxCoordinator):
+    """
+    Proxmox VE cluster summary coordinator.
+
+    Reads `cluster/resources` with the primary credentials - it needs no
+    privilege, Proxmox filters it to what they may audit - and adds it up.
+    """
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the Proxmox cluster summary coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name="proxmox_coordinator_cluster_summary",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "cluster_summary"
+        self.api_category = ProxmoxType.Proxmox
+
+    async def _async_update_data(self) -> ProxmoxClusterSummaryData:
+        """Add up the cluster's resource list."""
+        resources = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox
+        )
+        if resources is None:
+            msg = "The cluster's resource list is not available"
+            raise UpdateFailed(msg)
+        return parse_cluster_summary(resources)
+
+
+class ProxmoxBackupInfoCoordinator(ProxmoxCoordinator):
+    """
+    Proxmox VE backup coverage coordinator.
+
+    Cluster-wide (`Sys.Audit` on `/`), so it uses the optional cluster
+    credentials like the HA coordinators rather than the primary
+    least-privilege ones.
+    """
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the Proxmox backup info coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name="proxmox_coordinator_backup_info",
+            update_interval=timedelta(seconds=SLOW_UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "backup_info"
+        self.api_category = ProxmoxType.Proxmox
+
+    async def _async_update_data(self) -> ProxmoxBackupInfoData:
+        """Update which guests no backup job covers."""
+        api_status = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            "cluster/backup-info/not-backed-up",
+            ProxmoxType.Proxmox,
+            self.resource_id,
+        )
+
+        if api_status is None:
+            msg = "Backup coverage is not available"
+            raise UpdateFailed(msg)
+
+        return parse_backup_info(api_status)
+
+
+class ProxmoxBackupCoordinator(ProxmoxCoordinator):
+    """Proxmox VE node backup run data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        node_name: str,
+    ) -> None:
+        """Initialize the Proxmox backup coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_backup_{node_name}",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = f"{ProxmoxType.Backup.capitalize()} {node_name}"
+
+    async def _async_update_data(self) -> ProxmoxBackupData:
+        """Update the node's most recent backup run."""
+        # Finished tasks only (`source=archive`, the default, spelled out),
+        # newest first, and just the one: the log can hold thousands.
+        api_status = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            f"nodes/{self.node_name}/tasks?typefilter=vzdump&source=archive&limit=1",
+            ProxmoxType.Tasks,
+            self.node_name,
+        )
+
+        if api_status is None:
+            msg = f"Backup history for {self.node_name} is not available"
+            raise UpdateFailed(msg)
+
+        # And the one that may be running right now, which the archive
+        # never lists: no end time, no verdict yet.
+        active = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            f"nodes/{self.node_name}/tasks?typefilter=vzdump&source=active&limit=1",
+            ProxmoxType.Tasks,
+            self.node_name,
+        )
+
+        return parse_backup(api_status, self.node_name, active)
+
+
+class ProxmoxReplicationCoordinator(ProxmoxCoordinator):
+    """Proxmox VE node replication data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        node_name: str,
+    ) -> None:
+        """Initialize the Proxmox replication coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_replication_{node_name}",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = f"{ProxmoxType.Replication.capitalize()} {node_name}"
+
+    async def _async_update_data(self) -> ProxmoxReplicationData:
+        """Update the node's replication jobs."""
+        # Proxmox filters this to guests the credentials may audit, so the
+        # least-privilege client sees exactly the jobs it is entitled to.
+        api_status = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            f"nodes/{self.node_name}/replication",
+            ProxmoxType.Node,
+            self.node_name,
+        )
+
+        if api_status is None:
+            msg = f"Replication status for {self.node_name} is not available"
+            raise UpdateFailed(msg)
+
+        return parse_replication(api_status, self.node_name)
+
+
+class ProxmoxSubscriptionCoordinator(ProxmoxCoordinator):
+    """Proxmox VE node subscription data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        node_name: str,
+    ) -> None:
+        """Initialize the Proxmox subscription coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_subscription_{node_name}",
+            update_interval=timedelta(seconds=SLOW_UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = f"{ProxmoxType.Subscription.capitalize()} {node_name}"
+
+    async def _async_update_data(self) -> ProxmoxSubscriptionData:
+        """Update the node's subscription state."""
+        # Needs no permission beyond being logged in, so it uses the same
+        # least-privilege credentials as everything else.
+        api_status = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            f"nodes/{self.node_name}/subscription",
+            ProxmoxType.Node,
+            self.node_name,
+        )
+
+        if not isinstance(api_status, dict):
+            msg = f"Subscription information for {self.node_name} is not available"
+            raise UpdateFailed(msg)
+
+        return parse_subscription(api_status, self.node_name)
+
+
+class ProxmoxCephCoordinator(ProxmoxCoordinator):
+    """
+    Proxmox VE Ceph health coordinator.
+
+    Cluster-wide (`Sys.Audit` or `Datastore.Audit` on `/`), so it uses the
+    optional cluster credentials like the HA and backup coordinators.
+    """
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the Proxmox Ceph coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name="proxmox_coordinator_ceph",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = "ceph"
+        self.api_category = ProxmoxType.Proxmox
+
+    async def _async_update_data(self) -> ProxmoxCephData:
+        """Update the Ceph cluster health."""
+        api_status = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            "cluster/ceph/status",
+            ProxmoxType.Proxmox,
+            self.resource_id,
+        )
+
+        if not isinstance(api_status, dict):
+            msg = "Ceph status is not available"
+            raise UpdateFailed(msg)
+
+        return parse_ceph(api_status)
+
+
+class ProxmoxCertificateCoordinator(ProxmoxCoordinator):
+    """Proxmox VE node certificate data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        node_name: str,
+    ) -> None:
+        """Initialize the Proxmox certificate coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_certificate_{node_name}",
+            update_interval=timedelta(seconds=SLOW_UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = f"{ProxmoxType.Certificate.capitalize()} {node_name}"
+
+    async def _async_update_data(self) -> ProxmoxCertificateData:
+        """Update the node's certificate information."""
+        # This endpoint needs no permission beyond being logged in, so it is
+        # read with the same least-privilege credentials as everything else.
+        api_status = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            f"nodes/{self.node_name}/certificates/info",
+            ProxmoxType.Node,
+            self.node_name,
+        )
+
+        if api_status is None:
+            msg = f"Certificate information for {self.node_name} is not available"
+            raise UpdateFailed(msg)
+
+        return parse_certificates(api_status, self.node_name)
+
+
+# systemd names a network interface after its hardware address as
+# `enx<12 hex digits>`, and Proxmox lists that name among an interface's
+# `altnames`. It is the only place `nodes/{node}/network` carries a MAC.
+MAC_ALTNAME = re.compile(r"^enx([0-9a-f]{12})$")
+
+
+def parse_mac_addresses(interfaces: Any) -> tuple[str, ...]:
+    """
+    Return the hardware addresses of a node's physical interfaces.
+
+    Bridges and bonds have no address of their own in the listing, and a
+    physical port shows up as `type: eth` with its predictable and its
+    MAC-based names under `altnames`. The MAC-based one is decoded back
+    into the colon form Home Assistant's device registry expects.
+    """
+    found: list[str] = []
+    for interface in interfaces if isinstance(interfaces, list) else []:
+        if not isinstance(interface, dict) or interface.get("type") != "eth":
+            continue
+        for altname in interface.get("altnames") or []:
+            if isinstance(altname, str) and (match := MAC_ALTNAME.match(altname)):
+                digits = match.group(1)
+                mac = ":".join(digits[i : i + 2] for i in range(0, 12, 2))
+                if mac not in found:
+                    found.append(mac)
+    return tuple(found)
+
+
+def node_is_invisible(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    node: str,
+    listing: Any,
+) -> bool:
+    """
+    Note the credentials as the reason a node is not in the listing.
+
+    Proxmox filters `GET /nodes` by privilege rather than refusing it, so
+    credentials that may audit nothing get an empty list and a node that
+    is running reads as missing. Reported upstream in #712 by someone
+    whose API token had Privilege Separation on and no ACL of its own: the
+    integration said the node could not be found, which sounds like the
+    node is gone, and created no repair because nothing was refused.
+
+    An empty listing is the case this covers. A listing that names other
+    nodes but not this one is a different matter - that node really is not
+    in the cluster, and the repair for a resource that does not exist says
+    so already.
+    """
+    if listing:
+        return False
+    note_resource(
+        hass,
+        config_entry,
+        FORBIDDEN,
+        f"{ProxmoxType.Node}_{node}",
+        ResourceLine(
+            label=f"{ProxmoxType.Node.capitalize()} {node}",
+            permission=f"['perm','/nodes/{node}',['Sys.Audit']]",
+            tracked_as=node,
+        ),
+        listed=True,
+    )
+    LOGGER.warning(
+        "The node listing came back empty, so node %s cannot be read. Proxmox "
+        "filters that listing by privilege, so this is what credentials that "
+        "may not audit the node look like - an API token created with "
+        "Privilege Separation holds only what is granted to the token itself. "
+        "See the repair the integration created",
+        node,
+    )
+    return True
+
+
+class ProxmoxNodeCoordinator(ProxmoxCoordinator):
+    """Proxmox VE Node data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        api_category: str,
+        node_name: str,
+    ) -> None:
+        """Initialize the Proxmox Node coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_{api_category}_{node_name}",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.resource_id = node_name
+        self.api_category = api_category
+        self._last_sensors: dict[str, float] = {}
+        self._last_sensors_raw: str | None = None
+        self._last_sensors_at: datetime | None = None
+        # Read once: a node's ports do not change between polls.
+        self._mac_addresses: tuple[str, ...] | None = None
+
+    def _hold_last_sensors(
+        self,
+        sensors: dict[str, float],
+        sensors_raw: str | None,
+    ) -> tuple[dict[str, float], str | None]:
+        """
+        Keep the previous hardware readings when a poll brings none.
+
+        PVE-mods collects on demand and tears the collection down again
+        after a few seconds idle, so a poll can easily arrive before there
+        is anything to read. Blanking every temperature because one response
+        came back empty produces a gap in the history that says "no reading"
+        where the truth is "not this time".
+
+        The readings are only held for SENSORS_HOLD_FOR. Past that, whatever
+        provides them is gone rather than late - PVE-mods removed, the module
+        unloaded - and reporting nothing is then the honest answer.
+        """
+        now = dt_util.utcnow()
+
+        if sensors:
+            self._last_sensors = sensors
+            self._last_sensors_raw = sensors_raw
+            self._last_sensors_at = now
+            return sensors, sensors_raw
+
+        if self._last_sensors_at is None:
+            return sensors, sensors_raw
+
+        age = now - self._last_sensors_at
+        if age > SENSORS_HOLD_FOR:
+            LOGGER.debug(
+                "No hardware sensor data for node %s in %s, dropping the last readings",
+                self.resource_id,
+                age,
+            )
+            self._last_sensors = {}
+            self._last_sensors_raw = None
+            self._last_sensors_at = None
+            return sensors, sensors_raw
+
+        LOGGER.debug(
+            "Node %s reported no hardware sensor data, keeping readings from %s ago",
+            self.resource_id,
+            age,
+        )
+        return self._last_sensors, self._last_sensors_raw
+
+    async def _async_update_data(self) -> ProxmoxNodeData:
+        """Update data  for Proxmox Node."""
+        api_path = "nodes"
+        node_status = ""
+        node_api = {}
+        api_status = {}
+        if nodes_api := await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            api_path,
+            ProxmoxType.Node,
+            self.resource_id,
+        ):
+            for node_api in nodes_api:
+                if node_api[CONF_NODE] == self.resource_id:
+                    node_status = node_api["status"]
+                    break
+            if node_status == "":
+                LOGGER.debug("Node %s status is %s", self.resource_id, node_status)
+                node_status = "offline"
+        elif node_is_invisible(
+            self.hass, self.config_entry, self.resource_id, nodes_api
+        ):
+            msg = (
+                f"The node listing is empty, so node {self.resource_id} cannot be "
+                "read - the credentials may not be allowed to see it"
+            )
+            raise UpdateFailed(msg)
+
+        if node_status == "online":
+            api_path = f"nodes/{self.resource_id}/status"
+            api_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Node,
+                self.resource_id,
+            )
+            if api_status is None:
+                # poll_api hands back None for a read Proxmox refused, and
+                # has already put the privilege it wanted into a repair.
+                # "Unable to be found" read as "the node is gone", which
+                # sent a reporter looking for a renamed node while his API
+                # token simply held no privileges - #712.
+                msg = (
+                    f"Node {self.resource_id} could not be read on "
+                    f"{self.config_entry.data[CONF_HOST]}: the read was refused, so "
+                    "the credentials may not be allowed to see it - see the repair "
+                    "the integration created"
+                )
+                raise UpdateFailed(msg)
+
+            api_status["status"] = node_api["status"]
+            api_status["cpu"] = node_api["cpu"]
+            api_status["disk_max"] = node_api["maxdisk"]
+            api_status["disk_used"] = node_api["disk"]
+
+            api_path = f"nodes/{self.resource_id}/version"
+            api_status["version"] = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Node,
+                self.resource_id,
+            )
+
+            if self._mac_addresses is None:
+                api_path = f"nodes/{self.resource_id}/network"
+                interfaces = await self.hass.async_add_executor_job(
+                    partial(
+                        poll_api,
+                        self.hass,
+                        self.config_entry,
+                        self.proxmox,
+                        api_path,
+                        ProxmoxType.Node,
+                        self.resource_id,
+                        issue_crete_permissions=False,
+                    )
+                )
+                # Empty stays "not read yet" only when the call failed; an
+                # answered listing without a port is final.
+                if interfaces is not None:
+                    self._mac_addresses = parse_mac_addresses(interfaces)
+
+            api_path = f"nodes/{self.resource_id}/qemu"
+            qemu_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.QEMU,
+                self.resource_id,
+            )
+            node_qemu: dict[str, Any] = {}
+            node_qemu_on: int = 0
+            node_qemu_on_list: list[str] = []
+            for qemu in qemu_status if qemu_status is not None else []:
+                if "status" in qemu and qemu["status"] == "running":
+                    node_qemu_on += 1
+                    node_qemu_on_list.append(f"{qemu['name']} ({qemu['vmid']})")
+            node_qemu["total"] = node_qemu_on
+            node_qemu["list"] = node_qemu_on_list
+            api_status["qemu"] = node_qemu
+
+            api_path = f"nodes/{self.resource_id}/lxc"
+            lxc_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.LXC,
+                self.resource_id,
+            )
+            node_lxc: dict[str, Any] = {}
+            node_lxc_on: int = 0
+            node_lxc_on_list: list[str] = []
+            for lxc in lxc_status if lxc_status is not None else []:
+                if lxc["status"] == "running":
+                    node_lxc_on += 1
+                    node_lxc_on_list.append(f"{lxc['name']} ({lxc['vmid']})")
+            node_lxc["total"] = node_lxc_on
+            node_lxc["list"] = node_lxc_on_list
+            api_status["lxc"] = node_lxc
+
+        sensors: dict[str, float] = {}
+        sensors_raw: str | None = None
+        if sensors_output := api_status.get("sensorsOutput"):
+            # Legacy PVE-mods script (pve-mod-gui-sensors.sh): raw `sensors -j`
+            # JSON as a string.
+            sensors_raw = sensors_output
+            try:
+                parsed = json.loads(sensors_output)
+                if isinstance(parsed, dict):
+                    sensors = _parse_sensors_dict(parsed)
+            except (json.JSONDecodeError, TypeError):
+                LOGGER.debug(
+                    "Failed to parse sensorsOutput for node %s", self.resource_id
+                )
+        elif field := next(
+            (name for name in SENSOR_FIELDS if isinstance(api_status.get(name), dict)),
+            None,
+        ):
+            # PVE-mods as a package: an already-decoded object, with the
+            # per-chip metadata (Adapter, cpu_model, serial) mixed in
+            # alongside the readings; _parse_sensors_dict ignores whatever
+            # does not end in "_input".
+            lm_sensors_data = _readings_of(api_status[field])
+            if lm_sensors_data:
+                sensors = _parse_sensors_dict(lm_sensors_data)
+                sensors_raw = json.dumps(lm_sensors_data)
+            else:
+                # Also the normal answer of a collector that has gone idle:
+                # it tears itself down after ten seconds, and the field is
+                # then there with the switches in it and no readings.
+                LOGGER.debug(
+                    "Node %s returned %s without readings",
+                    self.resource_id,
+                    field,
+                )
+        else:
+            LOGGER.debug(
+                "Node %s status carried no hardware sensor data at all",
+                self.resource_id,
+            )
+
+        sensors, sensors_raw = self._hold_last_sensors(sensors, sensors_raw)
+
+        if node_status != "":
+            return ProxmoxNodeData(
+                type=ProxmoxType.Node,
+                model=(
+                    api_status["cpuinfo"]["model"]
+                    if (("cpuinfo" in api_status) and "model" in api_status["cpuinfo"])
+                    else UNDEFINED
+                ),
+                status=api_status.get("status", "Offline"),
+                version=(
+                    api_status["version"].get("version", UNDEFINED)
+                    if ("version" in api_status)
+                    else UNDEFINED
+                ),
+                uptime=api_status.get("uptime", UNDEFINED),
+                cpu=api_status.get("cpu", UNDEFINED),
+                io_wait=api_status.get("wait", UNDEFINED),
+                load_average=parse_load_average(api_status.get("loadavg")),
+                cpus=(
+                    api_status["cpuinfo"].get("cpus", UNDEFINED)
+                    if isinstance(api_status.get("cpuinfo"), dict)
+                    else UNDEFINED
+                ),
+                disk_total=api_status.get("disk_max", UNDEFINED),
+                disk_used=api_status.get("disk_used", UNDEFINED),
+                memory_total=(
+                    api_status["memory"]["total"]
+                    if (("memory" in api_status) and "total" in api_status["memory"])
+                    else UNDEFINED
+                ),
+                memory_used=(
+                    api_status["memory"]["used"]
+                    if (("memory" in api_status) and "used" in api_status["memory"])
+                    else UNDEFINED
+                ),
+                memory_free=(
+                    api_status["memory"]["free"]
+                    if (("memory" in api_status) and "free" in api_status["memory"])
+                    else UNDEFINED
+                ),
+                swap_total=(
+                    api_status["swap"]["total"]
+                    if (("swap" in api_status) and "total" in api_status["swap"])
+                    else UNDEFINED
+                ),
+                swap_free=(
+                    api_status["swap"]["free"]
+                    if (("swap" in api_status) and "free" in api_status["swap"])
+                    else UNDEFINED
+                ),
+                swap_used=(
+                    api_status["swap"]["used"]
+                    if (("swap" in api_status) and "used" in api_status["swap"])
+                    else UNDEFINED
+                ),
+                qemu_on=(
+                    api_status["qemu"]["total"]
+                    if (("qemu" in api_status) and "total" in api_status["qemu"])
+                    else 0
+                ),
+                qemu_on_list=(
+                    api_status["qemu"]["list"]
+                    if (("qemu" in api_status) and "list" in api_status["qemu"])
+                    else UNDEFINED
+                ),
+                lxc_on=(
+                    api_status["lxc"]["total"]
+                    if (("lxc" in api_status) and "total" in api_status["lxc"])
+                    else 0
+                ),
+                lxc_on_list=(
+                    api_status["lxc"]["list"]
+                    if (("lxc" in api_status) and "list" in api_status["lxc"])
+                    else UNDEFINED
+                ),
+                sensors=sensors,
+                sensors_raw=sensors_raw,
+                mac_addresses=self._mac_addresses or (),
+            )
+        msg = (
+            f"Node {self.resource_id} is not in the node listing of "
+            f"{self.config_entry.data[CONF_HOST]} - it was removed from the cluster, "
+            "or the credentials may not see it"
+        )
+        raise UpdateFailed(msg)
+
+
+async def poll_snapshots(
+    coordinator: ProxmoxCoordinator, kind: ProxmoxType, node_name: str
+) -> dict[str, Any]:
+    """Read a guest's snapshot list; a failed read leaves the figures unknown."""
+    try:
+        entries = await coordinator.hass.async_add_executor_job(
+            partial(
+                poll_api,
+                coordinator.hass,
+                coordinator.config_entry,
+                coordinator.proxmox,
+                f"nodes/{node_name!s}/{kind}/{coordinator.resource_id}/snapshot",
+                kind,
+                coordinator.resource_id,
+                issue_crete_permissions=False,
+            )
+        )
+    except UpdateFailed:
+        entries = None
+    return parse_snapshots(entries)
+
+
+class ProxmoxQEMUCoordinator(ProxmoxCoordinator):
+    """Proxmox VE QEMU data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        api_category: str,
+        qemu_id: int,
+    ) -> None:
+        """Initialize the Proxmox QEMU coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_{api_category}_{qemu_id}",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name: str
+        self.resource_id = qemu_id
+
+    async def _poll_guest_agent(self, api_path: str, feature: str) -> Any:
+        """
+        Read from the QEMU guest agent, with one repair per entry for a 403.
+
+        The generic poll would blame `VM.Audit`, which the credentials hold
+        - the status read just succeeded - and would share the guest's
+        repair id, so the two reads would raise and clear it in turns. And
+        the privilege is missing for every VM at once, not for one, so the
+        repair is one per feature and lists the VMs it concerns.
+        """
+        try:
+            result = await self.hass.async_add_executor_job(
+                partial(
+                    poll_api,
+                    self.hass,
+                    self.config_entry,
+                    self.proxmox,
+                    api_path,
+                    ProxmoxType.QEMU,
+                    self.resource_id,
+                    issue_crete_permissions=False,
+                )
+            )
+        except UpdateFailed as error:
+            cause = error.__cause__
+            if not (isinstance(cause, ResourceException) and cause.status_code == 403):
+                raise
+            note_guest_agent_refusal(
+                self.hass,
+                self.config_entry,
+                feature,
+                int(self.resource_id),
+                refused=True,
+            )
+            return None
+        note_guest_agent_refusal(
+            self.hass, self.config_entry, feature, int(self.resource_id), refused=False
+        )
+        return result
+
+    async def _async_update_data(self) -> ProxmoxVMData:
+        """Update data  for Proxmox QEMU."""
+        node_name = None
+        api_status = None
+
+        resources = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox
+        )
+
+        node_cpus: Any = UNDEFINED
+        for resource in resources if resources is not None else []:
+            if "vmid" in resource:
+                if int(resource["vmid"]) == int(self.resource_id):
+                    node_name = resource["node"]
+        for resource in resources if resources is not None else []:
+            if resource.get("type") == "node" and resource.get("node") == node_name:
+                node_cpus = resource.get("maxcpu", UNDEFINED)
+
+        if node_name is not None:
+            api_path = f"nodes/{node_name!s}/qemu/{self.resource_id}/status/current"
+            api_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.QEMU,
+                self.resource_id,
+            )
+
+        if api_status is None or "status" not in api_status:
+            msg = f"QEMU {self.resource_id} unable to be found"
+            raise UpdateFailed(msg)
+
+        # Proxmox answers every agent read with a 500 while the agent is not
+        # enabled for the VM or the VM is not running (a paused VM still says
+        # `status: running`, only `qmpstatus` tells), so asking then only
+        # fills the Proxmox log with failed requests on every poll.
+        agent_configured = bool(api_status.get("agent"))
+        agent_reachable = (
+            agent_configured
+            and api_status.get("qmpstatus", api_status.get("status")) == "running"
+        )
+
+        guest_disk_used: int | UndefinedType = UNDEFINED
+        guest_disk_total: int | UndefinedType = UNDEFINED
+
+        try:
+            fsinfo_path = (
+                f"nodes/{node_name!s}/qemu/{self.resource_id}/agent/get-fsinfo"
+            )
+            fsinfo = (
+                await self._poll_guest_agent(fsinfo_path, "fsinfo")
+                if agent_reachable
+                else None
+            )
+
+            entries = fsinfo.get("result", []) if isinstance(fsinfo, dict) else fsinfo
+
+            if isinstance(entries, list):
+                filesystems_used_by_device: dict[str, int] = {}
+                filesystems_total_by_device: dict[str, int] = {}
+
+                for fs in entries:
+                    if not isinstance(fs, dict):
+                        continue
+
+                    disks = fs.get("disk") or []
+                    if not disks:
+                        continue
+
+                    disk0 = disks[0]
+                    device_key = disk0.get("dev") or fs.get("name")
+
+                    used = fs.get("used-bytes")
+                    total = fs.get("total-bytes")
+                    if not device_key or not isinstance(used, (int, float)):
+                        continue
+
+                    filesystems_used_by_device[device_key] = max(
+                        filesystems_used_by_device.get(device_key, 0),
+                        int(used),
+                    )
+                    if isinstance(total, (int, float)):
+                        filesystems_total_by_device[device_key] = max(
+                            filesystems_total_by_device.get(device_key, 0),
+                            int(total),
+                        )
+
+                if filesystems_used_by_device:
+                    guest_disk_used = sum(filesystems_used_by_device.values())
+                    # Only trust the guest-reported total if every filesystem
+                    # that contributed to guest_disk_used also reported one,
+                    # otherwise the two numbers count a different set of
+                    # filesystems.
+                    if (
+                        filesystems_total_by_device.keys()
+                        == filesystems_used_by_device.keys()
+                    ):
+                        guest_disk_total = sum(filesystems_total_by_device.values())
+
+        except UpdateFailed:
+            pass
+
+        guest_file_path = self.config_entry.options.get(CONF_GUEST_FILE_PATH)
+        guest_file_content: str | UndefinedType = UNDEFINED
+
+        if guest_file_path and agent_reachable:
+            try:
+                file_read_path = (
+                    f"nodes/{node_name!s}/qemu/{self.resource_id}/agent/file-read"
+                    f"?file={quote(guest_file_path, safe='')}"
+                    f"&count={GUEST_FILE_READ_MAX_BYTES}&decode=1"
+                )
+                file_result = await self._poll_guest_agent(file_read_path, "file")
+                if isinstance(file_result, dict) and isinstance(
+                    file_result.get("content"), str
+                ):
+                    guest_file_content = file_result["content"]
+            except UpdateFailed:
+                pass
+
+        # The agent answers only while it runs: a successful read says so, a
+        # refusal (403) says nothing, anything else - not running, VM off -
+        # says no. Not configured for the VM at all leaves it undefined.
+        agent_running: bool | UndefinedType = UNDEFINED
+        addresses = parse_guest_addresses(ProxmoxType.QEMU, None)
+        if agent_configured and not agent_reachable:
+            agent_running = False
+        elif agent_configured:
+            try:
+                interfaces = await self._poll_guest_agent(
+                    f"nodes/{node_name!s}/qemu/{self.resource_id}/agent/network-get-interfaces",
+                    "fsinfo",
+                )
+            except UpdateFailed:
+                agent_running = False
+            else:
+                if interfaces is not None:
+                    agent_running = True
+                    addresses = parse_guest_addresses(ProxmoxType.QEMU, interfaces)
+
+        snapshots = await poll_snapshots(self, ProxmoxType.QEMU, node_name)
+
+        update_guest_device(self, ProxmoxType.QEMU, node_name, api_status.get("name"))
+
+        memory_total = api_status.get("maxmem", UNDEFINED)
+        memory_used = qemu_memory_used(api_status)
+        memory_free = (
+            # The host-side fallback can exceed the configured memory, and a
+            # negative number of free bytes would be nonsense.
+            max(memory_total - memory_used, 0)
+            if UNDEFINED not in (memory_total, memory_used)
+            else UNDEFINED
+        )
+
+        return ProxmoxVMData(
+            type=ProxmoxType.QEMU,
+            node=node_name,
+            status=(
+                api_status["lock"]
+                if ("lock" in api_status and api_status["lock"] == "suspended")
+                else (api_status.get("status", UNDEFINED))
+            ),
+            locked=bool(api_status.get("lock")),
+            guest_file_content=guest_file_content,
+            guest_file_path=guest_file_path or UNDEFINED,
+            name=api_status.get("name", UNDEFINED),
+            health=api_status.get("qmpstatus", UNDEFINED),
+            uptime=api_status.get("uptime", UNDEFINED),
+            cpu=api_status.get("cpu", UNDEFINED),
+            cpus=api_status.get("cpus", UNDEFINED),
+            cpu_of_host=cpu_share_of_host(
+                api_status.get("cpu"), api_status.get("cpus"), node_cpus
+            ),
+            **snapshots,
+            agent_running=agent_running,
+            **addresses,
+            **parse_pressure(api_status),
+            memory_of_host=_try_parse_float(api_status.get("memhost")) or UNDEFINED,
+            memory_total=memory_total,
+            memory_used=memory_used,
+            memory_free=memory_free,
+            network_in=api_status.get("netin", UNDEFINED),
+            network_out=api_status.get("netout", UNDEFINED),
+            disk_total=(
+                guest_disk_total
+                if guest_disk_total is not UNDEFINED
+                else api_status.get("maxdisk", UNDEFINED)
+            ),
+            disk_used=(
+                guest_disk_used
+                if guest_disk_used is not UNDEFINED
+                # From outside, Proxmox cannot see a VM's filesystem: `disk`
+                # reports 0 whenever the guest agent does not answer, which is
+                # "I cannot tell", not "nothing is used". Reporting it as a
+                # measurement produced a confident 0% for guests without a
+                # working agent - an OPNsense VM, for instance.
+                else _positive_or_undefined(api_status.get("disk", UNDEFINED))
+            ),
+        )
+
+
+class ProxmoxLXCCoordinator(ProxmoxCoordinator):
+    """Proxmox VE LXC data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        api_category: str,
+        container_id: int,
+    ) -> None:
+        """Initialize the Proxmox LXC coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_{api_category}_{container_id}",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name: str
+        self.resource_id = container_id
+
+    async def _async_update_data(self) -> ProxmoxLXCData:
+        """Update data  for Proxmox LXC."""
+        node_name = None
+        api_status = None
+
+        resources = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox
+        )
+
+        node_cpus: Any = UNDEFINED
+        for resource in resources if resources is not None else []:
+            if "vmid" in resource:
+                if int(resource["vmid"]) == int(self.resource_id):
+                    node_name = resource["node"]
+        for resource in resources if resources is not None else []:
+            if resource.get("type") == "node" and resource.get("node") == node_name:
+                node_cpus = resource.get("maxcpu", UNDEFINED)
+
+        if node_name is not None:
+            api_path = f"nodes/{node_name!s}/lxc/{self.resource_id}/status/current"
+            api_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.LXC,
+                self.resource_id,
+            )
+        else:
+            msg = f"{self.resource_id} LXC node not found"
+            raise UpdateFailed(msg)
+
+        if api_status is None or "status" not in api_status:
+            msg = f"LXC {self.resource_id} unable to be found"
+            raise UpdateFailed(msg)
+
+        snapshots = await poll_snapshots(self, ProxmoxType.LXC, node_name)
+        addresses = parse_guest_addresses(ProxmoxType.LXC, None)
+        if api_status.get("status") == "running":
+            try:
+                interfaces = await self.hass.async_add_executor_job(
+                    partial(
+                        poll_api,
+                        self.hass,
+                        self.config_entry,
+                        self.proxmox,
+                        f"nodes/{node_name!s}/lxc/{self.resource_id}/interfaces",
+                        ProxmoxType.LXC,
+                        self.resource_id,
+                        issue_crete_permissions=False,
+                    )
+                )
+            except UpdateFailed:
+                interfaces = None
+            addresses = parse_guest_addresses(ProxmoxType.LXC, interfaces)
+
+        update_guest_device(self, ProxmoxType.LXC, node_name, api_status.get("name"))
+
+        return ProxmoxLXCData(
+            type=ProxmoxType.LXC,
+            node=node_name,
+            **parse_pressure(api_status),
+            status=api_status.get("status", UNDEFINED),
+            locked=bool(api_status.get("lock")),
+            name=api_status.get("name", UNDEFINED),
+            uptime=api_status.get("uptime", UNDEFINED),
+            cpu=api_status.get("cpu", UNDEFINED),
+            cpus=api_status.get("cpus", UNDEFINED),
+            cpu_of_host=cpu_share_of_host(
+                api_status.get("cpu"), api_status.get("cpus"), node_cpus
+            ),
+            **snapshots,
+            **addresses,
+            memory_total=api_status.get("maxmem", UNDEFINED),
+            memory_used=api_status.get("mem", UNDEFINED),
+            memory_free=(
+                (api_status["maxmem"] - api_status["mem"])
+                if ("maxmem" in api_status and "mem" in api_status)
+                else UNDEFINED
+            ),
+            network_in=api_status.get("netin", UNDEFINED),
+            network_out=api_status.get("netout", UNDEFINED),
+            disk_total=api_status.get("maxdisk", UNDEFINED),
+            disk_used=(
+                api_status.get("disk", UNDEFINED)
+                # Proxmox cannot look inside a container that is not running
+                # and reports `disk: 0` - which is not "empty": the data is
+                # still on the volume. That 0 turned into 0% used and 100%
+                # free every time a container stopped, a spike in every
+                # graph. Memory and swap really are zero then; disk is not.
+                if api_status.get("status") == "running"
+                else UNDEFINED
+            ),
+            swap_total=api_status.get("maxswap", UNDEFINED),
+            swap_used=api_status.get("swap", UNDEFINED),
+            swap_free=(
+                (api_status["maxswap"] - api_status["swap"])
+                if ("maxswap" in api_status and "swap" in api_status)
+                else UNDEFINED
+            ),
+        )
+
+
+class ProxmoxStorageCoordinator(ProxmoxCoordinator):
+    """Proxmox VE Storage data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        api_category: str,
+        storage_id: str,
+    ) -> None:
+        """Initialize the Proxmox Storage coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_{api_category}_{storage_id}",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name: str
+        self.resource_id = storage_id
+
+    async def _async_update_data(self) -> ProxmoxStorageData:
+        """
+        Update data for a storage, local or shared.
+
+        A local storage is one row of the cluster's storage listing. A shared
+        one is listed once per node that mounts it, all with the same
+        figures; the row of a node that currently sees it as available is
+        used, and every such node is carried along.
+        """
+        api_storages = await shared_resources(self.hass, self.config_entry).get(
+            self.hass, self.config_entry, self.proxmox, resource_type="storage"
+        )
+        rows = storage_entries(api_storages)
+
+        if is_shared_storage_id(self.resource_id):
+            name_wanted = storage_name(self.resource_id)
+            candidates = sorted(
+                (row for row in rows if row.get("storage") == name_wanted),
+                key=lambda row: str(row.get("node")),
+            )
+            available = [row for row in candidates if row.get("status") == "available"]
+            # A node that sees the storage answers for it; failing that, any
+            # node that has it configured, so the entity exists and says so.
+            api_status = (available or candidates or [None])[0]
+            nodes = tuple(str(row["node"]) for row in available if "node" in row)
+        else:
+            api_status = next(
+                (row for row in rows if row["id"] == self.resource_id), None
+            )
+            nodes = ()
+
+        if api_status is None or "content" not in api_status:
+            msg = f"Storage {self.resource_id} unable to be found"
+            raise UpdateFailed(msg)
+
+        node_name = str(api_status.get("node")) if api_status.get("node") else None
+        name = f"Storage {self.resource_id.replace('storage/', '')}"
+
+        # The cluster resource list says how full a storage is, but not
+        # whether the node can currently reach it (`active`) or whether it
+        # is enabled there at all; the node's own storage list carries both.
+        # Filtered to this one storage so the answer stays small.
+        node_view: dict[str, Any] = {}
+        storage_label = api_status.get("storage")
+        if node_name is not None and storage_label:
+            api_path = f"nodes/{node_name}/storage?storage={quote(str(storage_label))}"
+            node_storages = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Storage,
+                self.resource_id,
+            )
+            for entry in node_storages if isinstance(node_storages, list) else []:
+                if isinstance(entry, dict) and entry.get("storage") == storage_label:
+                    node_view = entry
+                    break
+
+        return ProxmoxStorageData(
+            type=ProxmoxType.Storage,
+            node=node_name,
+            name=name,
+            disk_total=api_status.get("maxdisk", UNDEFINED),
+            disk_used=api_status.get("disk", UNDEFINED),
+            content=api_status.get("content", UNDEFINED),
+            active=_flag_or_undefined(node_view.get("active")),
+            enabled=_flag_or_undefined(node_view.get("enabled")),
+            shared=_flag_or_undefined(node_view.get("shared")),
+            nodes=nodes,
+        )
+
+
+class ProxmoxZFSCoordinator(ProxmoxCoordinator):
+    """Proxmox VE ZFS data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        api_category: str,
+        node_name: str,
+        zfs_id: str,
+    ) -> None:
+        """Initialize the Proxmox ZFS coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_{api_category}_{zfs_id}",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = zfs_id
+
+    async def _async_update_data(self) -> ProxmoxStorageData:
+        """Update data for Proxmox Update."""
+        api_path = f"nodes/{self.node_name}/disks/zfs"
+        pools = await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            api_path,
+            ProxmoxType.ZFS,
+            self.resource_id,
+        )
+
+        # A refused read hands back nothing - `poll_api` files the repair and
+        # returns None - and iterating that raised a traceback every minute
+        # where one line of "not available" belongs.
+        if pools is None:
+            msg = f"ZFS pools on node {self.node_name} are not available"
+            raise UpdateFailed(msg)
+
+        pool_status = next(
+            (
+                pool
+                for pool in pools
+                if isinstance(pool, dict) and pool.get("name") == self.resource_id
+            ),
+            None,
+        )
+
+        if pool_status is None:
+            msg = f"ZFS Pool {self.resource_id} unable to be found for Node {self.node_name}"
+            raise UpdateFailed(msg)
+
+        return ProxmoxZFSData(
+            type=ProxmoxType.ZFS,
+            node=self.node_name,
+            name=f"ZFS Pool {self.resource_id}",
+            health=pool_status.get("health", UNDEFINED),
+            size=pool_status.get("size", UNDEFINED),
+            alloc=pool_status.get("alloc", UNDEFINED),
+            free=pool_status.get("free", UNDEFINED),
+        )
+
+
+class ProxmoxUpdateCoordinator(ProxmoxCoordinator):
+    """Proxmox VE Update data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        api_category: str,
+        node_name: str,
+    ) -> None:
+        """Initialize the Proxmox Update coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_{api_category}_{node_name}",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = f"{api_category.capitalize()} {node_name}"
+
+    async def _async_update_data(self) -> ProxmoxUpdateData:
+        """Update data  for Proxmox Update."""
+        api_path = "nodes"
+        node_status = ""
+        node_api = {}
+        api_status = None
+        if nodes_api := await self.hass.async_add_executor_job(
+            poll_api,
+            self.hass,
+            self.config_entry,
+            self.proxmox,
+            api_path,
+            ProxmoxType.Node,
+            self.node_name,
+        ):
+            for node_api in nodes_api:
+                if node_api[CONF_NODE] == self.node_name:
+                    node_status = node_api["status"]
+                    break
+            if node_status == "":
+                node_status = "offline"
+            LOGGER.debug("Node %s status is %s", self.node_name, node_status)
+
+        if node_status == "online":
+            if self.node_name is not None:
+                api_path = f"nodes/{self.node_name!s}/apt/update"
+                api_status = await self.hass.async_add_executor_job(
+                    poll_api,
+                    self.hass,
+                    self.config_entry,
+                    self.proxmox,
+                    api_path,
+                    ProxmoxType.Update,
+                    self.resource_id,
+                )
+            else:
+                msg = f"{self.resource_id} node not found"
+                raise UpdateFailed(msg)
+
+        if api_status is None:
+            return ProxmoxUpdateData(
+                type=ProxmoxType.Update,
+                node=self.node_name,
+                total=UNDEFINED,
+                updates_list=UNDEFINED,
+                update=UNDEFINED,
+            )
+
+        return parse_updates(api_status, self.node_name)
+
+
+# SMART attribute ids, as smartctl numbers them. The text form Proxmox hands
+# out for NVMe and SAS drives carries no ids, so `parse_smart_text` maps its
+# labels onto the same numbers before the values reach the parser.
+SMART_POWER_CYCLES: Final = 12
+SMART_TEMPERATURE: Final = 194
+SMART_TEMPERATURE_AIR: Final = 190
+SMART_POWER_HOURS: Final = 9
+SMART_LIFE_LEFT: Final = 231
+SMART_POWER_LOSS: Final = 174
+
+
+# The labels smartctl prints in place of numbered attributes, per drive
+# type. NVMe is the health log; SAS is what an enterprise drive behind an
+# expander reports, with its own words for the same three things - one of
+# them a label that itself contains the colon the format splits on.
+SMART_TEXT_LABELS: Final[dict[str, int]] = {
+    # NVMe
+    "Temperature": SMART_TEMPERATURE,
+    "Power Cycles": SMART_POWER_CYCLES,
+    "Power On Hours": SMART_POWER_HOURS,
+    # SAS
+    "Current Drive Temperature": SMART_TEMPERATURE,
+    "Accumulated start-stop cycles": SMART_POWER_CYCLES,
+    "Accumulated power on time, hours:minutes": SMART_POWER_HOURS,
+}
+
+
+def parse_smart_text(text: str) -> list[dict[str, Any]]:
+    """
+    Turn smartctl's text output into the attribute shape the parser reads.
+
+    Each line is `label: value`. The label is matched whole rather than by
+    prefix, so `Temperature Sensor 1` does not pass for `Temperature`; the
+    one SAS label that carries a colon of its own is looked for first.
+    Lines with a label the sensors do not show are left out.
+    """
+    attributes: list[dict[str, Any]] = []
+    for raw_line in text.split("\n"):
+        line = raw_line.strip()
+        if not line:
+            continue
+        label, value = None, ""
+        for known in SMART_TEXT_LABELS:
+            if ":" in known and line.startswith(known):
+                label, value = known, line[len(known) :]
+                break
+        if label is None:
+            head, sep, tail = line.partition(":")
+            if not sep:
+                continue
+            label, value = head.strip(), tail
+        if label not in SMART_TEXT_LABELS:
+            continue
+        attributes.append(
+            {
+                "name": label,
+                "raw": value.strip().replace(",", ""),
+                "id": SMART_TEXT_LABELS[label],
+            }
+        )
+    return attributes
+
+
+def _leading_int(value: Any) -> int | None:
+    """
+    Return the integer a SMART value starts with, or None.
+
+    SMART values arrive as text and carry whatever the drive felt like
+    reporting: `36`, `36 (Min/Max 20/45)`, `3728h+12m`, or a bare `-` where
+    a virtual NVMe reports no temperature at all. The integer in front is
+    what the sensors want; anything without one is simply not a reading.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if not isinstance(value, str):
+        return None
+    match = re.match(r"\s*(\d+)", value.replace(",", ""))
+    return int(match.group(1)) if match else None
+
+
+def parse_smart_attributes(attributes: list[Any]) -> dict[str, int]:
+    """
+    Pick the SMART attributes the disk sensors report.
+
+    A value that is not a number is skipped rather than raised on. One
+    unparseable field used to take the whole disk coordinator down and mark
+    every entity of that disk unavailable, for a temperature a drive did not
+    have.
+    """
+    wanted = {
+        SMART_POWER_CYCLES: ("power_cycles", "raw"),
+        SMART_TEMPERATURE: ("temperature", "raw"),
+        SMART_TEMPERATURE_AIR: ("temperature_air", "raw"),
+        SMART_POWER_HOURS: ("power_hours", "raw"),
+        SMART_LIFE_LEFT: ("life_left", "value"),
+        SMART_POWER_LOSS: ("power_loss", "raw"),
+    }
+    result: dict[str, int] = {}
+    for attribute in attributes:
+        if not isinstance(attribute, dict):
+            continue
+        smart_id = _leading_int(attribute.get("id"))
+        if smart_id not in wanted:
+            continue
+        key, field = wanted[smart_id]
+        if (number := _leading_int(attribute.get(field))) is not None:
+            result[key] = number
+    return result
+
+
+class ProxmoxDiskCoordinator(ProxmoxCoordinator):
+    """Proxmox VE Disk data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        api_category: str,
+        node_name: str,
+        disk_id: str,
+    ) -> None:
+        """Initialize the Proxmox Disk coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_{api_category}_{node_name}_{disk_id}",
+            update_interval=poll_interval(config_entry),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = disk_id
+
+    async def _async_update_data(self) -> ProxmoxDiskData:
+        """Update data  for Proxmox Disk."""
+        if self.node_name is not None:
+            api_path = f"nodes/{self.node_name}/disks/list"
+            api_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Disk,
+                self.resource_id,
+            )
+        else:
+            msg = f"{self.resource_id} node not found"
+            raise UpdateFailed(msg)
+
+        if api_status is None:
+            return ProxmoxDiskData(
+                type=ProxmoxType.Disk,
+                node=self.node_name,
+                disk_id=self.resource_id,
+                path=None,
+                disk_wearout=UNDEFINED,
+                vendor=None,
+                serial=None,
+                model=None,
+                disk_type=None,
+                size=UNDEFINED,
+                health=UNDEFINED,
+                disk_rpm=UNDEFINED,
+                temperature_air=UNDEFINED,
+                temperature=UNDEFINED,
+                power_cycles=UNDEFINED,
+                power_hours=UNDEFINED,
+                life_left=UNDEFINED,
+                power_loss=UNDEFINED,
+                wwn=None,
+            )
+
+        for disk in api_status:
+            if disk_matches_id(disk, self.resource_id):
+                api_path = f"nodes/{self.node_name}/disks/smart?disk={disk['devpath']}"
+                try:
+                    disk_attributes_api = await self.hass.async_add_executor_job(
+                        poll_api,
+                        self.hass,
+                        self.config_entry,
+                        self.proxmox,
+                        api_path,
+                        ProxmoxType.Disk,
+                        self.resource_id,
+                    )
+                except UpdateFailed:
+                    disk_attributes_api = None
+
+                attributes_json = []
+                if (
+                    disk_attributes_api is not None
+                    and "attributes" in disk_attributes_api
+                ):
+                    attributes_json = disk_attributes_api["attributes"]
+                elif (
+                    disk_attributes_api is not None
+                    and "type" in disk_attributes_api
+                    and disk_attributes_api["type"] == "text"
+                ):
+                    attributes_json = parse_smart_text(disk_attributes_api["text"])
+
+                disk_attributes = parse_smart_attributes(attributes_json)
+
+                disk_type = disk.get("type", None)
+                return ProxmoxDiskData(
+                    type=ProxmoxType.Disk,
+                    node=self.node_name,
+                    disk_id=self.resource_id,
+                    path=disk["devpath"],
+                    vendor=disk.get("vendor", None),
+                    serial=disk.get("serial", None),
+                    model=disk.get("model", None),
+                    disk_type=disk_type,
+                    wwn=disk.get("wwn", None),
+                    disk_wearout=(
+                        float(disk["wearout"])
+                        if (
+                            "wearout" in disk
+                            and disk_type.upper() in ("SSD", "NVME")
+                            and str(disk["wearout"]).upper() != "N/A"
+                        )
+                        else UNDEFINED
+                    ),
+                    size=float(disk["size"]) if "size" in disk else UNDEFINED,
+                    health=disk.get("health", UNDEFINED),
+                    disk_rpm=(
+                        float(disk["rpm"])
+                        if (
+                            "rpm" in disk
+                            and disk_type.upper() not in ("SSD", "NVME", "USB", None)
+                        )
+                        else UNDEFINED
+                    ),
+                    temperature_air=disk_attributes.get("temperature_air", UNDEFINED),
+                    temperature=disk_attributes.get("temperature", UNDEFINED),
+                    power_cycles=disk_attributes.get("power_cycles", UNDEFINED),
+                    life_left=disk_attributes.get("life_left", UNDEFINED),
+                    power_hours=disk_attributes.get("power_hours", UNDEFINED),
+                    power_loss=disk_attributes.get("power_loss", UNDEFINED),
+                )
+
+        msg = f"Disk {self.resource_id} not found on node {self.node_name}."
+        raise UpdateFailed(msg)
+
+
+class ProxmoxTaskCoordinator(ProxmoxCoordinator):
+    """Proxmox VE Task data update coordinator."""
+
+    def __init__(
+        self,
+        *,
+        hass: HomeAssistant,
+        proxmox: ProxmoxAPI,
+        config_entry: ConfigEntry,
+        api_category: str,
+        node_name: str,
+    ) -> None:
+        """Initialize the Proxmox Task coordinator."""
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=config_entry,
+            name=f"proxmox_coordinator_{api_category}_{node_name}",
+            update_interval=timedelta(seconds=TASKS_UPDATE_INTERVAL),
+        )
+
+        self.hass = hass
+        self.config_entry: ConfigEntry = self.config_entry
+        self.proxmox = proxmox
+        self.node_name = node_name
+        self.resource_id = node_name
+
+    async def _async_update_data(self) -> ProxmoxTaskData:
+        """Update data for Proxmox Tasks."""
+        if self.node_name is not None:
+            api_path = f"nodes/{self.node_name}/tasks"
+            api_status = await self.hass.async_add_executor_job(
+                poll_api,
+                self.hass,
+                self.config_entry,
+                self.proxmox,
+                api_path,
+                ProxmoxType.Tasks,
+                self.resource_id,
+            )
+        else:
+            msg = f"{self.resource_id} node not found"
+            raise UpdateFailed(msg)
+
+        if api_status is None:
+            return ProxmoxTaskData(
+                type=ProxmoxType.Tasks,
+                node=self.node_name,
+                failed_count=0,
+                recent_failures=UNDEFINED,
+                last_failure_time=UNDEFINED,
+            )
+
+        # Filter for failed tasks in the last 24 hours (86400 seconds)
+        current_time = int(time.time())
+        twenty_four_hours_ago = current_time - 86400
+
+        failed_tasks = []
+        for task in api_status:
+            # Task is considered failed if:
+            # 1. status is not "OK" (for completed tasks)
+            # 2. status is not "running" (for active tasks)
+            # 3. starttime is within last 24 hours
+            task_status = task.get("status", "")
+            task_starttime = int(task.get("starttime", 0))
+            task_endtime = int(task.get("endtime", 0))
+
+            if (
+                task_status not in ("OK", "running")
+                and task_starttime > twenty_four_hours_ago
+                and task_status != ""  # Ignore tasks with empty status
+            ):
+                # Convert timestamps to readable dates in Home Assistant's timezone
+                tz = ZoneInfo(str(self.hass.config.time_zone))
+                starttime_str = datetime.fromtimestamp(task_starttime, tz=tz).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+                endtime_str = (
+                    datetime.fromtimestamp(task_endtime, tz=tz).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                    if task_endtime > 0
+                    else "N/A"
+                )
+
+                failed_tasks.append(
+                    {
+                        "type": task.get("type", "unknown"),
+                        "starttime": starttime_str,
+                        "endtime": endtime_str,
+                        "status": task_status,
+                    }
+                )
+
+        # Sort by start time (most recent first) and limit to 10 recent failures
+        failed_tasks.sort(key=lambda x: x["starttime"], reverse=True)
+        recent_failures = failed_tasks[:10] if failed_tasks else UNDEFINED
+        last_failure_time = failed_tasks[0]["endtime"] if failed_tasks else UNDEFINED
+
+        return ProxmoxTaskData(
+            type=ProxmoxType.Tasks,
+            node=self.node_name,
+            failed_count=len(failed_tasks),
+            recent_failures=recent_failures,
+            last_failure_time=last_failure_time,
+        )
+
+
+def update_guest_device(
+    self,
+    api_category: ProxmoxType,
+    node_name: str,
+    guest_name: str | None = None,
+) -> None:
+    """Keep the guest's device on its node, and under the name Proxmox has."""
+    dev_reg = dr.async_get(self.hass)
+    # Scoped to this config entry: identifiers are only unique within one, so
+    # async_get_device can resolve to a device belonging to a different
+    # integration that happens to share the pair.
+    device = dev_reg.async_get_device_by_identifier(
+        (
+            DOMAIN,
+            f"{self.config_entry.entry_id}_{api_category.upper()}_{self.resource_id}",
+        ),
+        self.config_entry.entry_id,
+    )
+    if device is None:
+        # The first refresh runs before the platforms have created the
+        # device. Creating it here instead would leave a bare device named
+        # after the config entry, with no model and no entities, should
+        # nothing come along to fill it in.
+        return
+    if guest_name is not None:
+        # A guest renamed in Proxmox keeps its id, so this is the same device
+        # under a new name. A name given in Home Assistant is kept: it lives
+        # in `name_by_user` and is what the interface shows either way.
+        name = f"{api_category.upper()} {guest_name} ({self.resource_id})"
+        if device.name != name:
+            LOGGER.debug(
+                "Update device %s - name: old=%s, new=%s",
+                self.resource_id,
+                device.name,
+                name,
+            )
+            dev_reg.async_update_device(device.id, name=name)
+    via_device = dev_reg.async_get_device_by_identifier(
+        (
+            DOMAIN,
+            f"{self.config_entry.entry_id}_{ProxmoxType.Node.upper()}_{node_name}",
+        ),
+        self.config_entry.entry_id,
+    )
+    via_device_id: str | UndefinedType = via_device.id if via_device else UNDEFINED
+    if device.via_device_id != via_device_id:
+        LOGGER.debug(
+            "Update device %s - connected via device: old=%s, new=%s",
+            self.resource_id,
+            device.via_device_id,
+            via_device_id,
+        )
+        dev_reg.async_update_device(
+            device.id,
+            via_device_id=via_device_id,
+            entry_type=dr.DeviceEntryType.SERVICE,
+        )
+
+
+# Keyword-only arguments are not an option here: every caller reaches this
+# through `hass.async_add_executor_job(poll_api, ...)`, which forwards its
+# arguments positionally and accepts no keywords.
+def _client_for(config_entry: ConfigEntry, proxmox: ProxmoxAPI) -> ProxmoxClient | None:
+    """Return the client that built `proxmox`, if setup has stored one."""
+    runtime = getattr(config_entry, "runtime_data", None)
+    if not isinstance(runtime, dict):
+        return None
+    for key in (PROXMOX_CLIENT, PROXMOX_HA_ADMIN_CLIENT):
+        client = runtime.get(key)
+        if client is not None and client.issued(proxmox):
+            return client
+    return None
+
+
+def _closed_before_answering(error: connError) -> bool:
+    """
+    Return whether the host closed the connection before it answered.
+
+    pveproxy closes a connection that has been idle for five seconds.
+    A read that goes out on it just then finds it closed under the
+    request, and requests reports `ConnectionError(ProtocolError(
+    'Connection aborted.', RemoteDisconnected(...)))` - or the same with
+    ConnectionResetError, which RemoteDisconnected is one of, when the
+    close came as a reset. A connection that was refused or timed out
+    carries a different reason, and is not taken for this.
+    """
+    reason = error.args[0] if error.args else None
+    return isinstance(reason, ProtocolError) and any(
+        isinstance(arg, ConnectionResetError) for arg in reason.args
+    )
+
+
+def _retry_on_another_node(
+    client: ProxmoxClient | None,
+    generation: int,
+    api_path: str,
+    error: Exception,
+) -> dict[str, Any] | None:
+    """
+    Move the client to another node of the cluster and repeat the request.
+
+    Everything goes through the one configured host, and its pveproxy
+    forwards to the others - so that host being down took the whole cluster
+    out of Home Assistant while three nodes were running. The client knows
+    the other nodes from `cluster/status`; if one of them answers, the read
+    is repeated there. If none does, the original failure stands.
+    """
+    if client is None or not client.failover(generation):
+        raise error
+    return get_api(client.get_api_client(), api_path)
+
+
+def _retry_after_relogin(
+    config_entry: ConfigEntry,
+    proxmox: ProxmoxAPI,
+    api_path: str,
+    error: AuthenticationError,
+) -> dict[str, Any] | None:
+    """
+    Log in once more and repeat the request before asking for credentials.
+
+    A ticket outlives a host that is off for more than two hours, and the
+    renewal proxmoxer then attempts is refused like a wrong password. Nodes
+    that are switched off overnight hit this every morning and ended up in
+    the reauthentication flow although nothing about the credentials had
+    changed. A fresh login with the stored password settles it either way:
+    it works, or it fails for a reason that really is the credentials.
+    """
+    client = _client_for(config_entry, proxmox)
+    if client is None:
+        raise ConfigEntryAuthFailed from error
+    try:
+        renewed = client.relogin()
+    except AuthenticationError as again:
+        raise ConfigEntryAuthFailed from again
+    if not renewed:
+        # Token authentication has nothing to renew; this failure is real.
+        raise ConfigEntryAuthFailed from error
+    LOGGER.debug("Logged in again after the ticket was refused for %s", api_path)
+    try:
+        return get_api(proxmox, api_path)
+    except AuthenticationError as again:
+        raise ConfigEntryAuthFailed from again
+
+
+def poll_api(  # noqa: PLR0917
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    proxmox: ProxmoxAPI,
+    api_path: str,
+    api_category: ProxmoxType,
+    resource_id: str | int | None = None,
+    *,
+    issue_crete_permissions: bool | None = True,
+) -> dict[str, Any] | None:
+    """Return data from the Proxmox Node API."""
+
+    def node_of_path(fallback: str | int | None) -> str:
+        """
+        Return the node a `nodes/{node}/...` read is scoped to.
+
+        The privilege belongs to the node, but what the coordinator knows
+        itself is its resource: a disk id, a pool name. Both are in the
+        path, which every node-scoped read spells out. The two reads of
+        the bare `nodes` listing have no node in the path and pass it as
+        their resource instead, which is what the fallback is for.
+        """
+        parts = api_path.split("?", 1)[0].split("/")
+        if len(parts) >= 2 and parts[0] == "nodes" and parts[1]:
+            return parts[1]
+        return str(fallback) if fallback is not None else ""
+
+    def permission_to_resource(
+        api_category: ProxmoxType,
+        resource_id: int | str | None = None,
+    ) -> str:
+        """Return the permissions required for the resource."""
+        match api_category:
+            case (
+                ProxmoxType.Node
+                | ProxmoxType.Disk
+                | ProxmoxType.ZFS
+                | ProxmoxType.Tasks
+            ):
+                if any(read in api_path for read in ROOT_CHECKED_READS):
+                    return "['perm','/',['Sys.Audit']]"
+                return f"['perm','/nodes/{node_of_path(resource_id)}',['Sys.Audit']]"
+            case ProxmoxType.QEMU | ProxmoxType.LXC:
+                return f"['perm','/vms/{resource_id}',['VM.Audit']]"
+            case ProxmoxType.Storage:
+                # The id carries the node for a per-node storage; the ACL
+                # path is the storage's own name either way.
+                return (
+                    f"['perm','/storage/{storage_name(str(resource_id))}',"
+                    "['Datastore.Audit'],'any',1]"
+                )
+            case ProxmoxType.Update:
+                return f"['perm','/nodes/{node_of_path(resource_id)}',['Sys.Modify']]"
+            case ProxmoxType.Proxmox:
+                return "['perm','/',['Sys.Audit']]"
+            case ProxmoxType.Resources:
+                # `cluster/resources` needs no privilege; Proxmox filters it
+                # to what the credentials may audit. A 403 here means the
+                # credentials cannot audit anything at all.
+                return "['perm','/',['VM.Audit']]"
+            case _:
+                return "Unmapped"
+
+    # Everything goes to one host, which forwards what belongs to another
+    # node. With that node down, pveproxy waits and then answers 595 'No
+    # route to host' - once per guest, storage and node read, every poll,
+    # seconds at a time. The cluster already said the node is off, so
+    # take that answer instead of asking after it.
+    if (node := node_of_path(None)) and node in shared_resources(
+        hass, config_entry
+    ).nodes_off:
+        msg = f"Node {node} is offline"
+        raise UpdateFailed(msg)
+
+    client = _client_for(config_entry, proxmox)
+    generation = client.generation if client is not None else 0
+    try:
+        try:
+            try:
+                api_data = get_api(proxmox, api_path)
+            except ResourceException as error:
+                if error.status_code not in PVEPROXY_BUSY:
+                    raise
+                # One such moment used to take an entity out for a whole
+                # polling interval; asked again, the node usually answers.
+                LOGGER.debug("Read %s came back %s, asking once more", api_path, error)
+                api_data = get_api(proxmox, api_path)
+            except connError as error:
+                if not _closed_before_answering(error):
+                    raise
+                # The host is there; only the kept-alive connection was
+                # not. A new one gets the answer. Failing over finds the
+                # host answering, or has no other host, and the read fails
+                # for a whole polling interval (#723).
+                LOGGER.debug("Read %s lost its connection, asking once more", api_path)
+                api_data = get_api(proxmox, api_path)
+        except AuthenticationError as error:
+            api_data = _retry_after_relogin(config_entry, proxmox, api_path, error)
+        except (ConnectTimeout, ConnectionError, connError, RetryError) as error:
+            api_data = _retry_on_another_node(client, generation, api_path, error)
+    except (
+        SSLError,
+        ConnectTimeout,
+        HTTPError,
+        ConnectionError,
+        connError,
+        RetryError,
+    ) as error:
+        raise UpdateFailed(error) from error
+    except ResourceException as error:
+        if error.status_code == 403 and issue_crete_permissions:
+            # The update coordinator passes "Update <node>" as its resource
+            # id; the cluster-wide reads pass none at all. Neither may end
+            # up in the repair text as is.
+            resource_label = (
+                str(resource_id).replace(f"{ProxmoxType.Update.capitalize()} ", "")
+                if resource_id is not None
+                else ""
+            )
+            note_resource_threadsafe(
+                hass,
+                config_entry,
+                FORBIDDEN,
+                f"{api_category}_{resource_id}",
+                ResourceLine(
+                    label=(
+                        f"Cluster (credentials `{config_entry.data.get(CONF_HA_ADMIN_USERNAME)}`)"
+                        if api_category is ProxmoxType.Proxmox
+                        else f"{api_category.capitalize()} {resource_label}".strip()
+                    ),
+                    permission=permission_to_resource(api_category, resource_label),
+                    tracked_as=resource_label or None,
+                ),
+                listed=True,
+            )
+            LOGGER.debug(
+                f"Error get API path {api_path}: User not allowed to access the resource, check user permissions as per the documentation, see details in the repair created by the integration."
+            )
+            return None
+        raise UpdateFailed(str(error)) from error
+    note_resource_threadsafe(
+        hass, config_entry, FORBIDDEN, f"{api_category}_{resource_id}", listed=False
+    )
+    return api_data

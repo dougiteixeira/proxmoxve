@@ -26,11 +26,19 @@ jobs:
           version="${version#v}"
           yq e -P -o=json \
             -i ".version = \"${version}\"" \
+            "${{ github.workspace }}/custom_components/proxmoxve/manifest.json"
+          yq e -P -o=json \
+            -i ".version = \"${version}\"" \
             "${{ github.workspace }}/custom_components/proxmoxve_custom/manifest.json"
+          yq e -P -o=json \
+            -i ".version = \"${version}\"" \
+            "${{ github.workspace }}/manifest.json"
 
       - name: "ZIP the integration directory"
         shell: "bash"
         run: |
+          cd "${{ github.workspace }}/custom_components/proxmoxve"
+          zip proxmoxve.zip -r ./
           cd "${{ github.workspace }}/custom_components/proxmoxve_custom"
           zip proxmoxve_custom.zip -r ./
 
@@ -38,10 +46,12 @@ jobs:
         uses: sigstore/gh-action-sigstore-python@v3.5.0
         with:
           inputs: |
+            ${{ github.workspace }}/custom_components/proxmoxve/proxmoxve.zip
             ${{ github.workspace }}/custom_components/proxmoxve_custom/proxmoxve_custom.zip
 
       - name: "Upload the ZIP file to the release"
         uses: "softprops/action-gh-release@v3.0.4"
         with:
           files: |
+            ${{ github.workspace }}/custom_components/proxmoxve/proxmoxve.zip
             ${{ github.workspace }}/custom_components/proxmoxve_custom/proxmoxve_custom.zip

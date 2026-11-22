@@ -72,3 +72,16 @@ def test_fixable_issues_do_not_have_a_top_level_description(language):
         for issue_id, issue in issues.items()
         if "fix_flow" in issue and "description" in issue
     ]
+
+
+@pytest.mark.parametrize("language", ["en", "pt", "pt-BR"])
+def test_migration_restart_repair_describes_marketplace_transition(language):
+    """The restart repair points to the stable release and Marketplace."""
+    issue = json.loads(
+        (TRANSLATIONS_DIR / f"{language}.json").read_text(encoding="utf-8")
+    )["issues"]["domain_migration_restart"]
+    step = issue["fix_flow"]["step"]["confirm_restart"]
+    assert "6.0.0" in step["description"]
+    assert "Marketplace" in step["description"]
+    assert "custom_components/proxmoxve" in step["description"]
+    assert step["submit"]
