@@ -23,7 +23,7 @@ blueprint:
         device:
           multiple: true
           filter:
-            integration: proxmoxve
+            integration: proxmoxve_custom
     at:
       name: Time
       description: When the run starts.
