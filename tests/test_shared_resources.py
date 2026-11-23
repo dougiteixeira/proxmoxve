@@ -76,7 +76,7 @@ async def test_the_next_burst_reads_afresh(hass: HomeAssistant) -> None:
     with patch(
         "custom_components.proxmoxve_custom.coordinator.poll_api", side_effect=_poll
     ):
-        entry = MockConfigEntry(domain="proxmoxve")
+        entry = MockConfigEntry(domain="proxmoxve_custom")
         assert await shared.get(hass, entry, object()) == [
             {"type": "node", "node": "pve"}
         ]
@@ -101,7 +101,7 @@ async def test_a_failed_read_is_shared_too(hass: HomeAssistant) -> None:
     with patch(
         "custom_components.proxmoxve_custom.coordinator.poll_api", side_effect=_poll
     ):
-        entry = MockConfigEntry(domain="proxmoxve")
+        entry = MockConfigEntry(domain="proxmoxve_custom")
         for _ in range(3):
             with pytest.raises(UpdateFailed, match="host gone"):
                 await shared.get(hass, entry, object())
@@ -115,7 +115,7 @@ async def test_the_type_filter_is_applied_locally(hass: HomeAssistant) -> None:
     with patch(
         "custom_components.proxmoxve_custom.coordinator.poll_api", return_value=rows
     ):
-        entry = MockConfigEntry(domain="proxmoxve")
+        entry = MockConfigEntry(domain="proxmoxve_custom")
         assert await shared.get(hass, entry, object(), resource_type="storage") == [
             {"type": "storage", "storage": "local"}
         ]

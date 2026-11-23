@@ -137,7 +137,7 @@ async def test_a_node_without_data_leaves_the_other_entities_alone(
 
     assert current_entry.state is ConfigEntryState.LOADED
     assert "model_processor" not in caplog.text
-    assert "Error while setting up proxmoxve platform" not in caplog.text
+    assert "Error while setting up proxmoxve_custom platform" not in caplog.text
     # The sensor platform ran to the end: the node's failed-task sensor is
     # created from the same device description that used to raise.
     assert er.async_get(hass).async_get(f"sensor.node_{NODE}_failed_tasks") is not None
