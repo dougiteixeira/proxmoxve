@@ -1,13 +1,13 @@
 # Proxmox VE Custom Integration for Home Assistant
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/5b5a8c5b-885b-4233-a858-2e78b97d8c74">
-  <img src="https://github.com/dougiteixeira/proxmoxve/assets/31328123/dfec7426-852d-41ea-b6c1-9bfd8cd1e8a8">
+  <source media="(prefers-color-scheme: dark)" srcset="custom_components/proxmoxve_custom/brand/dark_logo@2x.png">
+  <img src="custom_components/proxmoxve_custom/brand/logo@2x.png">
 </picture>
 
 [Proxmox VE](https://www.proxmox.com/en/) is an open-source server virtualization environment. This integration reads its state into Home Assistant and lets you act on it — for a single node as much as for a cluster.
 
-It began as [@dougiteixeira](https://github.com/dougiteixeira)'s custom integration, built on the [Home Assistant core integration](https://www.home-assistant.io/integrations/proxmoxve/) and grown well beyond it; it can run alongside the core one ([what differs](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/compared-to-core.md)). Everything goes through the Proxmox API with the credentials you give it — nothing is installed on the nodes, except [PVE-mods](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/hardware-sensors.md) if you want hardware temperatures.
+It began as [@dougiteixeira](https://github.com/dougiteixeira)'s custom integration, built on the [Home Assistant core integration](https://www.home-assistant.io/integrations/proxmoxve/) and grown well beyond it; it can run alongside the core one ([what differs](docs/compared-to-core.md)). Everything goes through the Proxmox API with the credentials you give it — nothing is installed on the nodes, except [PVE-mods](docs/hardware-sensors.md) if you want hardware temperatures.
 
 ## What you get
 
@@ -18,23 +18,25 @@ It began as [@dougiteixeira](https://github.com/dougiteixeira)'s custom integrat
 - **Actions** — start, stop, shutdown, reboot, suspend, resume, hibernate, reset, unlock, snapshot and backup buttons; bulk start/stop/suspend/backup per node; Wake on LAN; arm/disarm HA; and a `proxmoxve_custom.backup` action with all of vzdump's options.
 - **Behaviour** — optional automatic discovery of everything the credentials can see, failover to another cluster node when the configured one goes down, no re-authentication after a node was off overnight, repairs that name the missing privilege, and buttons only where the privilege exists.
 
-Many entities are created **disabled by default** — the buttons that change things, and sensors most setups never need — and are enabled per entity, see [Disabled entities](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md#disabled-entities).
+Many entities are created **disabled by default** — the buttons that change things, and sensors most setups never need — and are enabled per entity, see [Disabled entities](docs/behaviour.md#disabled-entities).
 
 ## Documentation
 
-- [Entities](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md) — every sensor, by cluster, node, guest and storage
-- [Actions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/actions.md) — buttons and the `proxmoxve_custom.backup` action
-- [Hardware sensors and physical disks](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/hardware-sensors.md) — PVE-mods, SMART, when readings come and go
-- [Proxmox permissions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/permissions.md) — roles, group, user and token, step by step
-- [How it behaves](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md) — discovery, failover, nodes that are off, disabled entities, what I cannot test
-- [Troubleshooting](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/troubleshooting.md) — debug logging, diagnostics, screenshots
-- [Compared with the core integration](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/compared-to-core.md) — what the extra install gets you, feature by feature
-- [Blueprints](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md) — a scheduled backup as a ready-made automation
-- [Contributing](https://github.com/dougiteixeira/proxmoxve/blob/main/CONTRIBUTING.md)
+- [Entities](docs/entities.md) — every sensor, by cluster, node, guest and storage
+- [Actions](docs/actions.md) — buttons and the `proxmoxve_custom.backup` action
+- [Hardware sensors and physical disks](docs/hardware-sensors.md) — PVE-mods, SMART, when readings come and go
+- [Proxmox permissions](docs/permissions.md) — roles, group, user and token, step by step
+- [How it behaves](docs/behaviour.md) — discovery, failover, nodes that are off, disabled entities, what I cannot test
+- [Troubleshooting](docs/troubleshooting.md) — debug logging, diagnostics, screenshots
+- [Compared with the core integration](docs/compared-to-core.md) — what the extra install gets you, feature by feature
+- [Blueprints](blueprints/readme.md) — a scheduled backup as a ready-made automation
+- [Contributing](CONTRIBUTING.md)
 
-## Install
+## Updating the domain from `proxmoxve` to `proxmoxve_custom`
 
-### Updating the domain from `proxmoxve` to `proxmoxve_custom`
+>[!TIP]
+> The migration steps below apply only if you already have the integration configured with a version earlier than 6.0.0 and wish to retain your existing configuration, including entity names, IDs, and customizations.
+> Alternatively, you may uninstall and reinstall the integration and set up a new configuration entry. Please note that doing so will remove all current devices, entities, and customizations.
 
 The integration was originally created using the `proxmoxve` domain—the same one used by the official integration—which means both cannot be used simultaneously.
 
@@ -42,11 +44,13 @@ Version [6.0.0b0](https://github.com/dougiteixeira/proxmoxve/releases/tag/6.0.0b
 
 Please follow the instructions provided in the [6.0.0b0 release notes](https://github.com/dougiteixeira/proxmoxve/releases/tag/6.0.0b0) to perform the update. This update must be carried out manually due to Marketplace restrictions.
 
+## Install
+
 ### Installation via the Marketplace (Home Assistant 2026.11 and newer)
 
 HACS is built into Home Assistant as the Marketplace. Proxmox VE is not in its catalog, so it is added as a custom repository - this button does that:
 
-[![image](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dougiteixeira&repository=proxmoxve&category=integration)
+[![Open your Home Assistant instance and open a repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=dougiteixeira&repository=proxmoxve&category=integration)
 
 The Marketplace asks before it adds the repository, and it needs a connected GitHub account for it. Without the button: Settings > Marketplace > Custom repositories, add `https://github.com/dougiteixeira/proxmoxve` as type Integration.
 
@@ -93,17 +97,17 @@ Everything beyond the credentials lives in the integration options (Settings →
 - **Add or remove nodes, VMs, containers or storages** — what is tracked. Shared storage is listed once, marked *(shared)*.
 - **Monitor physical disks** — the per-disk devices with SMART, temperature and wearout. Reading SMART wakes sleeping disks, which is why it can be switched off.
 - **Polling interval** — 30, 45, 60, 90 or 120 seconds for nodes, guests, storage and backups; certificates, subscriptions and Ceph stay hourly, failed tasks at five minutes.
-- **Monitor package updates** — the [update entity](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md#package-updates); off means no `Sys.Modify` needed.
-- **Monitor failed tasks** — the [failed task sensors](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md#failed-task-monitoring).
-- **Track everything automatically** — [discovery](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md#tracking-everything-automatically): follow the cluster instead of a fixed selection.
-- **Guest file path to monitor** — the [guest file content sensor](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md#guest-file-content-sensor).
-- **Backup storage for the backup buttons** — the [backup buttons](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/actions.md#backup-buttons) exist only while this is set.
-- **Entity id scheme** — standard (Home Assistant's device then name) or extended (`pve_<kind>_<id>_<name>_<item>`, with the prefix of your choice); chosen at setup, existing ids never change ([details](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/behaviour.md#entity-ids)).
-- **Optional: cluster HA administration** — a second set of credentials for the [cluster-wide features](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/entities.md#cluster-ha-administration-advanced-optional).
+- **Monitor package updates** — the [update entity](docs/entities.md#package-updates); off means no `Sys.Modify` needed.
+- **Monitor failed tasks** — the [failed task sensors](docs/entities.md#failed-task-monitoring).
+- **Track everything automatically** — [discovery](docs/behaviour.md#tracking-everything-automatically): follow the cluster instead of a fixed selection.
+- **Guest file path to monitor** — the [guest file content sensor](docs/entities.md#guest-file-content-sensor).
+- **Backup storage for the backup buttons** — the [backup buttons](docs/actions.md#backup-buttons) exist only while this is set.
+- **Entity id scheme** — standard (Home Assistant's device then name) or extended (`pve_<kind>_<id>_<name>_<item>`, with the prefix of your choice); chosen at setup, existing ids never change ([details](docs/behaviour.md#entity-ids)).
+- **Optional: cluster HA administration** — a second set of credentials for the [cluster-wide features](docs/entities.md#cluster-ha-administration-advanced-optional).
 
 ## Permissions
 
-The credentials need `VM.Audit`, `Sys.Audit` and `Datastore.Audit` on what you track to read — plus `VM.GuestAgent.Audit` for a VM's disk usage from inside the guest — and more to act — `VM.PowerMgmt` for a guest's power buttons, `Sys.PowerMgmt` for a node's, `VM.Snapshot`, `VM.Backup`, `Sys.Modify` for package updates. Buttons exist only where the privilege is held, and a repair names what is missing. The step-by-step guide for roles, group, user and token — including the one token setting most setups get wrong — is in [Proxmox permissions](https://github.com/dougiteixeira/proxmoxve/blob/main/docs/permissions.md).
+The credentials need `VM.Audit`, `Sys.Audit` and `Datastore.Audit` on what you track to read — plus `VM.GuestAgent.Audit` for a VM's disk usage from inside the guest — and more to act — `VM.PowerMgmt` for a guest's power buttons, `Sys.PowerMgmt` for a node's, `VM.Snapshot`, `VM.Backup`, `Sys.Modify` for package updates. Buttons exist only where the privilege is held, and a repair names what is missing. The step-by-step guide for roles, group, user and token — including the one token setting most setups get wrong — is in [Proxmox permissions](docs/permissions.md).
 
 ## Translations
 [![Crowdin](https://badges.crowdin.net/proxmoxve-homeassistant/localized.svg)](https://crowdin.com/project/proxmoxve-homeassistant)
@@ -129,3 +133,5 @@ Next translate a string:
 ### Adding a new language
 
 [Create an Issue](https://github.com/dougiteixeira/proxmoxve/issues/new?template=new_language_request.yml&title=New+language) requesting a new language. We will do the necessary work to add the new translation to the integration and Crowdin site, when it's ready for you to contribute we'll comment on the issue you raised.
+
+[← README](#) · [Entities](entities.md) · [Actions](actions.md) · [Hardware sensors](hardware-sensors.md) · [Permissions](permissions.md) · [Behaviour](behaviour.md) · [Troubleshooting](troubleshooting.md) · [Compared with core](compared-to-core.md)/

@@ -1,4 +1,4 @@
-[← README](https://github.com/dougiteixeira/proxmoxve#readme) · [Entities](entities.md) · [Actions](actions.md) · [Hardware sensors](hardware-sensors.md) · [Permissions](permissions.md) · [Behaviour](behaviour.md) · [Troubleshooting](troubleshooting.md) · [Compared with core](compared-to-core.md)
+[← README](/README.md) · [Entities](entities.md) · [Actions](actions.md) · [Hardware sensors](hardware-sensors.md) · [Permissions](permissions.md) · [Behaviour](behaviour.md) · [Troubleshooting](troubleshooting.md) · [Compared with core](#)
 
 # Compared with the core integration
 
@@ -89,7 +89,7 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | Container: start, stop, reboot, snapshot | ✅ | ✅ — plus shutdown and unlock |
 | Back up now, per guest | ➖ | ✅ with a [backup storage picked](actions.md#backup-buttons) |
 | `proxmoxve_custom.backup` action — guests, nodes or the cluster as target, vzdump's options | ➖ | ✅ |
-| Blueprint for a scheduled backup | ➖ | ✅ ([blueprints](https://github.com/dougiteixeira/proxmoxve/blob/main/blueprints/readme.md)) |
+| Blueprint for a scheduled backup | ➖ | ✅ ([blueprints](blueprints/readme.md)) |
 
 ## Where the core integration is the better fit
 
