@@ -48,6 +48,8 @@ from .const import (
     PROXMOX_CLIENT,
     PROXMOX_HA_ADMIN_CLIENT,
     SLOW_UPDATE_INTERVAL,
+    SMART_READS_PER_NODE,
+    SMART_UPDATE_INTERVAL,
     TASKS_UPDATE_INTERVAL,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_CHOICES,
@@ -1080,6 +1082,50 @@ PVEPROXY_BUSY: Final = frozenset({596, 597})
 ROOT_CHECKED_READS: Final = ("/disks/smart", "/disks/zfs")
 
 
+class SharedRead:
+    """
+    One read of an API path per poll burst, shared by whoever needs it.
+
+    What `SharedResources` does for `cluster/resources`, for a list that
+    belongs to a node. The first caller of a burst reads; the others wait
+    for it and take the result. What the read raised is kept the same way
+    and raised for each of them, so every caller still deals with a
+    refusal or a dead host as if it had asked itself.
+    """
+
+    def __init__(self) -> None:
+        """Start with nothing read."""
+        self._lock = asyncio.Lock()
+        self._read_at: float = -RESOURCES_TTL
+        self._data: Any = None
+        self._error: Exception | None = None
+
+    async def get(
+        self, read: Callable[[], Awaitable[Any]], *, fresh: bool = False
+    ) -> Any:
+        """
+        Return what `read` answered, asked afresh when that is older than the TTL.
+
+        `fresh` reads regardless - for setup, which builds the coordinators
+        from the list; its read then serves their first refreshes.
+        """
+        async with self._lock:
+            if fresh or time.monotonic() - self._read_at >= RESOURCES_TTL:
+                try:
+                    self._data, self._error = await read(), None
+                except Exception as error:
+                    # Kept, and raised below for each caller.
+                    self._data, self._error = None, error
+                self._read_at = time.monotonic()
+        if self._error is not None:
+            raise self._error
+        return self._data
+
+    def forget(self) -> None:
+        """Make the next caller read again."""
+        self._read_at = -RESOURCES_TTL
+
+
 class SharedResources:
     """
     One `cluster/resources` read per poll burst, shared by an entry's coordinators.
@@ -1098,6 +1144,10 @@ class SharedResources:
         self._read_at: float = -RESOURCES_TTL
         self._rows: list[dict[str, Any]] | None = None
         self._failure: str | None = None
+        # The disk and pool lists of the entry's nodes, by API path.
+        self.node_lists: dict[str, SharedRead] = {}
+        # What a node's drives queue for to read their SMART log, by node.
+        self.smart_slots: dict[str, asyncio.Semaphore] = {}
         # The nodes the cluster last reported as anything but online.
         # Read from another thread, so it is replaced, never edited.
         self.nodes_off: frozenset[str] = frozenset()
@@ -1159,6 +1209,8 @@ class SharedResources:
     def forget(self) -> None:
         """Make the next caller read again - after something changed the cluster."""
         self._read_at = -RESOURCES_TTL
+        for node_list in self.node_lists.values():
+            node_list.forget()
 
 
 def nodes_not_online(rows: list[dict[str, Any]] | None) -> frozenset[str]:
@@ -1181,6 +1233,101 @@ def shared_resources(hass: HomeAssistant, config_entry: ConfigEntry) -> SharedRe
     """Return the entry's shared resource read, creating it on first use."""
     store = hass.data.setdefault(DOMAIN, {}).setdefault(RESOURCES_CACHE, {})
     return store.setdefault(config_entry.entry_id, SharedResources())
+
+
+def shared_node_list(
+    hass: HomeAssistant, config_entry: ConfigEntry, api_path: str
+) -> SharedRead:
+    """Return the entry's shared read of a node's disk or pool list."""
+    node_lists = shared_resources(hass, config_entry).node_lists
+    return node_lists.setdefault(api_path, SharedRead())
+
+
+def smart_slots(
+    hass: HomeAssistant, config_entry: ConfigEntry, node: str
+) -> asyncio.Semaphore:
+    """
+    Return what the drives of a node queue for to read their SMART log.
+
+    Each read runs smartctl on the node. Seventeen of them at once is a
+    load of its own; one after the other is most of a minute.
+    """
+    slots = shared_resources(hass, config_entry).smart_slots
+    return slots.setdefault(node, asyncio.Semaphore(SMART_READS_PER_NODE))
+
+
+async def read_node_list(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    proxmox: ProxmoxAPI,
+    api_path: str,
+) -> Any:
+    """
+    Read a node's disk or pool list for setup, and keep it for the coordinators.
+
+    Setup builds one coordinator per row and waits for the first refresh
+    of each, and each of them wants the list it was just built from. On a
+    node with eight disks that was nine reads of a list that takes seconds
+    to make, one after the other, with Home Assistant waiting for the
+    entry. Raises what `get_api` raises.
+    """
+    return await shared_node_list(hass, config_entry, api_path).get(
+        lambda: hass.async_add_executor_job(get_api, proxmox, api_path), fresh=True
+    )
+
+
+async def poll_node_list(  # noqa: PLR0917
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    proxmox: ProxmoxAPI,
+    api_path: str,
+    api_category: ProxmoxType,
+    resource_id: str,
+) -> Any:
+    """
+    Return a node's disk or pool list as `poll_api` does, read once per burst.
+
+    Every disk and every pool of the node has a coordinator of its own,
+    and each read the whole list for its one row. Proxmox asks every drive
+    for its health to build the disk list, which takes seconds on a node
+    with many of them. One coordinator reads now; what it got - or what it
+    raised - goes through `poll_api` for each of them as before, so each
+    still files its own line on the repair.
+    """
+    read: Callable[[], Any] | None = None
+    node = api_path.split("/")[1]
+    # A node the cluster reports as off is left to `poll_api`, which
+    # answers for it without asking.
+    if node not in shared_resources(hass, config_entry).nodes_off:
+        try:
+            data = await shared_node_list(hass, config_entry, api_path).get(
+                lambda: hass.async_add_executor_job(
+                    read_api, config_entry, proxmox, api_path
+                )
+            )
+        except Exception as error:  # handled in poll_api, for each caller
+            failure = error
+
+            def read() -> Any:
+                raise failure
+
+        else:
+
+            def read() -> Any:
+                return data
+
+    return await hass.async_add_executor_job(
+        partial(
+            poll_api,
+            hass,
+            config_entry,
+            proxmox,
+            api_path,
+            api_category,
+            resource_id,
+            read=read,
+        )
+    )
 
 
 class ProxmoxCoordinator(
@@ -2697,8 +2844,7 @@ class ProxmoxZFSCoordinator(ProxmoxCoordinator):
     async def _async_update_data(self) -> ProxmoxStorageData:
         """Update data for Proxmox Update."""
         api_path = f"nodes/{self.node_name}/disks/zfs"
-        pools = await self.hass.async_add_executor_job(
-            poll_api,
+        pools = await poll_node_list(
             self.hass,
             self.config_entry,
             self.proxmox,
@@ -2955,13 +3101,49 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
         self.proxmox = proxmox
         self.node_name = node_name
         self.resource_id = disk_id
+        # The last SMART log read, which drive it was read from, and when.
+        self._smart: Any = None
+        self._smart_path: str | None = None
+        self._smart_at: float = -SMART_UPDATE_INTERVAL
+
+    async def _read_smart(self, devpath: str) -> Any:
+        """
+        Return the drive's SMART log, read afresh every five minutes.
+
+        Proxmox runs smartctl for each read - seconds per drive, and a node
+        with seventeen drives spent most of a minute on them every poll.
+        A read that failed or was refused is not kept: the next poll asks
+        again, as it did before.
+        """
+        if (
+            devpath == self._smart_path
+            and time.monotonic() - self._smart_at < SMART_UPDATE_INTERVAL
+        ):
+            return self._smart
+        api_path = f"nodes/{self.node_name}/disks/smart?disk={devpath}"
+        try:
+            async with smart_slots(self.hass, self.config_entry, self.node_name):
+                smart = await self.hass.async_add_executor_job(
+                    poll_api,
+                    self.hass,
+                    self.config_entry,
+                    self.proxmox,
+                    api_path,
+                    ProxmoxType.Disk,
+                    self.resource_id,
+                )
+        except UpdateFailed:
+            return None
+        if smart is not None:
+            self._smart, self._smart_path = smart, devpath
+            self._smart_at = time.monotonic()
+        return smart
 
     async def _async_update_data(self) -> ProxmoxDiskData:
         """Update data  for Proxmox Disk."""
         if self.node_name is not None:
             api_path = f"nodes/{self.node_name}/disks/list"
-            api_status = await self.hass.async_add_executor_job(
-                poll_api,
+            api_status = await poll_node_list(
                 self.hass,
                 self.config_entry,
                 self.proxmox,
@@ -2998,19 +3180,7 @@ class ProxmoxDiskCoordinator(ProxmoxCoordinator):
 
         for disk in api_status:
             if disk_matches_id(disk, self.resource_id):
-                api_path = f"nodes/{self.node_name}/disks/smart?disk={disk['devpath']}"
-                try:
-                    disk_attributes_api = await self.hass.async_add_executor_job(
-                        poll_api,
-                        self.hass,
-                        self.config_entry,
-                        self.proxmox,
-                        api_path,
-                        ProxmoxType.Disk,
-                        self.resource_id,
-                    )
-                except UpdateFailed:
-                    disk_attributes_api = None
+                disk_attributes_api = await self._read_smart(disk["devpath"])
 
                 attributes_json = []
                 if (
@@ -3322,6 +3492,44 @@ def _retry_after_relogin(
         raise ConfigEntryAuthFailed from again
 
 
+def read_api(
+    config_entry: ConfigEntry, proxmox: ProxmoxAPI, api_path: str
+) -> dict[str, Any] | None:
+    """
+    Ask the API, with everything `poll_api` tries before it gives up.
+
+    pveproxy busy or a kept-alive connection closed under the read: asked
+    once more. A refused ticket: one login more. The host gone: the next
+    node of the cluster. Raises what the last attempt raised.
+    """
+    client = _client_for(config_entry, proxmox)
+    generation = client.generation if client is not None else 0
+    try:
+        try:
+            api_data = get_api(proxmox, api_path)
+        except ResourceException as error:
+            if error.status_code not in PVEPROXY_BUSY:
+                raise
+            # One such moment used to take an entity out for a whole
+            # polling interval; asked again, the node usually answers.
+            LOGGER.debug("Read %s came back %s, asking once more", api_path, error)
+            api_data = get_api(proxmox, api_path)
+        except connError as error:
+            if not _closed_before_answering(error):
+                raise
+            # The host is there; only the kept-alive connection was
+            # not. A new one gets the answer. Failing over finds the
+            # host answering, or has no other host, and the read fails
+            # for a whole polling interval (#723).
+            LOGGER.debug("Read %s lost its connection, asking once more", api_path)
+            api_data = get_api(proxmox, api_path)
+    except AuthenticationError as error:
+        api_data = _retry_after_relogin(config_entry, proxmox, api_path, error)
+    except (ConnectTimeout, ConnectionError, connError, RetryError) as error:
+        api_data = _retry_on_another_node(client, generation, api_path, error)
+    return api_data
+
+
 def poll_api(  # noqa: PLR0917
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -3331,8 +3539,15 @@ def poll_api(  # noqa: PLR0917
     resource_id: str | int | None = None,
     *,
     issue_crete_permissions: bool | None = True,
+    read: Callable[[], Any] | None = None,
 ) -> dict[str, Any] | None:
-    """Return data from the Proxmox Node API."""
+    """
+    Return data from the Proxmox Node API.
+
+    `read` stands in for `read_api` where the answer was read once for
+    several callers: it returns what that read got, or raises what it
+    raised, and each caller handles it here as if it had asked itself.
+    """
 
     def node_of_path(fallback: str | int | None) -> str:
         """
@@ -3396,32 +3611,10 @@ def poll_api(  # noqa: PLR0917
         msg = f"Node {node} is offline"
         raise UpdateFailed(msg)
 
-    client = _client_for(config_entry, proxmox)
-    generation = client.generation if client is not None else 0
     try:
-        try:
-            try:
-                api_data = get_api(proxmox, api_path)
-            except ResourceException as error:
-                if error.status_code not in PVEPROXY_BUSY:
-                    raise
-                # One such moment used to take an entity out for a whole
-                # polling interval; asked again, the node usually answers.
-                LOGGER.debug("Read %s came back %s, asking once more", api_path, error)
-                api_data = get_api(proxmox, api_path)
-            except connError as error:
-                if not _closed_before_answering(error):
-                    raise
-                # The host is there; only the kept-alive connection was
-                # not. A new one gets the answer. Failing over finds the
-                # host answering, or has no other host, and the read fails
-                # for a whole polling interval (#723).
-                LOGGER.debug("Read %s lost its connection, asking once more", api_path)
-                api_data = get_api(proxmox, api_path)
-        except AuthenticationError as error:
-            api_data = _retry_after_relogin(config_entry, proxmox, api_path, error)
-        except (ConnectTimeout, ConnectionError, connError, RetryError) as error:
-            api_data = _retry_on_another_node(client, generation, api_path, error)
+        api_data = (
+            read() if read is not None else read_api(config_entry, proxmox, api_path)
+        )
     except (
         SSLError,
         ConnectTimeout,

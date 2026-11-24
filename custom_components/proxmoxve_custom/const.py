@@ -68,6 +68,12 @@ SLOW_UPDATE_INTERVAL = 3600
 # For what the task log says: a backup finishing or a task failing is
 # worth knowing within minutes, not within the minute.
 TASKS_UPDATE_INTERVAL = 300
+# For a drive's SMART log: temperature, hours, cycles. Proxmox runs smartctl
+# for each read, which takes seconds per drive. A drive's health and wearout
+# come with the node's disk list, at the usual interval.
+SMART_UPDATE_INTERVAL = 300
+# How many drives of one node are asked for their SMART log at the same time.
+SMART_READS_PER_NODE = 3
 
 LOGGER = logging.getLogger(__package__)
 

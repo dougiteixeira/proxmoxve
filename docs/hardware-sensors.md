@@ -43,6 +43,8 @@ journalctl -u pveproxy --since today | grep -i pve-mod
 
 The per-disk temperature, power-on hours, power cycles, wearout and health come from `nodes/{node}/disks/smart`. Proxmox hands that out in two shapes — smartctl's numbered attributes for SATA drives, and its text log for NVMe and SAS drives — and both are read, including the SAS labels (`Current Drive Temperature`, `Accumulated start-stop cycles`, `Accumulated power on time, hours:minutes`) an enterprise drive behind an expander uses. A value the drive does not have, such as a virtual NVMe reporting its temperature as `-`, is left out; it no longer takes the whole disk offline.
 
+Which disks a node has, and their health, comes from `nodes/{node}/disks/list`. That list is read once per node and poll and shared by the node's disks, so health and wearout follow the polling interval. The SMART log is one request per disk, and Proxmox runs smartctl for each: it is read at setup and then every five minutes, three drives of a node at a time. Temperature, power-on hours, power cycles and the other SMART values therefore change at most every five minutes, also when you refresh a disk by hand. If setup is slow on a node with many drives, time both on the node — `time pvesh get /nodes/<node>/disks/list` and `time pvesh get /nodes/<node>/disks/smart --disk /dev/sda` — or turn physical disks off under *Advanced configuration*.
+
 ## Supported Hardware
 
 | Chip / Driver | Device Type | Examples |

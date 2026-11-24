@@ -2,11 +2,31 @@
 # SPDX-License-Identifier: MIT
 """Tests for reading a disk's SMART attributes."""
 
+import copy
+import threading
+import time
+from typing import Any
+
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import UNDEFINED
+from proxmoxer.core import ResourceException
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.proxmoxve_custom.const import (
+    COORDINATORS,
+    SMART_READS_PER_NODE,
+    SMART_UPDATE_INTERVAL,
+    ProxmoxType,
+)
 from custom_components.proxmoxve_custom.coordinator import (
     _leading_int,
     parse_smart_attributes,
     parse_smart_text,
+    shared_resources,
 )
+
+from .fake_api import API_ROOT, NODE, Answers, FakeProxmox
+from .test_setup_full import _setup
 
 # Shaped like the `attributes` list of `nodes/<node>/disks/smart` for an ATA
 # drive: smartctl's numbered attributes, each with a raw and a normalised
@@ -167,3 +187,122 @@ def test_a_sas_drive_behind_an_expander() -> None:
 def test_text_without_any_known_label() -> None:
     """Test unrelated text yields no attributes rather than nonsense."""
     assert parse_smart_text("SMART Health Status: OK\nno colon here\n") == []
+
+
+SMART_SDA = f"nodes/{NODE}/disks/smart?disk=/dev/sda"
+
+
+def _path_of(resource: Any) -> str:
+    """Return the path a request goes to, as the fake keys its routes."""
+    url = resource._store["base_url"]  # noqa: SLF001
+    return url.split(API_ROOT, 1)[1] if API_ROOT in url else url
+
+
+def _temperature(log: dict, celsius: int) -> dict:
+    """Return the SMART log with another temperature."""
+    log = copy.deepcopy(log)
+    for attribute in log["attributes"]:
+        if attribute["id"] == "194":
+            attribute["raw"] = str(celsius)
+    return log
+
+
+async def test_the_smart_log_is_read_every_five_minutes(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """
+    Test a poll inside the five minutes keeps the last SMART values.
+
+    Proxmox runs smartctl for every read: about three seconds per drive on
+    a node with seventeen of them, every minute.
+    """
+    await _setup(hass, current_entry)
+    (disk,) = current_entry.runtime_data[COORDINATORS][f"{ProxmoxType.Disk}_{NODE}"]
+    read = fake_api.paths().count(SMART_SDA)
+    fake_api.routes[SMART_SDA] = _temperature(fake_api.routes[SMART_SDA], 51)
+    fake_api.routes[f"nodes/{NODE}/disks/list"][0]["health"] = "FAILED"
+
+    shared_resources(hass, current_entry).forget()
+    await disk.async_refresh()
+
+    assert fake_api.paths().count(SMART_SDA) == read
+    assert disk.data.temperature == 34
+    # The health comes with the list, at the usual interval.
+    assert disk.data.health == "FAILED"
+
+    disk._smart_at -= SMART_UPDATE_INTERVAL  # noqa: SLF001
+    await disk.async_refresh()
+
+    assert fake_api.paths().count(SMART_SDA) == read + 1
+    assert disk.data.temperature == 51
+
+
+async def test_a_smart_log_that_failed_is_asked_for_again(
+    hass: HomeAssistant, fake_api: FakeProxmox, current_entry: MockConfigEntry
+) -> None:
+    """Test a failed read is not kept for five minutes, but asked again next poll."""
+    log = fake_api.routes[SMART_SDA]
+    fake_api.routes[SMART_SDA] = Answers(
+        ResourceException(500, "Internal Server Error", "smartctl failed"), log
+    )
+    await _setup(hass, current_entry)
+    (disk,) = current_entry.runtime_data[COORDINATORS][f"{ProxmoxType.Disk}_{NODE}"]
+    assert disk.data.temperature is UNDEFINED
+
+    await disk.async_refresh()
+
+    assert disk.data.temperature == 34
+
+
+class _CountingSmart(FakeProxmox):
+    """A fake whose SMART reads take a moment, counting how many overlap."""
+
+    def __init__(self) -> None:
+        """Start with no read in flight."""
+        super().__init__()
+        self._count_lock = threading.Lock()
+        self.in_flight = 0
+        self.most_in_flight = 0
+
+    def request(self, resource: Any, method: str, *args: Any, **kwargs: Any) -> Any:
+        """Answer as the fake does, a little later for a SMART read."""
+        if "/disks/smart" not in _path_of(resource):
+            return super().request(resource, method, *args, **kwargs)
+        with self._count_lock:
+            self.in_flight += 1
+            self.most_in_flight = max(self.most_in_flight, self.in_flight)
+        try:
+            time.sleep(0.05)
+            return super().request(resource, method, *args, **kwargs)
+        finally:
+            with self._count_lock:
+                self.in_flight -= 1
+
+
+async def test_the_drives_of_a_node_are_read_three_at_a_time(
+    hass: HomeAssistant, current_entry: MockConfigEntry
+) -> None:
+    """Test setup asks the drives side by side, but no more than three at once."""
+    fake = _CountingSmart()
+    disk_list = fake.routes[f"nodes/{NODE}/disks/list"]
+    for letter in "bcdef":
+        disk_list.append(
+            disk_list[0]
+            | {
+                "devpath": f"/dev/sd{letter}",
+                "by_id_link": f"/dev/disk/by-id/ata-SAMSUNG_SSD_S12{letter}",
+                "serial": f"S12{letter}",
+                "wwn": f"0x5002538e400000{ord(letter):02x}",
+            }
+        )
+        fake.routes[f"nodes/{NODE}/disks/smart?disk=/dev/sd{letter}"] = fake.routes[
+            SMART_SDA
+        ]
+
+    with fake.patched():
+        await _setup(hass, current_entry)
+
+    disks = current_entry.runtime_data[COORDINATORS][f"{ProxmoxType.Disk}_{NODE}"]
+    assert len(disks) == 6
+    assert all(disk.data.temperature == 34 for disk in disks)
+    assert fake.most_in_flight == SMART_READS_PER_NODE
