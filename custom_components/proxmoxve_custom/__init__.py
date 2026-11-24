@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import warnings
 from typing import TYPE_CHECKING, Any
 
@@ -93,6 +94,7 @@ from .coordinator import (
     ProxmoxUpdateCoordinator,
     ProxmoxZFSCoordinator,
     forget_untracked_guest_agents,
+    read_node_list,
     shared_resources,
 )
 from .discovery import (
@@ -340,8 +342,8 @@ async def _async_setup_node(  # noqa: PLR0917
     node_is_off = node in shared_resources(hass, config_entry).nodes_off
     if config_entry.options.get(CONF_DISKS_ENABLE, True) and not node_is_off:
         try:
-            disks = await hass.async_add_executor_job(
-                get_api, proxmox, f"nodes/{node}/disks/list"
+            disks = await read_node_list(
+                hass, config_entry, proxmox, f"nodes/{node}/disks/list"
             )
         except ResourceException:
             return coordinator_node
@@ -358,13 +360,15 @@ async def _async_setup_node(  # noqa: PLR0917
                 node_name=node,
                 disk_id=resolve_disk_id(disk, colliding_wwns=colliding_wwns),
             )
-            await coordinator_disk.async_refresh()
             coordinators_disk.append(coordinator_disk)
+        # Together: each one waits for its drive's SMART log, and those
+        # queue on the node a few at a time rather than one after another.
+        await asyncio.gather(*(disk.async_refresh() for disk in coordinators_disk))
         coordinators[f"{ProxmoxType.Disk}_{node}"] = coordinators_disk
 
         try:
-            pools = await hass.async_add_executor_job(
-                get_api, proxmox, f"nodes/{node}/disks/zfs"
+            pools = await read_node_list(
+                hass, config_entry, proxmox, f"nodes/{node}/disks/zfs"
             )
         except ResourceException as e:
             LOGGER.exception(e)
@@ -738,10 +742,21 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     clear_stale_resource_issues(hass, config_entry, tracked)
 
     nodes_api = await _get_api_or_retry_setup(hass, proxmox, "nodes", host)
-    for node in tracked[CONF_NODES]:
-        coordinator_node = await _async_setup_node(
-            hass, config_entry, proxmox, node, coordinators, nodes_api, permissions
-        )
+    # Side by side: each node waits for its own drives, and on a cluster of
+    # several nodes with many of them, one node after the other took minutes.
+    # Every node is done before a failure of one is raised.
+    node_setups = await asyncio.gather(
+        *(
+            _async_setup_node(
+                hass, config_entry, proxmox, node, coordinators, nodes_api, permissions
+            )
+            for node in tracked[CONF_NODES]
+        ),
+        return_exceptions=True,
+    )
+    for node, coordinator_node in zip(tracked[CONF_NODES], node_setups, strict=True):
+        if isinstance(coordinator_node, BaseException):
+            raise coordinator_node
         if coordinator_node is not None and coordinator_node.data is not None:
             nodes_add_device.append(node)
 

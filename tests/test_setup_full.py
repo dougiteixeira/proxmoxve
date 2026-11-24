@@ -9,6 +9,10 @@ the node coordinators, disks, pools, buttons and the update entity were
 never actually exercised there.
 """
 
+import copy
+import threading
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_ON
 from homeassistant.core import HomeAssistant
@@ -30,7 +34,8 @@ from custom_components.proxmoxve_custom.const import (
     ProxmoxType,
 )
 
-from .fake_api import NODE, FakeProxmox, lxc_status
+from .const import CURRENT_ENTRY_DATA, CURRENT_ENTRY_VERSION
+from .fake_api import API_ROOT, NODE, FakeProxmox, lxc_status
 
 
 async def _setup(hass: HomeAssistant, entry: MockConfigEntry) -> None:
@@ -377,3 +382,58 @@ async def test_deselecting_the_node_removes_its_disk_and_pool_devices(
     assert result["reason"] == "changes_successful"
     assert dev_reg.async_get(pool.id) is None
     assert dev_reg.async_get(disk.id) is None
+
+
+class _SlowFirstNode(FakeProxmox):
+    """A fake whose first node takes its time over a drive's SMART log."""
+
+    def __init__(self) -> None:
+        """Start with the second node not asked yet."""
+        super().__init__()
+        self.second_node_asked = threading.Event()
+        self.overlapped = False
+
+    def request(self, resource: Any, method: str, *args: Any, **kwargs: Any) -> Any:
+        """Answer as the fake does; hold the first node's SMART read for the second node."""
+        url = resource._store["base_url"]  # noqa: SLF001
+        path = url.split(API_ROOT, 1)[1] if API_ROOT in url else url
+        if path == "nodes/pve2/disks/list":
+            self.second_node_asked.set()
+        if path == f"nodes/{NODE}/disks/smart?disk=/dev/sda":
+            self.overlapped = self.second_node_asked.wait(2)
+        return super().request(resource, method, *args, **kwargs)
+
+
+async def test_the_nodes_are_set_up_side_by_side(hass: HomeAssistant) -> None:
+    """
+    Test the second node does not wait for the drives of the first.
+
+    Setup waits for each drive's SMART log; on seven nodes with seventeen
+    drives each, one node after the other took minutes.
+    """
+    fake = _SlowFirstNode()
+    for path in list(fake.routes):
+        if path.startswith(f"nodes/{NODE}/"):
+            fake.routes["nodes/pve2/" + path.removeprefix(f"nodes/{NODE}/")] = (
+                copy.deepcopy(fake.routes[path])
+            )
+    second = fake.routes["nodes"][0] | {"id": "node/pve2", "node": "pve2"}
+    fake.routes["nodes"].append(second)
+    fake.routes["cluster/resources"].append(copy.deepcopy(second))
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Test",
+        data=CURRENT_ENTRY_DATA | {CONF_NODES: [NODE, "pve2"]},
+        options={},
+        version=CURRENT_ENTRY_VERSION,
+    )
+    entry.add_to_hass(hass)
+
+    with fake.patched():
+        await _setup(hass, entry)
+
+    assert fake.overlapped
+    coordinators = entry.runtime_data[COORDINATORS]
+    for node in (NODE, "pve2"):
+        (disk,) = coordinators[f"{ProxmoxType.Disk}_{node}"]
+        assert disk.data.temperature == 34
