@@ -89,7 +89,7 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | Container: start, stop, reboot, snapshot | ✅ | ✅ — plus shutdown and unlock |
 | Back up now, per guest | ➖ | ✅ with a [backup storage picked](actions.md#backup-buttons) |
 | `proxmoxve_custom.backup` action — guests, nodes or the cluster as target, vzdump's options | ➖ | ✅ |
-| Blueprint for a scheduled backup | ➖ | ✅ ([blueprints](blueprints/readme.md)) |
+| Blueprint for a scheduled backup | ➖ | ✅ ([blueprints](../blueprints/readme.md)) |
 
 ## Where the core integration is the better fit
 
