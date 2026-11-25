@@ -60,6 +60,7 @@
         "cant_connect": "Kon geen verbinding maken",
         "general_error": "Onverwachte fout",
         "invalid_port": "Ongeldig poortnummer",
+        "host_is_url": "Enter only the host name or address, without https:// or a path",
         "nodes_required": "Pick at least one node, or turn on Track everything automatically.",
         "ssl_rejection": "SSL-certificaat kon niet worden geverifieerd"
       },
