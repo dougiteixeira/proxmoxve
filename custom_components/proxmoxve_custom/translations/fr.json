@@ -60,6 +60,7 @@
         "cant_connect": "Echec de la connexion",
         "general_error": "Erreur innatendue",
         "invalid_port": "Numéro de port invalide",
+        "host_is_url": "Enter only the host name or address, without https:// or a path",
         "nodes_required": "Pick at least one node, or turn on Track everything automatically.",
         "ssl_rejection": "Impossible de vérifier le certificat SSL"
       },
