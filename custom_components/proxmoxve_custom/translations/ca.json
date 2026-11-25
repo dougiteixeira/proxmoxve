@@ -60,6 +60,7 @@
         "cant_connect": "Error de connexió",
         "general_error": "S'ha produït un error inesperat",
         "invalid_port": "Número de port no vàlid",
+        "host_is_url": "Enter only the host name or address, without https:// or a path",
         "nodes_required": "Pick at least one node, or turn on Track everything automatically.",
         "ssl_rejection": "No s'ha pogut verificar el certificat SSL"
       },
