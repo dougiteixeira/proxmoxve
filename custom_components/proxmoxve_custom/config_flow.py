@@ -21,6 +21,7 @@ from homeassistant.const import (
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import selector
+from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import ConnectTimeout, SSLError
 
 from .api import ProxmoxClient, get_api
@@ -108,6 +109,23 @@ SCHEMA_CLUSTER_HA_AUTH: vol.Schema = vol.Schema(
 )
 
 
+class HostIsURLError(Exception):
+    """The Host field holds a URL, not a name or an address."""
+
+
+def refuse_url_as_host(host: Any) -> None:
+    """
+    Raise `HostIsURLError` where Host holds a URL rather than a host.
+
+    What people paste is often the browser's address bar -
+    `https://pve.example.com:8006/` - and the library took that for a host
+    called `https`, which nobody can resolve. Saying so on the field beats
+    a connection that fails for no visible reason.
+    """
+    if "://" in str(host) or "/" in str(host):
+        raise HostIsURLError
+
+
 def _update_interval_selector() -> selector.SelectSelector:
     """Offer the polling interval as a pick-list of seconds."""
     return selector.SelectSelector(
@@ -189,7 +207,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 errors[CONF_USERNAME] = "auth_error"
             except SSLError:
                 errors[CONF_VERIFY_SSL] = "ssl_rejection"
-            except ConnectTimeout:
+            except (ConnectTimeout, RequestsConnectionError):
                 errors[CONF_HOST] = "cant_connect"
             except Exception:  # pylint: disable=broad-except
                 errors[CONF_BASE] = "general_error"
@@ -266,7 +284,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                     errors[CONF_HA_ADMIN_USERNAME] = "auth_error"
                 except SSLError:
                     errors[CONF_BASE] = "ssl_rejection"
-                except ConnectTimeout:
+                except (ConnectTimeout, RequestsConnectionError):
                     errors[CONF_BASE] = "cant_connect"
                 except Exception:  # pylint: disable=broad-except
                     errors[CONF_BASE] = "general_error"
@@ -354,7 +372,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
                 return self.async_abort(reason="auth_error")
             except SSLError:
                 return self.async_abort(reason="ssl_rejection")
-            except ConnectTimeout:
+            except (ConnectTimeout, RequestsConnectionError):
                 return self.async_abort(reason="cant_connect")
             except Exception:  # pylint: disable=broad-except
                 return self.async_abort(reason="general_error")
@@ -570,7 +588,7 @@ class ProxmoxOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_abort(reason="auth_error")
         except SSLError:
             return self.async_abort(reason="ssl_rejection")
-        except ConnectTimeout:
+        except (ConnectTimeout, RequestsConnectionError):
             return self.async_abort(reason="cant_connect")
         except Exception:  # pylint: disable=broad-except
             return self.async_abort(reason="general_error")
@@ -803,7 +821,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_USERNAME] = "auth_error"
             except SSLError:
                 errors[CONF_BASE] = "ssl_rejection"
-            except ConnectTimeout:
+            except (ConnectTimeout, RequestsConnectionError):
                 errors[CONF_BASE] = "cant_connect"
             except Exception:  # pylint: disable=broad-except
                 errors[CONF_BASE] = "general_error"
@@ -855,6 +873,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             verify_ssl = user_input.get(CONF_VERIFY_SSL)
 
             try:
+                refuse_url_as_host(host)
                 self._proxmox_client = ProxmoxClient(
                     host=host,
                     port=port,
@@ -869,11 +888,13 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._proxmox_client.build_client
                 )
 
+            except HostIsURLError:
+                errors[CONF_HOST] = "host_is_url"
             except proxmoxer.AuthenticationError:
                 errors[CONF_USERNAME] = "auth_error"
             except SSLError:
                 errors[CONF_VERIFY_SSL] = "ssl_rejection"
-            except ConnectTimeout:
+            except (ConnectTimeout, RequestsConnectionError):
                 errors[CONF_HOST] = "cant_connect"
             except Exception:  # pylint: disable=broad-except
                 errors[CONF_BASE] = "general_error"
@@ -949,6 +970,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not errors:
                 try:
+                    refuse_url_as_host(host)
                     self._proxmox_client = ProxmoxClient(
                         host=host,
                         port=port,
@@ -963,11 +985,13 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self._proxmox_client.build_client
                     )
 
+                except HostIsURLError:
+                    errors[CONF_HOST] = "host_is_url"
                 except proxmoxer.backends.https.AuthenticationError:
                     errors[CONF_USERNAME] = "auth_error"
                 except SSLError:
                     errors[CONF_VERIFY_SSL] = "ssl_rejection"
-                except ConnectTimeout:
+                except (ConnectTimeout, RequestsConnectionError):
                     errors[CONF_HOST] = "cant_connect"
                 except Exception:  # pylint: disable=broad-except
                     errors[CONF_BASE] = "general_error"
