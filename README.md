@@ -78,6 +78,8 @@ Adding Proxmox VE to your Home Assistant instance can be done via the UI using t
 
 [![image](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=proxmoxve_custom)
 
+**Host** is the node's name or address only, such as `pve.example.com` or `192.0.2.10` — no `https://`, no path; the form refuses a URL. **Port** is 8006, or the proxy's port (usually 443) behind a reverse proxy ([troubleshooting](docs/troubleshooting.md#failed-to-connect-or-unknown-error-during-setup)).
+
 **Tip:** It is recommended to use token-based authentication for greater integration stability.
 
 In your Home Assistant configuration, enter the token's **name** — the part after the `!` in what Proxmox shows as `Token ID`, e.g. `homeassistant` from `homeassistant@pve!homeassistant` — in the `Token name` field, and the secret token value in the password field. Pasting the full `user@realm!name` works too; the user and realm are taken from their own fields.
