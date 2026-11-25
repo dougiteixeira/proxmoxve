@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlsplit
 
 import homeassistant.helpers.config_validation as cv
 import proxmoxer
@@ -110,29 +109,21 @@ SCHEMA_CLUSTER_HA_AUTH: vol.Schema = vol.Schema(
 )
 
 
-def split_host(value: Any, port: int) -> tuple[str, int]:
-    """
-    Return the host and the port from what was typed into the Host field.
+class HostIsURLError(Exception):
+    """The Host field holds a URL, not a name or an address."""
 
-    The field wants a name or an address. What people paste is often the
-    address bar - `https://pve.example.com:8006/` - and proxmoxer took that
-    for a host called `https`, which nobody can resolve; setup said only
-    "Unknown error". The scheme, the path and the slash go; a port in the
-    URL wins over the Port field, where there is none the field's stands.
-    A bare IPv6 address is left as it is.
+
+def refuse_url_as_host(host: Any) -> None:
     """
-    host = str(value or "").strip()
-    if not host or (host.count(":") > 1 and "://" not in host and "[" not in host):
-        return host, port
-    parts = urlsplit(host if "://" in host else f"//{host}")
-    try:
-        url_port = parts.port
-    except ValueError:
-        # Not a port after all; leave the input for the connection to judge.
-        return host, port
-    if not parts.hostname:
-        return host, port
-    return parts.hostname, url_port or port
+    Raise `HostIsURLError` where Host holds a URL rather than a host.
+
+    What people paste is often the browser's address bar -
+    `https://pve.example.com:8006/` - and the library took that for a host
+    called `https`, which nobody can resolve. Saying so on the field beats
+    a connection that fails for no visible reason.
+    """
+    if "://" in str(host) or "/" in str(host):
+        raise HostIsURLError
 
 
 def _update_interval_selector() -> selector.SelectSelector:
@@ -873,9 +864,8 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            host, port = split_host(
-                user_input.get(CONF_HOST), int(user_input.get(CONF_PORT))
-            )
+            host: str = str(user_input.get(CONF_HOST))
+            port: int = int(user_input.get(CONF_PORT))
             user: str = str(user_input.get(CONF_USERNAME))
             token_name: str = str(user_input.get(CONF_TOKEN_NAME))
             realm: str = str(user_input.get(CONF_REALM))
@@ -883,6 +873,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             verify_ssl = user_input.get(CONF_VERIFY_SSL)
 
             try:
+                refuse_url_as_host(host)
                 self._proxmox_client = ProxmoxClient(
                     host=host,
                     port=port,
@@ -897,6 +888,8 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._proxmox_client.build_client
                 )
 
+            except HostIsURLError:
+                errors[CONF_HOST] = "host_is_url"
             except proxmoxer.AuthenticationError:
                 errors[CONF_USERNAME] = "auth_error"
             except SSLError:
@@ -912,8 +905,8 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     if self._reconfig_entry.data is not None
                     else {}
                 )
-                config_data[CONF_HOST] = host
-                config_data[CONF_PORT] = port
+                config_data[CONF_HOST] = user_input.get(CONF_HOST)
+                config_data[CONF_PORT] = user_input.get(CONF_PORT)
                 config_data[CONF_USERNAME] = user_input.get(CONF_USERNAME)
                 config_data[CONF_TOKEN_NAME] = user_input.get(CONF_TOKEN_NAME)
                 config_data[CONF_PASSWORD] = user_input.get(CONF_PASSWORD)
@@ -953,15 +946,17 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input:
-            host, port = split_host(
-                user_input.get(CONF_HOST), user_input.get(CONF_PORT, DEFAULT_PORT)
-            )
-            if f"{host}_{port}" in [
-                f"{entry.data.get(CONF_HOST)}_{entry.data.get(CONF_PORT)}"
-                for entry in self._async_current_entries()
-            ]:
+            if (
+                f"{user_input.get(CONF_HOST)}_{user_input.get(CONF_PORT, DEFAULT_PORT)}"
+                in [
+                    f"{entry.data.get(CONF_HOST)}_{entry.data.get(CONF_PORT)}"
+                    for entry in self._async_current_entries()
+                ]
+            ):
                 return self.async_abort(reason="already_configured")
 
+            host = user_input.get(CONF_HOST, "")
+            port = user_input.get(CONF_PORT, DEFAULT_PORT)
             username = user_input.get(CONF_USERNAME, "")
             token_name = user_input.get(CONF_TOKEN_NAME, "")
             password = user_input.get(CONF_PASSWORD, "")
@@ -975,6 +970,7 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not errors:
                 try:
+                    refuse_url_as_host(host)
                     self._proxmox_client = ProxmoxClient(
                         host=host,
                         port=port,
@@ -989,6 +985,8 @@ class ProxmoxVEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self._proxmox_client.build_client
                     )
 
+                except HostIsURLError:
+                    errors[CONF_HOST] = "host_is_url"
                 except proxmoxer.backends.https.AuthenticationError:
                     errors[CONF_USERNAME] = "auth_error"
                 except SSLError:

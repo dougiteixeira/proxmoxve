@@ -23,7 +23,7 @@ logger:
 
 ## "Failed to connect" or "Unknown error" during setup
 
-**Host** takes the node's name or address. A URL pasted from the browser's address bar, such as `https://pve.example.com:8006/`, is taken apart: the name goes into Host, and a port in the URL is used instead of the **Port** field. A host that cannot be resolved or refuses the connection is reported as "Failed to connect".
+**Host** takes the node's name or address only: `pve.example.com` or `192.0.2.10`, not `https://pve.example.com:8006/`. A URL is refused on the form; the port goes into **Port**. A host that cannot be resolved or refuses the connection is reported as "Failed to connect"; up to 6.0.3 it was "Unknown error".
 
 Behind a reverse proxy (Traefik, nginx and the like) the port is the proxy's, usually 443, not 8006. To see whether Home Assistant reaches the API at all, run this from the Home Assistant host with your own name and port:
 

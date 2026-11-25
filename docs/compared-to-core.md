@@ -16,7 +16,7 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | Re-authentication and reconfiguration | ✅ | ✅ |
 | What is tracked | Everything the credentials can see, always | Your selection of nodes, guests and storages — or everything, with **Track everything automatically** ([details](behaviour.md#tracking-everything-automatically)) |
 | New and removed guests picked up at runtime | ✅ | ✅ with automatic tracking |
-| A URL pasted into Host (`https://pve.example.com:8006/`) | Taken as the host name as it is, so the connection fails | Taken apart: the name goes into Host, a port in the URL is used ([details](troubleshooting.md#failed-to-connect-or-unknown-error-during-setup)) |
+| A URL in Host (`https://pve.example.com:8006/`) | Taken as the host name, so the connection fails | Refused on the form with a message to enter the name only ([details](troubleshooting.md#failed-to-connect-or-unknown-error-during-setup)) |
 | Polling interval | 60 seconds, fixed | 30, 45, 60, 90 or 120 seconds ([details](behaviour.md#how-often-it-polls)) |
 | Entity id scheme | Home Assistant's device then name | that, or a prefix and the id before the name ([details](behaviour.md#entity-ids)) |
 | Guest renamed in Proxmox | Name follows at the next restart | Name follows at the next poll ([details](behaviour.md#guests-renamed-in-proxmox)) |

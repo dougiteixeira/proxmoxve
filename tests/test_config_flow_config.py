@@ -11,6 +11,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import (
     CONF_HOST,
+    CONF_PASSWORD,
     CONF_PORT,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
@@ -22,7 +23,6 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import ConnectTimeout, SSLError
 
 from custom_components.proxmoxve_custom import DOMAIN
-from custom_components.proxmoxve_custom.config_flow import split_host
 from custom_components.proxmoxve_custom.const import (
     CONF_AUTO_DISCOVERY,
     CONF_DISKS_ENABLE,
@@ -34,6 +34,8 @@ from custom_components.proxmoxve_custom.const import (
 )
 
 from .const import (
+    CURRENT_ENTRY_DATA,
+    CURRENT_ENTRY_VERSION,
     MOCK_GET_RESPONSE,
     USER_INPUT_OK,
     USER_INPUT_PORT_TOO_BIG,
@@ -307,72 +309,69 @@ async def test_an_empty_selection_without_discovery_asks_for_a_node(
 
 
 @pytest.mark.parametrize(
-    ("typed", "port", "expected"),
+    "host",
     [
-        ("pve.example.com", 8006, ("pve.example.com", 8006)),
-        (" pve.example.com ", 8006, ("pve.example.com", 8006)),
-        ("https://pve.example.com", 443, ("pve.example.com", 443)),
-        ("https://pve.example.com/", 8006, ("pve.example.com", 8006)),
-        ("https://pve.example.com:8006/#v1:0:18:4", 443, ("pve.example.com", 8006)),
-        ("pve.example.com:8007", 8006, ("pve.example.com", 8007)),
-        ("192.0.2.10", 8006, ("192.0.2.10", 8006)),
-        ("https://[2001:db8::1]:8006/", 443, ("2001:db8::1", 8006)),
-        ("2001:db8::1", 8006, ("2001:db8::1", 8006)),
-        ("pve.example.com:abc", 8006, ("pve.example.com:abc", 8006)),
-        ("", 8006, ("", 8006)),
+        "https://pve.example.com",
+        "https://pve.example.com:8006/",
+        "https://pve.example.com:8006/#v1:0:18:4",
+        "pve.example.com/",
     ],
 )
-def test_split_host(typed: str, port: int, expected: tuple[str, int]) -> None:
-    """Test a URL pasted into Host is taken apart, and anything else is left be."""
-    assert split_host(typed, port) == expected
-
-
-async def test_flow_takes_a_url_pasted_into_host(hass: HomeAssistant) -> None:
+async def test_flow_refuses_a_url_in_host(hass: HomeAssistant, host: str) -> None:
     """
-    Test the entry gets the name and the URL's port, not the URL.
+    Test a URL in Host is refused on the field, before anything connects.
 
     proxmoxer took `https://pve...` for a host called `https`; behind a
     reverse proxy on 443, setup could only say "Unknown error".
     """
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
+    with patch(
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client"
+    ) as build_client:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_USER},
+            data=USER_INPUT_OK | {CONF_HOST: host},
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {CONF_HOST: "host_is_url"}
+    build_client.assert_not_called()
+
+
+async def test_reconfigure_refuses_a_url_in_host(hass: HomeAssistant) -> None:
+    """Test reconfigure refuses a URL in Host the same way, and keeps the entry."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, data=CURRENT_ENTRY_DATA, version=CURRENT_ENTRY_VERSION
     )
-    user_input = USER_INPUT_USER_HOST | {
-        CONF_HOST: "https://pve.example.com:443/",
-        CONF_PORT: 8006,
-    }
+    entry.add_to_hass(hass)
+    result = await entry.start_reconfigure_flow(hass)
 
-    with (
-        patch(
-            "proxmoxer.ProxmoxResource.get",
-            autospec=True,
-            return_value=MOCK_GET_RESPONSE,
-        ) as get,
-        patch(
-            "proxmoxer.backends.https.ProxmoxHTTPAuth._get_new_tokens",
-            return_value=None,
-        ),
-    ):
+    with patch(
+        "custom_components.proxmoxve_custom.ProxmoxClient.build_client"
+    ) as build_client:
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=user_input
-        )
-        assert result["step_id"] == "expose"
-        base_url = get.call_args.args[0]._store["base_url"]  # noqa: SLF001
-        assert base_url.startswith("https://pve.example.com:443/api2/json")
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=USER_INPUT_SELECTION
+            result["flow_id"],
+            user_input={
+                CONF_HOST: "https://pve.example.com:8006/",
+                CONF_PORT: 8006,
+                CONF_USERNAME: CURRENT_ENTRY_DATA[CONF_USERNAME],
+                CONF_REALM: CURRENT_ENTRY_DATA[CONF_REALM],
+                CONF_PASSWORD: CURRENT_ENTRY_DATA[CONF_PASSWORD],
+                CONF_VERIFY_SSL: True,
+            },
         )
 
-    assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["data"][CONF_HOST] == "pve.example.com"
-    assert result["data"][CONF_PORT] == 443
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {CONF_HOST: "host_is_url"}
+    build_client.assert_not_called()
+    assert entry.data[CONF_HOST] == CURRENT_ENTRY_DATA[CONF_HOST]
 
 
 async def test_flow_a_host_nobody_resolves_cannot_connect(hass: HomeAssistant) -> None:
     """Test a name that does not resolve is "Failed to connect", not "Unknown error"."""
     with patch(
         "custom_components.proxmoxve_custom.ProxmoxClient.build_client",
-        side_effect=RequestsConnectionError("Failed to resolve 'https'"),
+        side_effect=RequestsConnectionError("Failed to resolve 'pve.example.com'"),
         return_value=None,
     ):
         result = await hass.config_entries.flow.async_init(
