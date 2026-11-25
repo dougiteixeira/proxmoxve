@@ -60,6 +60,7 @@
         "cant_connect": "Verbindung fehlgeschlagen",
         "general_error": "Unerwarteter Fehler",
         "invalid_port": "Ungültige Portnummer",
+        "host_is_url": "Enter only the host name or address, without https:// or a path",
         "nodes_required": "Pick at least one node, or turn on Track everything automatically.",
         "ssl_rejection": "SSL-Zertifikat konnte nicht verifiziert werden"
       },
