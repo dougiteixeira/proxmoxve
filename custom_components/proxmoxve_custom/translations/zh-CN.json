@@ -60,6 +60,7 @@
         "cant_connect": "无法连接到 Proxmox 主机，请检查网络连接",
         "general_error": "发生未知错误，请查看日志或稍后重试",
         "invalid_port": "端口号无效，请输入 1-65535 之间的数字",
+        "host_is_url": "Enter only the host name or address, without https:// or a path",
         "nodes_required": "Pick at least one node, or turn on Track everything automatically.",
         "ssl_rejection": "SSL 证书验证失败，请确保证书有效或禁用验证"
       },
