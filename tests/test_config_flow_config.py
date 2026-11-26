@@ -18,6 +18,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from proxmoxer.core import ResourceException
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import ConnectTimeout, SSLError
@@ -30,6 +31,7 @@ from custom_components.proxmoxve_custom.const import (
     CONF_ENTITY_ID_SCHEME,
     CONF_NODES,
     CONF_REALM,
+    CONF_TOKEN_NAME,
     CONF_UPDATE_INTERVAL,
 )
 
@@ -380,3 +382,34 @@ async def test_flow_a_host_nobody_resolves_cannot_connect(hass: HomeAssistant) -
 
     assert result["type"] == FlowResultType.FORM
     assert result["errors"][CONF_HOST] == "cant_connect"
+
+
+@pytest.mark.parametrize(
+    ("raised", "errors"),
+    [
+        (SSLError("certificate verify failed"), {CONF_VERIFY_SSL: "ssl_rejection"}),
+        (RequestsConnectionError("Failed to resolve"), {CONF_HOST: "cant_connect"}),
+        (
+            ResourceException(401, "Unauthorized", "invalid token value"),
+            {CONF_USERNAME: "auth_error"},
+        ),
+    ],
+)
+async def test_a_token_setup_says_what_went_wrong(
+    hass: HomeAssistant, raised: Exception, errors: dict[str, str]
+) -> None:
+    """
+    Test a token's setup reports the certificate, the host or the secret.
+
+    The token client was built without asking anything, and the first read
+    came on the next step, where every failure was "Unknown error" (#762).
+    """
+    with patch("proxmoxer.ProxmoxResource.get", side_effect=raised):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_USER},
+            data=USER_INPUT_OK | {CONF_TOKEN_NAME: "homeassistant"},
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == errors

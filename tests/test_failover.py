@@ -41,7 +41,11 @@ def _dead_host(client: ProxmoxClient) -> None:
 
 
 def _client() -> ProxmoxClient:
-    """Return a token client for the configured host, built without network."""
+    """
+    Return a token client for the configured host, built without network.
+
+    A token client asks `version` when it is built; here it is answered.
+    """
     client = ProxmoxClient(
         host=CONFIGURED,
         user="homeassistant",
@@ -50,7 +54,8 @@ def _client() -> ProxmoxClient:
         realm="pve",
         verify_ssl=False,
     )
-    client.build_client()
+    with patch("proxmoxer.ProxmoxResource.get", return_value={"version": "9.1"}):
+        client.build_client()
     return client
 
 
@@ -331,9 +336,17 @@ def test_a_single_host_is_not_read_twice() -> None:
 
     The `version` read that proves a host is there is worth one request
     where it can save the entry; where the cluster is one node, or was
-    never readable, it would only be a second call for the same answer.
+    never readable, it would only be a second call for the same answer -
+    for a password, whose login has already proved the host. A token is
+    built without a request and always asks (#762).
     """
-    client = _client()
+    client = ProxmoxClient(
+        host=CONFIGURED,
+        user="homeassistant",
+        password="secret",  # noqa: S106 - invented
+        realm="pve",
+        verify_ssl=False,
+    )
     with patch.object(client, "_build", side_effect=lambda host: MagicMock(name=host)):
         client.build_client()
         assert client.get_api_client().version.get.call_count == 0
