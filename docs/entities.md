@@ -160,7 +160,7 @@ A VM's disk usage comes from inside the guest, through the QEMU guest agent's fi
 
 **`Memory used on host`** — for VMs, the memory the guest costs the host, which is more than what it reports using: device models, migration buffers and the like. Diagnostic, **disabled by default**.
 
-**`Snapshots`** — how many snapshots the guest has, with their names (newest first) and when the newest was taken as attributes; read from the guest's snapshot list, the `current` pseudo entry not counted. Diagnostic, **disabled by default**. Pairs with the `Create snapshot` button.
+**`Snapshots`** — how many snapshots the guest has, with their names (newest first), when the newest was taken and when the oldest was as attributes - `{{ now() - state_attr('sensor.<guest>_snapshots', 'snapshot_oldest') > timedelta(days=14) }}` finds one that was left behind; read from the guest's snapshot list, the `current` pseudo entry not counted. Diagnostic, **disabled by default**. Pairs with the `Create snapshot` button.
 
 A container that is not running reports its disk usage as *unknown* rather than 0 % used and 100 % free: Proxmox cannot look inside a stopped container and reports `disk: 0`, but the data is still on the volume. Memory and swap stay at 0 % for a stopped guest, because those really are zero.
 

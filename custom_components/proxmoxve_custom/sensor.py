@@ -895,7 +895,7 @@ PROXMOX_SENSOR_GUEST_SNAPSHOTS: Final[tuple[ProxmoxSensorEntityDescription, ...]
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         translation_key="snapshots",
-        extra_attrs=["snapshot_names", "snapshot_latest"],
+        extra_attrs=["snapshot_names", "snapshot_latest", "snapshot_oldest"],
     ),
 )
 PROXMOX_SENSOR_QEMU: Final[tuple[ProxmoxSensorEntityDescription, ...]] = (
