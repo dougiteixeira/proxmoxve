@@ -561,10 +561,17 @@ def parse_snapshots(entries: Any) -> dict[str, Any]:
 
     The list always ends with a `current` pseudo entry standing for the
     live state; it is not a snapshot and is left out. Names come newest
-    first; `snapshot_latest` is when the newest was taken.
+    first; `snapshot_latest` is when the newest was taken, `snapshot_oldest`
+    when the oldest was - the one that has been sitting on the storage the
+    longest, which is what a reminder to clean up wants to know.
     """
     if not isinstance(entries, list):
-        return {"snapshots": UNDEFINED, "snapshot_names": None, "snapshot_latest": None}
+        return {
+            "snapshots": UNDEFINED,
+            "snapshot_names": None,
+            "snapshot_latest": None,
+            "snapshot_oldest": None,
+        }
     taken = [
         entry
         for entry in entries
@@ -574,10 +581,15 @@ def parse_snapshots(entries: Any) -> dict[str, Any]:
     latest = next(
         (entry.get("snaptime") for entry in taken if entry.get("snaptime")), None
     )
+    oldest = next(
+        (entry.get("snaptime") for entry in reversed(taken) if entry.get("snaptime")),
+        None,
+    )
     return {
         "snapshots": len(taken),
         "snapshot_names": [str(entry["name"]) for entry in taken],
         "snapshot_latest": dt_util.utc_from_timestamp(latest) if latest else None,
+        "snapshot_oldest": dt_util.utc_from_timestamp(oldest) if oldest else None,
     }
 
 

@@ -66,7 +66,7 @@ Legend: ✅ available · ➖ not available · text where it differs.
 | CPU as a share of the host | ➖ | ✅ |
 | Disk usage from the guest agent | ➖ | ✅ |
 | A file read from inside the guest | ➖ | ✅ |
-| Snapshot count with names | ➖ | ✅ |
+| Snapshot count with names, newest and oldest date | ➖ | ✅ |
 | Guest IP addresses, guest agent answering | ➖ | ✅ |
 | Pressure stall information per guest (CPU, IO, memory; waiting and stalled) | ➖ | ✅ ([details](entities.md#virtual-machines-and-containers)) |
 | A VM's memory as the host sees it | ➖ | ✅ |

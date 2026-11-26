@@ -35,6 +35,37 @@ def test_the_current_entry_is_not_a_snapshot() -> None:
     assert parsed["snapshots"] == 2
     assert parsed["snapshot_names"] == ["new", "old"]
     assert parsed["snapshot_latest"].timestamp() == 1_757_900_000
+    assert parsed["snapshot_oldest"].timestamp() == 1_700_000_000
+
+
+def test_the_oldest_snapshot_is_the_one_left_behind() -> None:
+    """
+    Test the oldest date is the earliest snapshot's, whatever order they come in.
+
+    Asked for in #759: a reminder for snapshots that were left
+    behind and quietly use storage.
+    """
+    parsed = parse_snapshots(
+        [
+            {"name": "middle", "snaptime": 1_750_000_000},
+            {"name": "no-time"},
+            {"name": "newest", "snaptime": 1_757_900_000},
+            {"name": "oldest", "snaptime": 1_700_000_000},
+            {"name": "current", "running": 1},
+        ]
+    )
+
+    assert parsed["snapshot_latest"].timestamp() == 1_757_900_000
+    assert parsed["snapshot_oldest"].timestamp() == 1_700_000_000
+
+
+def test_one_snapshot_is_both_the_newest_and_the_oldest() -> None:
+    """Test a single snapshot gives the same date for both."""
+    parsed = parse_snapshots(
+        [{"name": "only", "snaptime": 1_757_000_000}, {"name": "current"}]
+    )
+
+    assert parsed["snapshot_latest"] == parsed["snapshot_oldest"]
 
 
 def test_a_guest_without_snapshots_reads_zero() -> None:
@@ -44,6 +75,7 @@ def test_a_guest_without_snapshots_reads_zero() -> None:
     assert parsed["snapshots"] == 0
     assert parsed["snapshot_names"] == []
     assert parsed["snapshot_latest"] is None
+    assert parsed["snapshot_oldest"] is None
 
 
 def test_nonsense_reads_unknown() -> None:
@@ -63,6 +95,7 @@ async def test_the_sensor_counts_the_snapshots_of_each_guest(
     assert vm.snapshots == 2
     assert vm.snapshot_names == ["before-update", "clean-install"]
     assert vm.snapshot_latest.timestamp() == 1_757_900_000
+    assert vm.snapshot_oldest.timestamp() == 1_757_000_000
     assert coordinators["lxc_100"].data.snapshots == 0
 
     registry = er.async_get(hass)
