@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from proxmoxer import AuthenticationError
 from proxmoxer.core import ResourceException
+from requests.exceptions import SSLError
 
 from custom_components.proxmoxve_custom.api import (
     SNAPSHOT_NAME_MAX_LENGTH,
@@ -225,7 +226,8 @@ def test_client_logs_in_with_the_bare_token_name() -> None:
         verify_ssl=False,
     )
 
-    client.build_client()
+    with patch("proxmoxer.ProxmoxResource.get", return_value={"version": "9.1"}):
+        client.build_client()
 
     backend = client.get_api_client()._backend  # noqa: SLF001
     assert backend.auth.token_name == "homeassistant"
@@ -278,7 +280,8 @@ def test_relogin_with_a_token_does_nothing() -> None:
         realm="pve",
         verify_ssl=False,
     )
-    client.build_client()
+    with patch("proxmoxer.ProxmoxResource.get", return_value={"version": "9.1"}):
+        client.build_client()
 
     assert client.relogin() is False
 
@@ -294,3 +297,75 @@ def test_relogin_with_a_token_does_nothing() -> None:
 def test_auth_error_status(message: str, status: int | None) -> None:
     """Test the HTTP status is read out of proxmoxer's message when present."""
     assert auth_error_status(AuthenticationError(message)) == status
+
+
+def _token_client() -> ProxmoxClient:
+    """Return a token client for a single host, not built yet."""
+    return ProxmoxClient(
+        host="node.example.invalid",
+        user="homeassistant",
+        password="secret",  # noqa: S106 - invented
+        token_name="homeassistant",  # noqa: S106 - not a secret
+        realm="pve",
+        verify_ssl=True,
+    )
+
+
+def test_a_token_client_proves_the_connection_when_built() -> None:
+    """
+    Test a token client asks `version` before setup moves on.
+
+    A token client is built without touching the network. Setup then met a
+    certificate that is not trusted on its next step, outside the form's
+    error handling, and said "Unknown error" (#762).
+    """
+    client = _token_client()
+
+    with patch("proxmoxer.ProxmoxResource.get", return_value={"version": "9.1"}) as get:
+        client.build_client()
+
+    get.assert_called_once()
+
+
+def test_a_certificate_refused_to_a_token_is_raised_from_the_build() -> None:
+    """Test the SSL error comes from building the client, where the form looks."""
+    client = _token_client()
+
+    with (
+        patch(
+            "proxmoxer.ProxmoxResource.get",
+            side_effect=SSLError("certificate verify failed"),
+        ),
+        pytest.raises(SSLError),
+    ):
+        client.build_client()
+
+
+def test_a_refused_token_is_raised_like_a_refused_password() -> None:
+    """Test a 401 on `version` becomes the AuthenticationError a login raises."""
+    client = _token_client()
+
+    with (
+        patch(
+            "proxmoxer.ProxmoxResource.get",
+            side_effect=ResourceException(401, "Unauthorized", "invalid token value"),
+        ),
+        pytest.raises(AuthenticationError) as raised,
+    ):
+        client.build_client()
+
+    assert auth_error_status(raised.value) == 401
+
+
+def test_other_answers_to_a_token_stay_what_they_are() -> None:
+    """Test a 500 on `version` is not taken for refused credentials."""
+    client = _token_client()
+
+    with (
+        patch(
+            "proxmoxer.ProxmoxResource.get",
+            side_effect=ResourceException(500, "Internal Server Error", ""),
+        ),
+        pytest.raises(ResourceException),
+    ):
+        client.build_client()

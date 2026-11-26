@@ -124,13 +124,22 @@ class ProxmoxClient:
         The host is proved with `version`, the one call every credential
         may make - a password is checked by the login the construction
         performs, but a token client is built without touching the network
-        at all. That read is made only when there is somewhere to fall back
-        to, so nothing changes for a single host.
+        at all. So the read is made for a token, and wherever there is
+        somewhere to fall back to. Without it, a token's setup learnt about
+        a certificate that is not trusted, a host that is not there or a
+        secret that is wrong only on the next step, outside the form's
+        error handling, and every one of them read "Unknown error" (#762).
+        A token refused here is raised like a refused password.
         """
         proxmox = self._build(self.host)
         try:
-            if len(self._hosts) > 1:
+            if len(self._hosts) > 1 or token_name_only(self._token_name):
                 proxmox.version.get()
+        except ResourceException as error:
+            if error.status_code != 401:
+                raise
+            msg = f"API token refused by {self.host}, code: 401"
+            raise AuthenticationError(msg) from error
         except RequestException as error:
             # Connection errors only: a refused credential is refused on
             # every node of the cluster, and walking all of them for that
