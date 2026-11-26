@@ -405,6 +405,9 @@
             },
             "snapshot_latest": {
               "name": "Latest snapshot"
+            },
+            "snapshot_oldest": {
+              "name": "Oldest snapshot"
             }
           }
         },
