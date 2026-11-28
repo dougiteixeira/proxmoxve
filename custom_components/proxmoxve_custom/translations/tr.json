@@ -60,6 +60,7 @@
         "cant_connect": "Failed to connect",
         "general_error": "Unexpected error",
         "invalid_port": "Invalid port number",
+        "host_is_url": "Enter only the host name or address, without https:// or a path",
         "nodes_required": "Pick at least one node, or turn on Track everything automatically.",
         "ssl_rejection": "Could not verify the SSL certificate"
       },
@@ -404,6 +405,9 @@
             },
             "snapshot_latest": {
               "name": "Latest snapshot"
+            },
+            "snapshot_oldest": {
+              "name": "Oldest snapshot"
             }
           }
         },

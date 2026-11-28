@@ -60,6 +60,7 @@
         "cant_connect": "Falha ao ligar",
         "general_error": "Erro inesperado",
         "invalid_port": "Número de porta inválido",
+        "host_is_url": "Enter only the host name or address, without https:// or a path",
         "nodes_required": "Pick at least one node, or turn on Track everything automatically.",
         "ssl_rejection": "Não foi possível verificar o certificado SSL"
       },
@@ -404,6 +405,9 @@
             },
             "snapshot_latest": {
               "name": "Latest snapshot"
+            },
+            "snapshot_oldest": {
+              "name": "Oldest snapshot"
             }
           }
         },

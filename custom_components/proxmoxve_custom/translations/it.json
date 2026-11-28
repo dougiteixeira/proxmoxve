@@ -60,6 +60,7 @@
         "cant_connect": "Connessione fallita",
         "general_error": "Errore inaspettato",
         "invalid_port": "Numero porta invalido",
+        "host_is_url": "Enter only the host name or address, without https:// or a path",
         "nodes_required": "Pick at least one node, or turn on Track everything automatically.",
         "ssl_rejection": "Impossibile verificare il certificato SSL"
       },
@@ -404,6 +405,9 @@
             },
             "snapshot_latest": {
               "name": "Latest snapshot"
+            },
+            "snapshot_oldest": {
+              "name": "Oldest snapshot"
             }
           }
         },
