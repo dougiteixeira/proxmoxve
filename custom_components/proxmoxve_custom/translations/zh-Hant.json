@@ -1,0 +1,881 @@
+{
+  "config": {
+    "step": {
+      "host": {
+        "description": "請輸入 Proxmox 主機連線資訊",
+        "data": {
+          "host": "主機位址",
+          "password": "密碼或權杖值",
+          "token_name": "API 權杖名稱",
+          "port": "連接埠",
+          "realm": "認證域",
+          "username": "使用者名稱",
+          "verify_ssl": "驗證 SSL 憑證"
+        }
+      },
+      "expose": {
+        "description": "選擇要納入 Home Assistant 的 Proxmox 節點、虛擬機器（QEMU）、容器（LXC）及儲存",
+        "data": {
+          "nodes": "節點",
+          "qemu": "虛擬機器（QEMU）",
+          "lxc": "Linux 容器（LXC）",
+          "storage": "儲存",
+          "disks_enable": "啟用實體磁碟監控",
+          "auto_discovery": "自動追蹤全部資源",
+          "entity_id_scheme": "實體 ID 方案",
+          "entity_id_prefix": "擴充方案的前置字串"
+        },
+        "data_description": {
+          "disks_enable": "把每個節點實體磁碟的型號、容量、溫度、磨損度和 SMART 健康狀態作為獨立裝置讀取。若使用磁碟休眠功能，請關閉此選項——否則每次輪詢的 SMART 讀取都會喚醒磁碟。",
+          "auto_discovery": "追蹤該認證資訊可見的每個節點、虛擬機器、容器和儲存，並從此跟隨叢集：新增的會被納入，移除的會被剔除。此項開啟時會忽略上面的選擇。範本永遠不會被追蹤。",
+          "entity_id_scheme": "標準：Home Assistant 的裝置名稱後接實體名稱，如 `qemu_win11_108_cpu_used`。擴充：前置字串、類型、ID、名稱、項目，如 `pve_qemu_108_win11_cpu_used`——這樣用前置字串搜尋或用記錄器篩選就能涵蓋全部實體，清單也會按 ID 排序。僅對今後建立的實體生效；已存在的 ID 保持不變。",
+          "entity_id_prefix": "擴充方案下每個實體 ID 的第一段，預設 `pve`，可自行指定。標準方案不使用此項。"
+        }
+      },
+      "reauth_confirm": {
+        "description": "使用者名稱或密碼不正確，請重新驗證",
+        "title": "重新驗證整合",
+        "data": {
+          "password": "密碼或權杖值",
+          "username": "使用者名稱",
+          "token_name": "API 權杖名稱",
+          "realm": "認證域"
+        }
+      },
+      "reconfigure": {
+        "description": "更新 Proxmox 主機連線設定",
+        "data": {
+          "host": "主機位址",
+          "password": "密碼或權杖值",
+          "token_name": "API 權杖名稱",
+          "port": "連接埠",
+          "realm": "認證域",
+          "username": "使用者名稱",
+          "verify_ssl": "驗證 SSL 憑證"
+        }
+      }
+    },
+    "error": {
+      "auth_error": "身分驗證失敗，請檢查使用者名稱、密碼或 API 權杖",
+      "cant_connect": "無法連線到 Proxmox 主機，請檢查網路連線",
+      "general_error": "發生未知錯誤，請查看日誌或稍後重試",
+      "invalid_port": "連接埠號碼無效，請輸入 1-65535 之間的數字",
+      "host_is_url": "只填寫主機名稱或位址，不要帶 https:// 或路徑",
+      "nodes_required": "請至少選擇一個節點，或開啟「自動追蹤全部資源」。",
+      "ssl_rejection": "SSL 憑證驗證失敗，請確認主機憑證有效"
+    },
+    "abort": {
+      "already_configured": "裝置已設定",
+      "no_resources": "此實例未傳回任何資源",
+      "reauth_successful": "重新驗證成功",
+      "reconfigure_successful": "重新設定完成"
+    }
+  },
+  "issues": {
+    "import_success": {
+      "title": "成功匯入 {host}:{port} 的 YAML 設定",
+      "description": "{host}:{port} 實例的 {integration} 整合（`{platform}`）設定已自動匯入到 UI 中。\n\n現在可以安全地從 `configuration.yaml` 檔案中刪除相應設定。"
+    },
+    "import_invalid_port": {
+      "title": "YAML 設定匯入失敗：{host}:{port}",
+      "description": "因連接埠號碼無效，無法匯入 {host}:{port} 實例的 {integration} 整合（`{platform}`）設定。\n\n請從 `configuration.yaml` 中刪除此設定，重新啟動 Home Assistant 後手動設定。"
+    },
+    "import_auth_error": {
+      "title": "YAML 設定匯入失敗：{host}:{port}",
+      "description": "因身分驗證錯誤，無法匯入 {host}:{port} 實例的 {integration} 整合（`{platform}`）設定。\n\n請從 `configuration.yaml` 中刪除此設定，重新啟動 Home Assistant 後手動設定。"
+    },
+    "import_ssl_rejection": {
+      "title": "YAML 設定匯入失敗：{host}:{port}",
+      "description": "因 SSL 憑證驗證失敗，無法匯入 {host}:{port} 實例的 {integration} 整合（`{platform}`）設定。\n\n請從 `configuration.yaml` 中刪除此設定，重新啟動 Home Assistant 後手動設定。"
+    },
+    "import_cant_connect": {
+      "title": "YAML 設定匯入失敗：{host}:{port}",
+      "description": "因連線失敗，無法匯入 {host}:{port} 實例的 {integration} 整合（`{platform}`）設定。\n\n請從 `configuration.yaml` 中刪除此設定，重新啟動 Home Assistant 後手動設定。"
+    },
+    "import_general_error": {
+      "title": "YAML 設定匯入失敗：{host}:{port}",
+      "description": "因未知錯誤，無法匯入 {host}:{port} 實例的 {integration} 整合（`{platform}`）設定。\n\n請從 `configuration.yaml` 中刪除此設定，重新啟動 Home Assistant 後手動設定。"
+    },
+    "import_already_configured": {
+      "title": "實例 {host}:{port} 已在 UI 中設定完成",
+      "description": "{host}:{port} 實例的 {integration} 整合（`{platform}`）設定已存在於 UI 中，匯入時已略過。\n\n請從 `configuration.yaml` 中刪除此設定並重新啟動 Home Assistant。"
+    },
+    "import_node_not_exist": {
+      "title": "節點 {node} 在 {host}:{port} 中不存在",
+      "description": "YAML 設定中指定的節點 {node} 在 {integration}（`{platform}`）的 {host}:{port} 實例中不存在，匯入時已忽略。\n\n請從 `configuration.yaml` 中刪除此設定並重新啟動 Home Assistant。"
+    },
+    "yaml_deprecated": {
+      "title": "{integration} 的 YAML 設定方式已棄用",
+      "description": "{integration}（`{platform}`）的 YAML 設定方式已棄用，將在 {version} 版本中移除。\n\n請解決匯入問題並從 `configuration.yaml` 中刪除 YAML 設定。"
+    },
+    "resources_nonexistent": {
+      "description": "這些資源正在被追蹤，但 `{host}:{port}` 上的叢集並未列出它們。請在整合選項中移除它們——如果它們確實存在，可能是使用者 `{user}` 缺少查看權限，每項後面已註明：\n\n{items}",
+      "title": "{count} 個被追蹤的資源在 {host} 上找不到"
+    },
+    "no_permissions": {
+      "description": "使用者 `{user}` 缺少存取所有功能所需的權限。\n\n以下功能無法存取：\n`{errors}`\n\n請參考說明文件檢查使用者權限設定。",
+      "title": "使用者 `{user}` 權限不足"
+    },
+    "resources_forbidden": {
+      "description": "使用者 `{user}` 可能無權讀取這些資源。請在所示路徑或其上一層路徑授予每項後面註明的權限，然後重新載入整合：\n\n{items}\n\n權限說明文件中列出了該整合所需的角色。",
+      "title": "有 {count} 個資源無法被 `{user}` 讀取"
+    },
+    "guest_agent_fsinfo_forbidden": {
+      "description": "使用者 `{user}` 可能無權查詢以下虛擬機器的 QEMU 客體代理：{vms}。\n\n它們的磁碟用量將退回主機可見的資料——對大多數虛擬機器而言就是空——IP 位址也仍然未知。讀取這些資訊需要在這些虛擬機器上或其上一層路徑擁有：\n* `{permission}`\n\n在 Proxmox VE 8 上，該權限改為 `VM.Monitor`，內建的 `PVEAuditor` 角色包含它。授予該權限並重新載入整合。",
+      "title": "客體代理無法讀取"
+    },
+    "guest_agent_file_forbidden": {
+      "description": "使用者 `{user}` 可能無權透過以下虛擬機器的 QEMU 客體代理讀取檔案：{vms}。\n\n它們的客體檔案感測器無法建立。讀取該檔案需要在這些虛擬機器上或其上一層路徑擁有：\n* `{permission}`\n\n在 Proxmox VE 8 上，該權限改為 `VM.Monitor`。授予該權限並重新載入整合，或清除整合選項中的檔案路徑。",
+      "title": "客體檔案無法讀取"
+    },
+    "resource_command_forbiden": {
+      "description": "使用者 `{user}` 沒有足夠權限對資源 `{resource}` 執行命令 `{command}`。\n\n所需權限提示：\n* `{permission}`\n\n請檢查說明文件中的權限要求並調整使用者權限。",
+      "title": "執行 `{resource}` 命令的權限錯誤"
+    }
+  },
+  "options": {
+    "step": {
+      "menu": {
+        "menu_options": {
+          "host_auth": "修改主機驗證資訊",
+          "change_expose": "管理接入的資源",
+          "advanced": "進階設定：輪詢、實體磁碟、任務、更新、備份、實體 ID",
+          "cluster_ha_auth": "選用：叢集 HA 管理（進階）"
+        }
+      },
+      "host_auth": {
+        "data": {
+          "password": "密碼或權杖值",
+          "token_name": "API 權杖名稱",
+          "realm": "認證域",
+          "username": "使用者名稱",
+          "verify_ssl": "驗證 SSL 憑證"
+        },
+        "description": "更新 Proxmox 主機驗證資訊"
+      },
+      "cluster_ha_auth": {
+        "description": "此項選用，且與上面的主要認證資訊相互獨立。它會啟用「啟用 HA」/「停用 HA」按鈕，以及每個虛擬機器/容器的「HA 受管」感測器。這需要在 Proxmox 根路徑（'/'）上擁有 Sys.Console 和 Sys.Audit 權限——遠超本整合的其他任何需求，且足以影響整個叢集的 HA fencing 行為。只有在你理解並接受該風險時才填寫；所有欄位留空即可讓這些功能保持關閉。",
+        "data": {
+          "ha_admin_username": "使用者名稱",
+          "ha_admin_token_name": "API 權杖名稱",
+          "ha_admin_password": "密碼或權杖值",
+          "ha_admin_realm": "認證域"
+        },
+        "data_description": {
+          "ha_admin_username": "留空（連同下面的欄位一起）即可關閉「啟用/停用 HA」按鈕和「HA 受管」感測器。",
+          "ha_admin_password": "需要在 '/' 上擁有 Sys.Console（啟用/停用）和 Sys.Audit（HA 資源清單）權限——而不是推薦給主整合使用者的那套受限權限。"
+        }
+      },
+      "change_expose": {
+        "description": "選擇要接入的節點、虛擬機器、容器及儲存——輪詢、實體磁碟、任務、更新、備份和實體 ID 位於「進階設定」中。",
+        "data": {
+          "lxc": "Linux 容器（LXC）",
+          "nodes": "節點",
+          "qemu": "虛擬機器（QEMU）",
+          "storage": "儲存",
+          "auto_discovery": "自動追蹤全部資源"
+        },
+        "data_description": {
+          "auto_discovery": "追蹤該認證資訊可見的每個節點、虛擬機器、容器和儲存，並從此跟隨叢集：新增的會被納入，移除的會被剔除。此項開啟時會忽略上面的選擇。範本永遠不會被追蹤。"
+        }
+      },
+      "advanced": {
+        "title": "進階設定",
+        "description": "除基礎資訊外還讀取什麼、多久讀取一次，以及實體如何命名。每個欄位都有預設值，按預設設定即可正常運作。",
+        "data": {
+          "disks_enable": "啟用實體磁碟監控",
+          "tasks_enable": "監控失敗任務",
+          "updates_enable": "監控套件更新",
+          "update_interval": "輪詢間隔",
+          "guest_file_path": "要監控的客體檔案路徑（QEMU，需要客體代理）",
+          "backup_storage": "備份按鈕使用的備份儲存",
+          "entity_id_scheme": "實體 ID 方案",
+          "entity_id_prefix": "擴充方案的前置字串"
+        },
+        "data_description": {
+          "disks_enable": "把每個節點實體磁碟的型號、容量、溫度、磨損度和 SMART 健康狀態作為獨立裝置讀取。若使用磁碟休眠功能，請關閉此選項——否則每次輪詢的 SMART 讀取都會喚醒磁碟。",
+          "tasks_enable": "在所選節點上追蹤並報告最近 24 小時內的失敗任務，作為一個感測器。每五分鐘讀取一次。",
+          "updates_enable": "把每個節點待安裝的套件更新讀入一個更新實體和一個計數感測器。需要在節點上擁有 Sys.Modify 權限；關閉此項即可在沒有該權限——或不需要這些實體——的情況下運作。",
+          "update_interval": "讀取節點、客體、儲存和備份的頻率。預設 60 秒；Proxmox 自身約每 10 秒重新整理一次客體資料。憑證、訂閱和 Ceph 每小時讀取一次，失敗任務每五分鐘一次，不受此處設定影響。",
+          "guest_file_path": "每個被追蹤的 QEMU 客體內某個檔案的絕對路徑，透過客體代理讀取並作為感測器公開。留空則停用。需要客體內執行 QEMU 客體代理。",
+          "backup_storage": "「立即備份」和「批次備份」按鈕寫入備份的位置（快照模式）。只有在此處選擇了儲存且認證資訊具備 VM.Backup 權限時，這些按鈕才會存在。清單中是接受備份的儲存；也可以手動輸入其他名稱。",
+          "entity_id_scheme": "標準：Home Assistant 的裝置名稱後接實體名稱，如 `qemu_win11_108_cpu_used`。擴充：前置字串、類型、ID、名稱、項目，如 `pve_qemu_108_win11_cpu_used`——這樣用前置字串搜尋或用記錄器篩選就能涵蓋全部實體，清單也會按 ID 排序。僅對今後建立的實體生效；已存在的 ID 保持不變。",
+          "entity_id_prefix": "擴充方案下每個實體 ID 的第一段，預設 `pve`，可自行指定。標準方案不使用此項。"
+        }
+      }
+    },
+    "error": {
+      "auth_error": "身分驗證失敗，請檢查使用者名稱、密碼或 API 權杖",
+      "cant_connect": "無法連線到 Proxmox 主機，請檢查網路連線",
+      "general_error": "發生未知錯誤，請查看日誌或稍後重試",
+      "invalid_port": "連接埠號碼無效，請輸入 1-65535 之間的數字",
+      "ssl_rejection": "SSL 憑證驗證失敗，請確認主機憑證有效"
+    },
+    "abort": {
+      "no_nodes": "主機未傳回任何節點",
+      "no_vms": "此節點沒有虛擬機器或容器，設定項目將為節點建立",
+      "changes_successful": "變更已成功儲存",
+      "no_nodes_to_add": "沒有可新增的節點",
+      "node_already_exists": "所選節點已存在",
+      "auth_error": "身分驗證失敗",
+      "cant_connect": "連線失敗",
+      "general_error": "未知錯誤",
+      "invalid_port": "無效的連接埠號碼",
+      "ssl_rejection": "SSL 憑證驗證失敗"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "status": {
+        "name": "狀態"
+      },
+      "backup_running": {
+        "name": "備份進行中",
+        "state_attributes": {
+          "running_since": {
+            "name": "開始時間"
+          },
+          "running_guests": {
+            "name": "客體"
+          }
+        }
+      },
+      "health": {
+        "name": "健康狀態"
+      },
+      "locked": {
+        "name": "已鎖定"
+      },
+      "guest_agent": {
+        "name": "客體代理"
+      },
+      "update_avail": {
+        "name": "可用更新"
+      },
+      "ha_managed": {
+        "name": "HA 受管"
+      },
+      "replication_failing": {
+        "name": "複寫失敗"
+      },
+      "cluster_quorate": {
+        "name": "達到法定人數"
+      },
+      "ha_crm_master_stale": {
+        "name": "CRM 主節點過期"
+      },
+      "storage_active": {
+        "name": "儲存運作中",
+        "state": {
+          "on": "運作中",
+          "off": "未運作"
+        }
+      },
+      "storage_enabled": {
+        "name": "儲存已啟用",
+        "state": {
+          "on": "已啟用",
+          "off": "已停用"
+        }
+      },
+      "storage_shared": {
+        "name": "儲存共用",
+        "state": {
+          "on": "共用",
+          "off": "未共用"
+        }
+      },
+      "backup_status": {
+        "name": "備份狀態",
+        "state_attributes": {
+          "status": {
+            "name": "狀態"
+          },
+          "guests": {
+            "name": "客體"
+          },
+          "user": {
+            "name": "使用者"
+          }
+        }
+      }
+    },
+    "button": {
+      "start_all": {
+        "name": "批次啟動"
+      },
+      "stop_all": {
+        "name": "批次停止"
+      },
+      "shutdown": {
+        "name": "關機"
+      },
+      "reboot": {
+        "name": "重新啟動"
+      },
+      "start": {
+        "name": "啟動"
+      },
+      "stop": {
+        "name": "停止"
+      },
+      "unlock": {
+        "name": "解除鎖定"
+      },
+      "resume": {
+        "name": "恢復"
+      },
+      "suspend": {
+        "name": "暫停"
+      },
+      "reset": {
+        "name": "重設"
+      },
+      "wakeonlan": {
+        "name": "網路喚醒"
+      },
+      "arm_ha": {
+        "name": "啟用 HA"
+      },
+      "disarm_ha": {
+        "name": "停用 HA"
+      },
+      "suspend_all": {
+        "name": "批次暫停"
+      },
+      "snapshot": {
+        "name": "建立快照"
+      },
+      "backup": {
+        "name": "立即備份"
+      },
+      "backup_all": {
+        "name": "批次備份"
+      }
+    },
+    "sensor": {
+      "cpu_used": {
+        "name": "CPU 使用率",
+        "state_attributes": {
+          "cpus": {
+            "name": "核心數"
+          }
+        }
+      },
+      "cpu_of_host": {
+        "name": "主機 CPU 使用率"
+      },
+      "pressure_cpu_some": {
+        "name": "CPU 壓力"
+      },
+      "pressure_cpu_full": {
+        "name": "CPU 壓力停滯"
+      },
+      "pressure_io_some": {
+        "name": "IO 壓力"
+      },
+      "pressure_io_full": {
+        "name": "IO 壓力停滯"
+      },
+      "pressure_memory_some": {
+        "name": "記憶體壓力"
+      },
+      "pressure_memory_full": {
+        "name": "記憶體壓力停滯"
+      },
+      "memory_of_host": {
+        "name": "主機記憶體使用量"
+      },
+      "ip_address": {
+        "name": "IP 位址",
+        "state_attributes": {
+          "ip_addresses": {
+            "name": "IP 位址"
+          },
+          "interfaces": {
+            "name": "網路介面"
+          }
+        }
+      },
+      "snapshots": {
+        "name": "快照",
+        "state_attributes": {
+          "snapshot_names": {
+            "name": "快照名稱"
+          },
+          "snapshot_latest": {
+            "name": "最新快照"
+          },
+          "snapshot_oldest": {
+            "name": "最早快照"
+          }
+        }
+      },
+      "cpus": {
+        "name": "CPU 核心數"
+      },
+      "load_1m": {
+        "name": "1 分鐘平均負載"
+      },
+      "load_5m": {
+        "name": "5 分鐘平均負載"
+      },
+      "load_15m": {
+        "name": "15 分鐘平均負載"
+      },
+      "io_wait": {
+        "name": "IO 延遲"
+      },
+      "version": {
+        "name": "版本"
+      },
+      "disk_free": {
+        "name": "可用磁碟空間"
+      },
+      "disk_free_perc": {
+        "name": "磁碟可用百分比"
+      },
+      "disk_rpm": {
+        "name": "磁碟轉速"
+      },
+      "disk_size": {
+        "name": "磁碟容量"
+      },
+      "disk_total": {
+        "name": "磁碟總空間"
+      },
+      "disk_used": {
+        "name": "已用磁碟空間"
+      },
+      "disk_used_perc": {
+        "name": "磁碟使用百分比"
+      },
+      "disk_wearout": {
+        "name": "磨損度"
+      },
+      "failed_tasks_count": {
+        "name": "失敗任務數",
+        "state_attributes": {
+          "recent_failures": {
+            "name": "近期失敗"
+          },
+          "last_failure_time": {
+            "name": "最後失敗時間"
+          }
+        }
+      },
+      "guest_file_content": {
+        "name": "客體檔案內容",
+        "state_attributes": {
+          "guest_file_path": {
+            "name": "客體檔案路徑"
+          },
+          "guest_file_content": {
+            "name": "客體檔案內容"
+          }
+        }
+      },
+      "ceph_health": {
+        "name": "Ceph 健康狀態",
+        "state": {
+          "ok": "正常",
+          "warning": "警告",
+          "error": "錯誤"
+        },
+        "state_attributes": {
+          "checks": {
+            "name": "檢查項目"
+          }
+        }
+      },
+      "ceph_used": {
+        "name": "Ceph 已用空間"
+      },
+      "ceph_total": {
+        "name": "Ceph 總空間"
+      },
+      "ceph_used_perc": {
+        "name": "Ceph 使用百分比"
+      },
+      "cluster_nodes_online": {
+        "name": "線上節點",
+        "state_attributes": {
+          "nodes_total": {
+            "name": "節點"
+          },
+          "nodes_offline": {
+            "name": "離線節點"
+          }
+        }
+      },
+      "cluster_qemu_running": {
+        "name": "執行中的虛擬機器",
+        "state_attributes": {
+          "qemu_total": {
+            "name": "虛擬機器"
+          }
+        }
+      },
+      "cluster_lxc_running": {
+        "name": "執行中的容器",
+        "state_attributes": {
+          "lxc_total": {
+            "name": "容器"
+          }
+        }
+      },
+      "cluster_cpu_used": {
+        "name": "叢集 CPU 使用率"
+      },
+      "cluster_memory_used_perc": {
+        "name": "叢集記憶體使用率"
+      },
+      "cluster_memory_used": {
+        "name": "叢集已用記憶體"
+      },
+      "cluster_memory_total": {
+        "name": "叢集記憶體總量"
+      },
+      "certificate_expires": {
+        "name": "憑證到期",
+        "state_attributes": {
+          "filename": {
+            "name": "檔案"
+          },
+          "subject": {
+            "name": "主體"
+          },
+          "issuer": {
+            "name": "簽發者"
+          }
+        }
+      },
+      "guests_without_backup": {
+        "name": "未備份的客體",
+        "state_attributes": {
+          "guests": {
+            "name": "客體"
+          }
+        }
+      },
+      "replication_last_sync": {
+        "name": "複寫上次同步",
+        "state_attributes": {
+          "jobs": {
+            "name": "任務"
+          }
+        }
+      },
+      "subscription_status": {
+        "name": "訂閱",
+        "state": {
+          "new": "新購",
+          "notfound": "無",
+          "active": "有效",
+          "invalid": "無效",
+          "expired": "已過期",
+          "suspended": "已暫停"
+        },
+        "state_attributes": {
+          "level": {
+            "name": "等級"
+          },
+          "product": {
+            "name": "產品"
+          },
+          "next_due": {
+            "name": "下次到期"
+          }
+        }
+      },
+      "ha_armed_state": {
+        "name": "HA 啟用狀態",
+        "state": {
+          "armed": "已啟用",
+          "standby": "待命",
+          "disarming": "停用中",
+          "disarmed": "已停用"
+        },
+        "state_attributes": {
+          "resource_mode": {
+            "name": "資源模式"
+          }
+        }
+      },
+      "ha_crm_master": {
+        "name": "CRM 主節點"
+      },
+      "ha_crm_master_last_seen": {
+        "name": "CRM 主節點最後出現"
+      },
+      "ha_resources_error": {
+        "name": "錯誤的 HA 資源",
+        "state_attributes": {
+          "ha_resources_error_list": {
+            "name": "錯誤資源"
+          }
+        }
+      },
+      "ha_resources_total": {
+        "name": "HA 資源"
+      },
+      "life_left": {
+        "name": "剩餘壽命"
+      },
+      "zfs_health": {
+        "name": "ZFS 健康狀態"
+      },
+      "zfs_free_perc": {
+        "name": "ZFS 可用百分比"
+      },
+      "zfs_total": {
+        "name": "ZFS 總空間"
+      },
+      "zfs_used": {
+        "name": "ZFS 已用空間"
+      },
+      "zfs_used_perc": {
+        "name": "ZFS 使用百分比"
+      },
+      "lxc_on": {
+        "name": "執行中的容器",
+        "state_attributes": {
+          "lxc_on_list": {
+            "name": "容器清單"
+          }
+        }
+      },
+      "memory_free": {
+        "name": "可用記憶體"
+      },
+      "memory_free_perc": {
+        "name": "記憶體可用百分比"
+      },
+      "memory_total": {
+        "name": "記憶體總量"
+      },
+      "memory_used": {
+        "name": "已用記憶體"
+      },
+      "memory_used_perc": {
+        "name": "記憶體使用率"
+      },
+      "network_in": {
+        "name": "網路入站"
+      },
+      "network_out": {
+        "name": "網路出站"
+      },
+      "node": {
+        "name": "節點",
+        "state_attributes": {
+          "nodes": {
+            "name": "節點"
+          }
+        }
+      },
+      "power_cycles": {
+        "name": "電源循環次數"
+      },
+      "power_loss": {
+        "name": "意外斷電次數"
+      },
+      "power_hours": {
+        "name": "通電時數"
+      },
+      "qemu_on": {
+        "name": "執行中的虛擬機器",
+        "state_attributes": {
+          "qemu_on_list": {
+            "name": "虛擬機器清單"
+          }
+        }
+      },
+      "status_raw": {
+        "name": "運作狀態",
+        "state": {
+          "internal-error": "內部錯誤",
+          "prelaunch": "預啟動",
+          "paused": "已暫停",
+          "stopped": "已停止",
+          "suspended": "已休眠",
+          "running": "執行中",
+          "shutdown": "正在關機",
+          "io-error": "I/O 錯誤",
+          "guest-panicked": "客體核心恐慌",
+          "watchdog": "看門狗",
+          "inmigrate": "遷入中",
+          "postmigrate": "已遷出",
+          "finish-migrate": "正在完成遷移",
+          "restore-vm": "還原中",
+          "save-vm": "正在儲存狀態",
+          "debug": "偵錯",
+          "colo": "COLO"
+        }
+      },
+      "swap_free": {
+        "name": "可用置換空間"
+      },
+      "swap_free_perc": {
+        "name": "置換空間可用百分比"
+      },
+      "swap_total": {
+        "name": "置換空間總量"
+      },
+      "swap_used": {
+        "name": "已用置換空間"
+      },
+      "swap_used_perc": {
+        "name": "置換空間使用率"
+      },
+      "temperature": {
+        "name": "溫度"
+      },
+      "updates_total": {
+        "name": "可用更新總數",
+        "state_attributes": {
+          "updates_list": {
+            "name": "更新清單"
+          }
+        }
+      },
+      "uptime": {
+        "name": "最近開機時間"
+      },
+      "backup_last": {
+        "name": "最近備份",
+        "state_attributes": {
+          "status": {
+            "name": "狀態"
+          },
+          "guests": {
+            "name": "客體"
+          },
+          "user": {
+            "name": "使用者"
+          }
+        }
+      },
+      "backup_duration": {
+        "name": "備份耗時"
+      },
+      "node_status": {
+        "name": "狀態",
+        "state": {
+          "online": "線上",
+          "offline": "離線",
+          "unknown": "未知"
+        }
+      }
+    },
+    "update": {
+      "node_update": {
+        "name": "軟體更新"
+      }
+    }
+  },
+  "selector": {
+    "realm": {
+      "options": {
+        "pam": "pam - Linux PAM 標準驗證",
+        "pve": "pve - Proxmox VE 驗證伺服器"
+      }
+    },
+    "backup_mode": {
+      "options": {
+        "snapshot": "快照",
+        "suspend": "暫停",
+        "stop": "停止"
+      }
+    },
+    "update_interval": {
+      "options": {
+        "30": "30 秒",
+        "45": "45 秒",
+        "60": "60 秒（預設）",
+        "90": "90 秒",
+        "120": "2 分鐘"
+      }
+    },
+    "entity_id_scheme": {
+      "options": {
+        "standard": "標準 - 裝置名稱後接實體名稱（Home Assistant 預設）",
+        "extended": "擴充 - 前置字串、類型、ID、名稱、項目"
+      }
+    },
+    "backup_compress": {
+      "options": {
+        "zstd": "zstd",
+        "gzip": "gzip",
+        "lzo": "lzo",
+        "0": "無"
+      }
+    }
+  },
+  "services": {
+    "backup": {
+      "name": "備份客體",
+      "description": "為指定的客體、節點或叢集啟動備份（vzdump）——或為指定的節點與客體 ID。每個節點一次執行；傳回其任務 ID。",
+      "fields": {
+        "node": {
+          "name": "節點",
+          "description": "按名稱指定要在其上備份的節點。當以裝置為目標或指定了客體時無需填寫：會自動查找它們所屬的節點。"
+        },
+        "vmid": {
+          "name": "客體",
+          "description": "要備份的虛擬機器和容器 ID，無論它們位於叢集何處。"
+        },
+        "all": {
+          "name": "全部",
+          "description": "備份該節點承載的所有客體——在指定節點上，或在未指定節點、未定向時對所有被追蹤的節點。"
+        },
+        "storage": {
+          "name": "儲存",
+          "description": "備份的存放位置。預設使用整合選項中為備份按鈕選定的儲存，或節點自身的預設值。"
+        },
+        "mode": {
+          "name": "模式",
+          "description": "如何凍結客體：快照（不停機）、暫停或停止。"
+        },
+        "compress": {
+          "name": "壓縮",
+          "description": "zstd、gzip、lzo 或無。預設為節點的設定。"
+        },
+        "notes": {
+          "name": "備註",
+          "description": "備份的備註範本，例如 {{guestname}}。"
+        },
+        "skip_if_running": {
+          "name": "執行中則略過",
+          "description": "當節點上已有備份在執行時略過該節點，而不是排隊等待。"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "backup_nothing_selected": {
+      "message": "請指定一個客體、節點或叢集裝置作為目標，或指明客體/節點名稱，或開啟「全部」。"
+    },
+    "backup_target_not_supported": {
+      "message": "{device} 無法備份；請指定客體、節點或叢集作為目標。"
+    },
+    "backup_target_unknown": {
+      "message": "裝置 {device} 不存在。"
+    },
+    "backup_unknown_guest": {
+      "message": "沒有已設定的 Proxmox VE 整合追蹤客體 {vmid}。"
+    },
+    "backup_notes_need_storage": {
+      "message": "備註只能與儲存一起設定；沒有儲存時 Proxmox 會拒絕該範本。"
+    },
+    "backup_unknown_node": {
+      "message": "沒有已設定的 Proxmox VE 整合追蹤節點 {node}。"
+    },
+    "backup_refused": {
+      "message": "Proxmox 拒絕在 {node} 上啟動備份：{error}"
+    },
+    "backup_unreachable": {
+      "message": "無法連線節點 {node} 以啟動備份：{error}"
+    }
+  }
+}
